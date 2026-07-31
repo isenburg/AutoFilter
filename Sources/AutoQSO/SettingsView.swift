@@ -4,6 +4,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case udp = "UDP Server"
     case lotw = "LoTW Sync"
     case qrz = "QRZ.com"
+    case mostWanted = "Most Wanted & Priorität"
     case storage = "Speicherort & iCloud"
     case options = "Auto Mode Optionen"
     
@@ -14,6 +15,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .udp: return "network"
         case .lotw: return "arrow.triangle.2.circlepath"
         case .qrz: return "key.fill"
+        case .mostWanted: return "flame.fill"
         case .storage: return "folder.fill"
         case .options: return "slider.horizontal.3"
         }
@@ -32,6 +34,11 @@ struct SettingsView: View {
     @AppStorage("lotwPassword") private var lotwPassword = ""
     @AppStorage("qrzApiKey") private var qrzApiKey = ""
     @AppStorage("retryCooldownMinutes") private var retryCooldownMinutes: Int = 10
+    
+    @AppStorage("myGridLocator") private var myGridLocator = "JO31"
+    @AppStorage("highlightMostWanted") private var highlightMostWanted = true
+    @AppStorage("prioritizeMostWanted") private var prioritizeMostWanted = true
+    @AppStorage("maxMostWantedRank") private var maxMostWantedRank = 100
     
     @AppStorage("storageLocationMode") private var storageLocationMode = "default"
     @AppStorage("customStoragePath") private var customStoragePath = ""
@@ -196,6 +203,82 @@ struct SettingsView: View {
                     .buttonStyle(.bordered)
                 }
                 .padding(.top, 6)
+            }
+            
+        case .mostWanted:
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Most Wanted & Priorisierung")
+                    .font(.title2)
+                    .bold()
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Eigener Maidenhead Locator (Grid Square):")
+                        .font(.headline)
+                    TextField("z.B. JO31 oder JO31AA", text: $myGridLocator)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 180)
+                    Text("Wird für die Entfernungsberechnung (km) zu decodierten Stationen genutzt.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Hervorhebung & Sortierung:")
+                        .font(.headline)
+                    
+                    Toggle("Most Wanted Stationen rot hervorheben (🔥)", isOn: $highlightMostWanted)
+                        .toggleStyle(.checkbox)
+                    
+                    Toggle("Priorität: Most Wanted zuerst, danach weiteste Entfernung", isOn: $prioritizeMostWanted)
+                        .toggleStyle(.checkbox)
+                    
+                    HStack {
+                        Text("Most Wanted Schwelle:")
+                            .font(.subheadline)
+                        Picker("", selection: $maxMostWantedRank) {
+                            Text("Top 10 Most Wanted").tag(10)
+                            Text("Top 20 Most Wanted").tag(20)
+                            Text("Top 50 Most Wanted").tag(50)
+                            Text("Top 100 Most Wanted").tag(100)
+                        }
+                        .frame(width: 180)
+                    }
+                }
+                
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Such- & Priorisierungs-Reihenfolge:")
+                        .font(.headline)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("1.")
+                                .bold()
+                            Text("Most Wanted Entitäten (Top \(maxMostWantedRank))")
+                                .bold()
+                                .foregroundColor(.red)
+                        }
+                        HStack {
+                            Text("2.")
+                                .bold()
+                            Text("Weiteste Entfernung (km basierend auf \(myGridLocator.isEmpty ? "JO31" : myGridLocator))")
+                                .bold()
+                                .foregroundColor(.blue)
+                        }
+                        HStack {
+                            Text("3.")
+                                .bold()
+                            Text("Stärkstes Signal (SNR dB)")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .font(.subheadline)
+                    .padding(10)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(6)
+                }
             }
             
         case .storage:

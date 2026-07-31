@@ -29,6 +29,15 @@ struct WSJTXDecode: Identifiable, Equatable {
     var lowConfidence: Bool
     var offAir: Bool
     
+    var grid: String? {
+        return Maidenhead.extractGrid(from: message)
+    }
+    
+    func distanceKm(myGrid: String) -> Double? {
+        guard let g = grid else { return nil }
+        return Maidenhead.distanceKm(from: myGrid, to: g)
+    }
+    
     var totalFrequencyHz: UInt64 {
         return dialFrequency > 0 ? dialFrequency + UInt64(deltaFrequency) : 0
     }

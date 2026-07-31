@@ -106,6 +106,11 @@ class DecodeViewModel: ObservableObject {
             }
         }
         
+        var candidates: [WSJTXDecode] = []
+        let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
+        let prioritizeMW = UserDefaults.standard.object(forKey: "prioritizeMostWanted") as? Bool ?? true
+        let maxRank = UserDefaults.standard.integer(forKey: "maxMostWantedRank") > 0 ? UserDefaults.standard.integer(forKey: "maxMostWantedRank") : 100
+        
         for decode in server.decodes {
             let call = decode.callsign.uppercased()
             guard !call.isEmpty else { continue }
@@ -128,17 +133,68 @@ class DecodeViewModel: ObservableObject {
                             blacklistedCalls.removeValue(forKey: call) // Cooldown expired
                         }
                     }
-                    
-                    currentTargetCall = call
-                    qsoStartTime = Date()
-                    currentQSOStatus = "AutoQSO: Rufe \(call) (\(decode.band))..."
-                    
-                    print("AutoQSO Engine: Starte Anruf -> \(call) (\(decode.band)) [Msg: \(decode.message)]")
-                    sendReply(for: decode)
-                    break
+                    candidates.append(decode)
                 }
             }
         }
+        
+        guard !candidates.isEmpty else { return }
+        
+        // Sort candidates: Most Wanted Rank (1..100) first, then Furthest Distance (km) second, then SNR third
+        candidates.sort { d1, d2 in
+            let call1 = d1.callsign
+            let call2 = d2.callsign
+            
+            let rank1 = MostWantedManager.shared.rankForCallsign(call1)
+            let rank2 = MostWantedManager.shared.rankForCallsign(call2)
+            
+            let isMW1 = rank1 != nil && rank1! <= maxRank
+            let isMW2 = rank2 != nil && rank2! <= maxRank
+            
+            if prioritizeMW {
+                if isMW1 != isMW2 {
+                    return isMW1 // Most Wanted station wins
+                }
+                if isMW1 && isMW2, let r1 = rank1, let r2 = rank2, r1 != r2 {
+                    return r1 < r2 // Higher rank (closer to #1) wins
+                }
+            }
+            
+            // Weiteste Entfernung zuerst
+            let dist1 = d1.distanceKm(myGrid: myGrid) ?? 0.0
+            let dist2 = d2.distanceKm(myGrid: myGrid) ?? 0.0
+            if abs(dist1 - dist2) > 50.0 { // Significant distance difference (>50 km)
+                return dist1 > dist2
+            }
+            
+            // Fallback: SNR
+            return d1.snr > d2.snr
+        }
+        
+        let bestTarget = candidates[0]
+        let bestCall = bestTarget.callsign.uppercased()
+        
+        currentTargetCall = bestCall
+        qsoStartTime = Date()
+        
+        let mwInfo: String
+        if let rank = MostWantedManager.shared.rankForCallsign(bestCall) {
+            mwInfo = " [🔥 MOST WANTED #\(rank)]"
+        } else {
+            mwInfo = ""
+        }
+        
+        let distInfo: String
+        if let dist = bestTarget.distanceKm(myGrid: myGrid) {
+            distInfo = String(format: " [%.0f km]", dist)
+        } else {
+            distInfo = ""
+        }
+        
+        currentQSOStatus = "AutoQSO: Rufe \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo)..."
+        
+        print("AutoQSO Engine: Starte Anruf -> \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo) [Msg: \(bestTarget.message)]")
+        sendReply(for: bestTarget)
     }
     
     func syncQRZ(apiKey: String) {

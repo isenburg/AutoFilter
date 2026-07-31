@@ -198,14 +198,51 @@ struct ContentView: View {
                 TableColumn("Zeit") { decode in
                     cellText(formatTime(decode.time), decode: decode)
                 }
-                .width(min: 70, ideal: 85, max: 120)
+                .width(min: 65, ideal: 75, max: 100)
                 .customizationID("time")
                 
                 TableColumn("DX Call") { decode in
-                    cellText(decode.callsign, decode: decode)
+                    HStack(spacing: 4) {
+                        cellText(decode.callsign, decode: decode)
+                        if MostWantedManager.shared.isMostWanted(callsign: decode.callsign) {
+                            Text("🔥")
+                                .font(.caption2)
+                        }
+                    }
                 }
-                .width(min: 80, ideal: 100, max: 180)
+                .width(min: 80, ideal: 105, max: 180)
                 .customizationID("callsign")
+                
+                TableColumn("Most Wanted") { decode in
+                    if let rank = MostWantedManager.shared.rankForCallsign(decode.callsign) {
+                        HStack(spacing: 4) {
+                            Text("🔥 #\(rank)")
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.red)
+                                .foregroundColor(.white)
+                                .cornerRadius(4)
+                        }
+                    } else {
+                        Text("-")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .width(min: 75, ideal: 95, max: 130)
+                .customizationID("mostwanted")
+                
+                TableColumn("Entfernung") { decode in
+                    let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
+                    if let dist = decode.distanceKm(myGrid: myGrid) {
+                        cellText(String(format: "%.0f km", dist), decode: decode)
+                    } else {
+                        cellText("-", decode: decode)
+                    }
+                }
+                .width(min: 65, ideal: 85, max: 120)
+                .customizationID("distance")
                 
                 TableColumn("SNR") { decode in
                     cellText("\(decode.snr)", decode: decode)
@@ -222,19 +259,19 @@ struct ContentView: View {
                 TableColumn("HF Freq") { decode in
                     cellText(decode.formattedHfFrequency, decode: decode)
                 }
-                .width(min: 90, ideal: 120, max: 180)
+                .width(min: 90, ideal: 110, max: 160)
                 .customizationID("hfFreq")
                 
                 TableColumn("Audio (Hz)") { decode in
                     cellText("\(decode.deltaFrequency)", decode: decode)
                 }
-                .width(min: 60, ideal: 80, max: 120)
+                .width(min: 60, ideal: 75, max: 110)
                 .customizationID("audioFreq")
                 
                 TableColumn("Nachricht") { decode in
                     cellText(decode.message, decode: decode)
                 }
-                .width(min: 120, ideal: 300, max: 2000)
+                .width(min: 120, ideal: 260, max: 2000)
                 .customizationID("message")
             }
         }
@@ -289,6 +326,12 @@ struct ContentView: View {
     private func rowColor(for decode: WSJTXDecode) -> Color {
         let call = decode.callsign
         if call.isEmpty { return .primary }
+        
+        let highlightMW = UserDefaults.standard.object(forKey: "highlightMostWanted") as? Bool ?? true
+        if highlightMW && MostWantedManager.shared.isMostWanted(callsign: call) {
+            return .red
+        }
+        
         if viewModel.lotwManager.hasWorked(callsign: call, band: decode.band) {
             return .gray
         }
