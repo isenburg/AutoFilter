@@ -7,13 +7,34 @@ class DatabaseManager {
     private var db: OpaquePointer?
     private let dbQueue = DispatchQueue(label: "com.autoqso.database", qos: .userInitiated)
     
-    private let dbPath: String = {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return docs.appendingPathComponent("autoqso_log.sqlite").path
-    }()
+    private(set) var currentDbPath: String = ""
+    
+    static func getStorageDirectory() -> URL {
+        let mode = UserDefaults.standard.string(forKey: "storageLocationMode") ?? "default"
+        
+        var targetURL: URL
+        if mode == "icloud" {
+            if let ubiquityURL = FileManager.default.url(forUbiquityContainerIdentifier: nil)?.appendingPathComponent("Documents/AutoQSO") {
+                targetURL = ubiquityURL
+            } else {
+                let home = FileManager.default.homeDirectoryForCurrentUser
+                targetURL = home.appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs/AutoQSO")
+            }
+        } else if mode == "custom", let customPath = UserDefaults.standard.string(forKey: "customStoragePath"), !customPath.isEmpty {
+            targetURL = URL(fileURLWithPath: customPath)
+        } else {
+            let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            targetURL = docs.appendingPathComponent("AutoQSO")
+        }
+        
+        try? FileManager.default.createDirectory(at: targetURL, withIntermediateDirectories: true, attributes: nil)
+        return targetURL
+    }
     
     init() {
-        openDatabase()
+        let targetDir = DatabaseManager.getStorageDirectory()
+        currentDbPath = targetDir.appendingPathComponent("autoqso_log.sqlite").path
+        openDatabase(at: currentDbPath)
         createTables()
         migrateJSONIfNeeded()
     }
@@ -24,12 +45,42 @@ class DatabaseManager {
         }
     }
     
-    private func openDatabase() {
-        if sqlite3_open(dbPath, &db) != SQLITE_OK {
-            print("Fehler beim Öffnen der SQLite Datenbank")
-        } else {
-            print("SQLite Datenbank geöffnet: \(dbPath)")
+    private func openDatabase(at path: String) {
+        dbQueue.sync {
+            if sqlite3_open(path, &db) != SQLITE_OK {
+                print("Fehler beim Öffnen der SQLite Datenbank an \(path)")
+            } else {
+                print("SQLite Datenbank geöffnet: \(path)")
+            }
         }
+    }
+    
+    func switchStorageLocation() {
+        let newDir = DatabaseManager.getStorageDirectory()
+        let newPath = newDir.appendingPathComponent("autoqso_log.sqlite").path
+        
+        guard newPath != currentDbPath else { return }
+        
+        let oldPath = currentDbPath
+        dbQueue.sync {
+            if db != nil {
+                sqlite3_close(db)
+                db = nil
+            }
+            
+            if FileManager.default.fileExists(atPath: oldPath) && !FileManager.default.fileExists(atPath: newPath) {
+                try? FileManager.default.copyItem(atPath: oldPath, toPath: newPath)
+                print("SQLite Datenbank kopiert von \(oldPath) nach: \(newPath)")
+            }
+            
+            currentDbPath = newPath
+            if sqlite3_open(currentDbPath, &db) != SQLITE_OK {
+                print("Fehler beim Öffnen der neuen SQLite Datenbank")
+            } else {
+                print("Erfolgreich gewechselt zu SQLite Datenbank: \(currentDbPath)")
+            }
+        }
+        createTables()
     }
     
     private func createTables() {

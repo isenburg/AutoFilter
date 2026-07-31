@@ -30,17 +30,26 @@ struct ContentView: View {
                     Text("AUTO MODE")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(.secondary)
-                    Button(action: {
-                        viewModel.isAutoModeEnabled.toggle()
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: viewModel.isAutoModeEnabled ? "play.circle.fill" : "play.circle")
-                            Text(viewModel.isAutoModeEnabled ? "AUTO AKTIV" : "AUTO AUS")
-                                .fontWeight(.bold)
+                    HStack(spacing: 6) {
+                        Button(action: {
+                            viewModel.isAutoModeEnabled.toggle()
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: viewModel.isAutoModeEnabled ? "play.circle.fill" : "play.circle")
+                                Text(viewModel.isAutoModeEnabled ? "AUTO AKTIV" : "AUTO AUS")
+                                    .fontWeight(.bold)
+                            }
                         }
+                        .buttonStyle(.borderedProminent)
+                        .tint(viewModel.isAutoModeEnabled ? .green : .gray)
+                        
+                        TextField("10", value: $retryCooldownMinutes, format: .number.grouping(.never))
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 45)
+                        Text("Min. Sperre")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(viewModel.isAutoModeEnabled ? .green : .gray)
                 }
                 
                 Divider()

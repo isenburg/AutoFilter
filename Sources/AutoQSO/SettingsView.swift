@@ -10,6 +10,9 @@ struct SettingsView: View {
     @AppStorage("qrzApiKey") private var qrzApiKey = ""
     @AppStorage("retryCooldownMinutes") private var retryCooldownMinutes: Int = 10
     
+    @AppStorage("storageLocationMode") private var storageLocationMode = "default"
+    @AppStorage("customStoragePath") private var customStoragePath = ""
+    
     private var isMulticastAddress: Bool {
         if let firstOctetStr = udpAddress.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: ".").first,
            let firstOctet = Int(firstOctetStr) {
@@ -95,7 +98,53 @@ struct SettingsView: View {
                 Label("QRZ.com", systemImage: "key.fill")
             }
             
-            // Tab 4: Auto Mode Options
+            // Tab 4: Speicherort & iCloud
+            Form {
+                Section(header: Text("DATENBANK & SPEICHERORT").font(.headline)) {
+                    Picker("Speicherort wählen:", selection: $storageLocationMode) {
+                        Text("Standard (~/Documents/AutoQSO)").tag("default")
+                        Text("Benutzerdefinierter Ordner").tag("custom")
+                        Text("iCloud Drive (Synchronisiert)").tag("icloud")
+                    }
+                    .pickerStyle(.radioGroup)
+                    .onChange(of: storageLocationMode) { _, _ in
+                        DatabaseManager.shared.switchStorageLocation()
+                        viewModel.lotwManager.loadLog()
+                    }
+                    
+                    if storageLocationMode == "custom" {
+                        HStack {
+                            Text("Ordner:")
+                            Text(customStoragePath.isEmpty ? "Kein Ordner gewählt" : customStoragePath)
+                                .font(.caption)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Button("Ordner wählen...") {
+                                selectCustomFolder()
+                            }
+                        }
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Aktueller SQLite Pfad:")
+                            .font(.caption)
+                            .bold()
+                        Text(DatabaseManager.shared.currentDbPath)
+                            .font(.caption2)
+                            .textSelection(.enabled)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.top, 4)
+                }
+            }
+            .padding()
+            .tabItem {
+                Label("Speicherort", systemImage: "folder.fill")
+            }
+            
+            // Tab 5: Auto Mode Options
             Form {
                 Section(header: Text("AUTO QSO OPTIONEN").font(.headline)) {
                     HStack {
@@ -113,6 +162,21 @@ struct SettingsView: View {
                 Label("Optionen", systemImage: "slider.horizontal.3")
             }
         }
-        .frame(width: 520, height: 260)
+        .frame(width: 540, height: 280)
+    }
+    
+    private func selectCustomFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Wählen"
+        
+        if panel.runModal() == .OK, let url = panel.url {
+            customStoragePath = url.path
+            storageLocationMode = "custom"
+            DatabaseManager.shared.switchStorageLocation()
+            viewModel.lotwManager.loadLog()
+        }
     }
 }

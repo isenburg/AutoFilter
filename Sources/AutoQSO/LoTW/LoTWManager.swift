@@ -22,7 +22,7 @@ class LoTWManager: ObservableObject {
         }
     }
     
-    private func loadLog() {
+    func loadLog() {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let qsos = DatabaseManager.shared.fetchAllQSOs()
             var newSet = Set<String>()
