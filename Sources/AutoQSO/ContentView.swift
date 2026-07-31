@@ -328,14 +328,36 @@ struct ContentView: View {
             
             Divider()
             
-            // Dedicated Most Wanted Section under the Main Table
-            let mostWantedDecodes = viewModel.server.decodes.filter { decode in
-                let call = decode.callsign
-                guard !call.isEmpty else { return false }
-                let isMW = MostWantedManager.shared.isMostWanted(callsign: call)
-                let hasWorkedOnBand = viewModel.lotwManager.hasWorked(callsign: call, band: decode.band)
-                return isMW && !hasWorkedOnBand
-            }
+            // Dedicated Most Wanted Section under the Main Table — dedupliziert nach Rufzeichen (bestes SNR pro Call)
+            let mostWantedDecodes: [WSJTXDecode] = {
+                var seen = Set<String>()
+                var result: [WSJTXDecode] = []
+                let filtered = viewModel.server.decodes
+                    .filter { decode in
+                        let call = decode.callsign
+                        guard !call.isEmpty else { return false }
+                        let isMW = MostWantedManager.shared.isMostWanted(callsign: call)
+                        let hasWorkedOnBand = viewModel.lotwManager.hasWorked(callsign: call, band: decode.band)
+                        return isMW && !hasWorkedOnBand
+                    }
+                    .sorted { a, b in
+                        // Bestes SNR pro Callsign bevorzugen
+                        a.snr > b.snr
+                    }
+                for decode in filtered {
+                    let call = decode.callsign.uppercased()
+                    if !seen.contains(call) {
+                        seen.insert(call)
+                        result.append(decode)
+                    }
+                }
+                // Danach nach Most Wanted Rang sortieren
+                return result.sorted { a, b in
+                    let rankA = MostWantedManager.shared.rankForCallsign(a.callsign) ?? 999
+                    let rankB = MostWantedManager.shared.rankForCallsign(b.callsign) ?? 999
+                    return rankA < rankB
+                }
+            }()
             
             VStack(alignment: .leading, spacing: 4) {
                 // Header & Draggable Resize Bar
