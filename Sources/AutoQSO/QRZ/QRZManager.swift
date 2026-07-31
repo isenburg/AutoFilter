@@ -25,14 +25,16 @@ class QRZManager: ObservableObject {
         let allowedCharacters = CharacterSet.urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&+=?/#"))
         let safeKey = trimmedKey.addingPercentEncoding(withAllowedCharacters: allowedCharacters) ?? trimmedKey
         
-        guard let url = URL(string: "https://logbook.qrz.com/api?KEY=\(safeKey)&ACTION=FETCH&OPTION=TYPE:ADIF,MODSINCE:1900-01-01") else {
+        let startDateStr = getStartDateString()
+        
+        guard let url = URL(string: "https://logbook.qrz.com/api?KEY=\(safeKey)&ACTION=FETCH&OPTION=TYPE:ADIF,MODSINCE:\(startDateStr)") else {
             addLog("Fehler: Ungültiger QRZ API Key")
             return
         }
         
         isDownloading = true
         errorMessage = nil
-        addLog("Starte QRZ.com Logbuch Sync (ab 1900-01-01)...")
+        addLog("Starte QRZ.com Logbuch Sync (ab Startdatum: \(startDateStr))...")
         
         let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
             DispatchQueue.main.async {
@@ -76,6 +78,19 @@ class QRZManager: ObservableObject {
             }
         }
         task.resume()
+    }
+    
+    private func getStartDateString() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        
+        if let latestDate = DatabaseManager.shared.getLatestQSODate(),
+           let oneDayBefore = Calendar.current.date(byAdding: .day, value: -1, to: latestDate) {
+            return formatter.string(from: oneDayBefore)
+        }
+        
+        return "1900-01-01"
     }
     
     private func extractParam(_ param: String, from text: String) -> String? {
