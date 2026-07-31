@@ -187,4 +187,39 @@ class DatabaseManager {
         }
         return bands
     }
+    
+    func getLatestQSODate() -> Date? {
+        var latestDateStr: String?
+        dbQueue.sync {
+            let querySQL = "SELECT qso_date FROM qsos WHERE qso_date IS NOT NULL AND qso_date != '' ORDER BY qso_date DESC LIMIT 50;"
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(db, querySQL, -1, &statement, nil) == SQLITE_OK {
+                while sqlite3_step(statement) == SQLITE_ROW {
+                    let rawDate = String(cString: sqlite3_column_text(statement, 0))
+                    let clean = rawDate.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: "/", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !clean.isEmpty {
+                        latestDateStr = clean
+                        break
+                    }
+                }
+                sqlite3_finalize(statement)
+            }
+        }
+        
+        guard let str = latestDateStr else { return nil }
+        
+        let formatter = DateFormatter()
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        
+        if str.count >= 8 {
+            let yearMonthDay = String(str.prefix(8))
+            formatter.dateFormat = "yyyyMMdd"
+            if let date = formatter.date(from: yearMonthDay) {
+                return date
+            }
+        }
+        
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: str)
+    }
 }

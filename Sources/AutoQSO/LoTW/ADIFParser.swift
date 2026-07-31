@@ -56,9 +56,10 @@ struct QSOEntry: Identifiable, Codable {
     }
     
     var uniqueKey: String {
+        let cleanDate = qsoDate.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: "/", with: "").replacingOccurrences(of: ".", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanTime = timeOn.trimmingCharacters(in: .whitespacesAndNewlines)
         let time4 = cleanTime.count >= 4 ? String(cleanTime.prefix(4)) : cleanTime
-        return "\(callsign.uppercased())_\(band.uppercased())_\(mode.uppercased())_\(qsoDate)_\(time4)"
+        return "\(callsign.uppercased())_\(band.uppercased())_\(mode.uppercased())_\(cleanDate)_\(time4)"
     }
 }
 

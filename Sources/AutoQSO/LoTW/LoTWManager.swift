@@ -44,14 +44,16 @@ class LoTWManager: ObservableObject {
         let safeUser = username.addingPercentEncoding(withAllowedCharacters: allowedCharacters) ?? username
         let safePass = password.addingPercentEncoding(withAllowedCharacters: allowedCharacters) ?? password
         
-        guard let url = URL(string: "https://lotw.arrl.org/lotwuser/lotwreport.adi?login=\(safeUser)&password=\(safePass)&qso_query=1&qso_qsos=1&qso_startdate=1900-01-01") else {
+        let startDateStr = getStartDateString()
+        
+        guard let url = URL(string: "https://lotw.arrl.org/lotwuser/lotwreport.adi?login=\(safeUser)&password=\(safePass)&qso_query=1&qso_qsos=1&qso_startdate=\(startDateStr)") else {
             addLog("Fehler: Ungültige Zugangsdaten für URL")
             return
         }
         
         isDownloading = true
         errorMessage = nil
-        addLog("Starte LoTW Sync für User '\(username)'...")
+        addLog("Starte LoTW Sync für User '\(username)' (ab Startdatum: \(startDateStr))...")
         
         let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
             DispatchQueue.main.async {
@@ -118,5 +120,18 @@ class LoTWManager: ObservableObject {
             .map { $0.band.uppercased() }
             .reduce(into: Set<String>()) { $0.insert($1) }
             .sorted()
+    }
+    
+    private func getStartDateString() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        
+        if let latestDate = DatabaseManager.shared.getLatestQSODate(),
+           let oneDayBefore = Calendar.current.date(byAdding: .day, value: -1, to: latestDate) {
+            return formatter.string(from: oneDayBefore)
+        }
+        
+        return "1900-01-01"
     }
 }
