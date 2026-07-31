@@ -222,4 +222,30 @@ class DatabaseManager {
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.date(from: str)
     }
+    
+    @discardableResult
+    func deleteQSOs(ids: Set<UUID>) -> Int {
+        guard !ids.isEmpty else { return 0 }
+        var deletedCount = 0
+        dbQueue.sync {
+            sqlite3_exec(db, "BEGIN TRANSACTION;", nil, nil, nil)
+            let deleteSQL = "DELETE FROM qsos WHERE id = ?;"
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(db, deleteSQL, -1, &statement, nil) == SQLITE_OK {
+                for id in ids {
+                    let idStr = id.uuidString
+                    sqlite3_bind_text(statement, 1, (idStr as NSString).utf8String, -1, nil)
+                    if sqlite3_step(statement) == SQLITE_DONE {
+                        if sqlite3_changes(db) > 0 {
+                            deletedCount += 1
+                        }
+                    }
+                    sqlite3_reset(statement)
+                }
+                sqlite3_finalize(statement)
+            }
+            sqlite3_exec(db, "COMMIT;", nil, nil, nil)
+        }
+        return deletedCount
+    }
 }

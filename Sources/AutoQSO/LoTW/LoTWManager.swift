@@ -134,4 +134,24 @@ class LoTWManager: ObservableObject {
         
         return "1900-01-01"
     }
+    
+    func deleteQSOs(ids: Set<UUID>) {
+        guard !ids.isEmpty else { return }
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let deletedCount = DatabaseManager.shared.deleteQSOs(ids: ids)
+            let updatedLog = DatabaseManager.shared.fetchAllQSOs()
+            
+            var newSet = Set<String>()
+            newSet.reserveCapacity(updatedLog.count)
+            for qso in updatedLog {
+                newSet.insert("\(qso.callsign.uppercased())_\(qso.band.uppercased())")
+            }
+            
+            DispatchQueue.main.async {
+                self?.logbook = updatedLog
+                self?.workedSet = newSet
+                self?.addLog("Logbuch: \(deletedCount) Eintrag/Einträge gelöscht.")
+            }
+        }
+    }
 }

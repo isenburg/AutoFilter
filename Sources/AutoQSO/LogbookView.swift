@@ -3,22 +3,34 @@ import SwiftUI
 struct LogbookView: View {
     @ObservedObject var viewModel: DecodeViewModel
     
+    @State private var selection = Set<QSOEntry.ID>()
     @State private var sortOrder = [KeyPathComparator(\QSOEntry.qsoDate, order: .reverse)]
     @AppStorage("logbook_column_customization") private var columnCustomization: TableColumnCustomization<QSOEntry>
     
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("LoTW Logbuch (\(viewModel.lotwManager.logbook.count) Einträge)")
+                Text("Logbuch (\(viewModel.lotwManager.logbook.count) Einträge)")
                     .font(.headline)
+                
                 Spacer()
+                
+                if !selection.isEmpty {
+                    Button(role: .destructive) {
+                        deleteSelectedQSOs()
+                    } label: {
+                        Label("\(selection.count) Ausgewählte löschen", systemImage: "trash")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.red)
+                }
             }
             .padding()
             .background(Color(NSColor.controlBackgroundColor))
             
             Divider()
             
-            Table(viewModel.lotwManager.logbook, sortOrder: $sortOrder, columnCustomization: $columnCustomization) {
+            Table(viewModel.lotwManager.logbook, selection: $selection, sortOrder: $sortOrder, columnCustomization: $columnCustomization) {
                 TableColumn("Rufzeichen", value: \.callsign) { qso in
                     Text(qso.callsign).textSelection(.enabled)
                 }
@@ -54,6 +66,33 @@ struct LogbookView: View {
                 }
                 .width(min: 50, ideal: 70, max: 120)
                 .customizationID("dxcc")
+                
+                TableColumn("Löschen") { qso in
+                    Button(role: .destructive) {
+                        viewModel.lotwManager.deleteQSOs(ids: [qso.id])
+                        selection.remove(qso.id)
+                    } label: {
+                        Image(systemName: "trash")
+                            .foregroundColor(.red)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Diesen Eintrag löschen")
+                }
+                .width(50)
+                .customizationID("deleteAction")
+            }
+            .contextMenu(forSelectionType: QSOEntry.ID.self) { selectedIds in
+                if !selectedIds.isEmpty {
+                    Button(role: .destructive) {
+                        viewModel.lotwManager.deleteQSOs(ids: selectedIds)
+                        selection.subtract(selectedIds)
+                    } label: {
+                        Label("\(selectedIds.count) Eintrag/Einträge löschen", systemImage: "trash")
+                    }
+                }
+            }
+            .onDeleteCommand {
+                deleteSelectedQSOs()
             }
             .onChange(of: sortOrder) { _, newOrder in
                 viewModel.lotwManager.logbook.sort(using: newOrder)
@@ -62,6 +101,12 @@ struct LogbookView: View {
                 viewModel.lotwManager.logbook.sort(using: sortOrder)
             }
         }
-        .frame(minWidth: 650, minHeight: 450)
+        .frame(minWidth: 700, minHeight: 480)
+    }
+    
+    private func deleteSelectedQSOs() {
+        guard !selection.isEmpty else { return }
+        viewModel.lotwManager.deleteQSOs(ids: selection)
+        selection.removeAll()
     }
 }
