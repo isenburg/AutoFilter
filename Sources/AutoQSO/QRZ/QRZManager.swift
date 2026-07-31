@@ -64,9 +64,9 @@ class QRZManager: ObservableObject {
                     var adifText = str
                     if let dataRange = str.range(of: "DATA=") {
                         let rawData = String(str[dataRange.upperBound...])
-                        adifText = rawData.removingPercentEncoding ?? rawData.replacingOccurrences(of: "%3C", with: "<").replacingOccurrences(of: "%3E", with: ">").replacingOccurrences(of: "%3A", with: ":").replacingOccurrences(of: "%20", with: " ")
+                        adifText = QRZManager.robustURLDecode(rawData)
                     } else {
-                        adifText = str.removingPercentEncoding ?? str.replacingOccurrences(of: "%3C", with: "<").replacingOccurrences(of: "%3E", with: ">").replacingOccurrences(of: "%3A", with: ":").replacingOccurrences(of: "%20", with: " ")
+                        adifText = QRZManager.robustURLDecode(str)
                     }
                     
                     let newEntries = ADIFParser.parseQSOs(from: adifText)
@@ -78,6 +78,38 @@ class QRZManager: ObservableObject {
             }
         }
         task.resume()
+    }
+    
+    static func robustURLDecode(_ input: String) -> String {
+        if let decoded = input.removingPercentEncoding {
+            return decoded
+        }
+        
+        var s = input
+        s = s.replacingOccurrences(of: "&lt;", with: "<", options: .caseInsensitive)
+        s = s.replacingOccurrences(of: "&gt;", with: ">", options: .caseInsensitive)
+        s = s.replacingOccurrences(of: "&amp;", with: "&", options: .caseInsensitive)
+        s = s.replacingOccurrences(of: "%3c", with: "<", options: .caseInsensitive)
+        s = s.replacingOccurrences(of: "%3e", with: ">", options: .caseInsensitive)
+        s = s.replacingOccurrences(of: "%3a", with: ":", options: .caseInsensitive)
+        s = s.replacingOccurrences(of: "%20", with: " ")
+        s = s.replacingOccurrences(of: "%0d", with: "\r", options: .caseInsensitive)
+        s = s.replacingOccurrences(of: "%0a", with: "\n", options: .caseInsensitive)
+        
+        let regex = try? NSRegularExpression(pattern: "%([0-9A-Fa-f]{2})")
+        if let regex = regex {
+            let nsString = s as NSString
+            let matches = regex.matches(in: s, options: [], range: NSRange(location: 0, length: nsString.length)).reversed()
+            for match in matches {
+                let hexStr = nsString.substring(with: match.range(at: 1))
+                if let byteVal = UInt8(hexStr, radix: 16) {
+                    let charStr = String(UnicodeScalar(byteVal))
+                    let fullRange = match.range(at: 0)
+                    s = (s as NSString).replacingCharacters(in: fullRange, with: charStr)
+                }
+            }
+        }
+        return s
     }
     
     func resetSyncDateTo1900() {

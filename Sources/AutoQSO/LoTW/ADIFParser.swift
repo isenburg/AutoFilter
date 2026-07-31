@@ -78,30 +78,29 @@ struct ADIFParser {
         let records = content.components(separatedBy: regex)
         
         for record in records {
-            let upperRecord = record.uppercased()
-            guard let call = extractTagValue("CALL", from: upperRecord),
-                  let band = extractTagValue("BAND", from: upperRecord) else { continue }
+            guard let call = extractTagValue("CALL", from: record),
+                  let band = extractTagValue("BAND", from: record) else { continue }
             
-            var mode = extractTagValue("MODE", from: upperRecord) ?? ""
-            if let submode = extractTagValue("SUBMODE", from: upperRecord), !submode.isEmpty {
+            var mode = extractTagValue("MODE", from: record) ?? ""
+            if let submode = extractTagValue("SUBMODE", from: record), !submode.isEmpty {
                 mode = submode
             }
             
-            var rawDate = extractTagValue("QSO_DATE", from: upperRecord) ?? ""
+            var rawDate = extractTagValue("QSO_DATE", from: record) ?? ""
             if rawDate.isEmpty {
-                rawDate = extractTagValue("QSO_DATE_OFF", from: upperRecord) ?? ""
+                rawDate = extractTagValue("QSO_DATE_OFF", from: record) ?? ""
             }
             let qsoDate = rawDate.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: "/", with: "").replacingOccurrences(of: ".", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
             
-            var rawTime = extractTagValue("TIME_ON", from: upperRecord) ?? ""
+            var rawTime = extractTagValue("TIME_ON", from: record) ?? ""
             if rawTime.isEmpty {
-                rawTime = extractTagValue("TIME_OFF", from: upperRecord) ?? ""
+                rawTime = extractTagValue("TIME_OFF", from: record) ?? ""
             }
             let timeOn = rawTime.replacingOccurrences(of: ":", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
             
-            let dxcc = extractTagValue("DXCC", from: upperRecord) ?? ""
+            let dxcc = extractTagValue("DXCC", from: record) ?? ""
             
-            let entry = QSOEntry(callsign: call, band: band, mode: mode, qsoDate: qsoDate, timeOn: timeOn, dxcc: dxcc)
+            let entry = QSOEntry(callsign: call.uppercased(), band: band.uppercased(), mode: mode.uppercased(), qsoDate: qsoDate, timeOn: timeOn, dxcc: dxcc)
             entries.append(entry)
         }
         return entries
@@ -109,7 +108,7 @@ struct ADIFParser {
     
     private static func extractTagValue(_ tag: String, from record: String) -> String? {
         let tagPrefix = "<\(tag):"
-        guard let startRange = record.range(of: tagPrefix) else { return nil }
+        guard let startRange = record.range(of: tagPrefix, options: .caseInsensitive) else { return nil }
         let tail = record[startRange.upperBound...]
         guard let colonOrGreater = tail.firstIndex(where: { $0 == ">" || $0 == ":" }) else { return nil }
         
