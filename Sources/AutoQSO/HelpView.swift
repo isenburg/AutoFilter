@@ -4,7 +4,8 @@ enum HelpSection: String, CaseIterable, Identifiable {
     case overview = "Übersicht"
     case wsjtx = "WSJT-X Setup"
     case triggers = "Auto QSO Triggers"
-    case logbook = "LoTW & QRZ Sync"
+    case logbook = "Logbuch & Sync"
+    case storage = "Speicherort & iCloud"
     case disclaimer = "Rechtlicher Hinweis"
     case changelog = "Changelog"
     case copyright = "Copyright & Lizenz"
@@ -17,6 +18,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
         case .wsjtx: return "antenna.radiowaves.left.and.right"
         case .triggers: return "bolt.horizontal"
         case .logbook: return "book.closed"
+        case .storage: return "folder.fill"
         case .disclaimer: return "exclamationmark.triangle"
         case .changelog: return "list.bullet.rectangle"
         case .copyright: return "c.circle"
@@ -79,7 +81,7 @@ struct HelpView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(minWidth: 700, minHeight: 480)
+        .frame(minWidth: 720, minHeight: 500)
     }
     
     @ViewBuilder
@@ -97,8 +99,10 @@ struct HelpView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label("Automatische Antworten auf CQ, 73, RR73 und RRR", systemImage: "bolt.fill")
                     Label("Echtzeit-Prüfung gegen SQLite-Logbuch (bereits auf Band gearbeitet)", systemImage: "checkmark.seal.fill")
-                    Label("Sync mit Logbook of The World (LoTW) & QRZ.com ab 1900-01-01", systemImage: "arrow.triangle.2.circlepath")
-                    Label("Automatische Sperre / Cooldown (10-15 Min) bei Timeout oder Abbruch", systemImage: "clock.arrow.circlepath")
+                    Label("Inkrementeller Sync mit LoTW & QRZ.com (1 Tag vor letztem QSO)", systemImage: "arrow.triangle.2.circlepath")
+                    Label("Zeilenweises & Mehrfach-Löschen von Logbucheinträgen", systemImage: "trash")
+                    Label("Freie Speicherort-Wahl (Ordner oder iCloud Drive)", systemImage: "folder.fill")
+                    Label("Automatische Sperre / Cooldown bei Timeout oder Abbruch", systemImage: "clock.arrow.circlepath")
                 }
             }
             
@@ -142,15 +146,44 @@ struct HelpView: View {
             
         case .logbook:
             VStack(alignment: .leading, spacing: 12) {
-                Text("LoTW & QRZ.com Synchronisation")
-                    .font(.title)
+                Text("Logbuch Management & Synchronisation")
+                    .font(.title2)
                     .bold()
-                Text("Logbook of The World (LoTW):")
+                
+                Text("Inkrementeller Sync:")
                     .font(.headline)
-                Text("Fordert alle bestätigten und unbestätigten QSOs ab dem Startdatum 1900-01-01 an, um auch historische Logs vor 2014 vollständig einzulesen.")
-                Text("QRZ.com API:")
+                Text("• Startet automatisch 1 Tag vor dem Datum des neuesten QSOs in der SQLite-Datenbank.\n• Verhindert das doppelte Laden bestehender QSOs durch strikte Eindeutigkeitsprüfung (`uniqueKey`).")
+                
+                Text("Sync-Datum Reset & Neu-Initialisierung:")
                     .font(.headline)
-                Text("Nutzt die Option MODSINCE:1900-01-01 zum Abruf des gesamten QRZ-Logbuchs.")
+                Text("• Sync-Datum auf 1900 zurücksetzen: Erzwingt einen Re-Sync ab 1900-01-01 ohne bestehende Daten zu löschen.\n• Logbuch leeren & Re-Sync: Leert die SQLite-Datenbank komplett und baut das Logbuch neu auf.")
+                
+                Text("Zeilenweises Löschen:")
+                    .font(.headline)
+                Text("• Jede Zeile verfügt über ein direktes Mülleimer-Icon 🗑️.\n• Mehrere Einträge können per Shift/Cmd markiert und über den Toolbar-Button oder per Rechtsklick gelöscht werden.")
+            }
+            
+        case .storage:
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Speicherort & iCloud Synchronisation")
+                    .font(.title2)
+                    .bold()
+                
+                Text("Konfiguration im Einstellungen-Dialog (Seitenleiste -> Speicherort & iCloud):")
+                    .font(.body)
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("• Standard-Ordner: Speichert die Datenbank unter ~/Documents/AutoQSO.")
+                    Text("• Benutzerdefinierter Ordner: Freie Wahl eines lokalen Ordners via macOS Dialog.")
+                    Text("• iCloud Drive: Speichert in iCloud Drive/AutoQSO zur automatischen Synchronisation zwischen mehreren Macs.")
+                }
+                .padding()
+                .background(Color.blue.opacity(0.08))
+                .cornerRadius(8)
+                
+                Text("Hinweis: Beim Wechsel des Speicherorts wird die bestehende SQLite-Datenbank automatisch an den neuen Zielort kopiert.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             
         case .disclaimer:
@@ -182,10 +215,10 @@ struct HelpView: View {
                 Text("Changelog")
                     .font(.title)
                     .bold()
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 10) {
                     Text("Version \(APP_VERSION) (Build \(APP_BUILD_NUMBER))")
                         .font(.headline)
-                    Text("• Auto QSO Trigger um 73, RR73 und RRR erweitert.\n• Pre-2014 Historien-Download für LoTW (qso_qsos=1, qso_startdate=1900-01-01) und QRZ (MODSINCE:1900-01-01) korrigiert.\n• Neues Release-Skript mit automatischer Versionierung, .dmg Erstellung und GitHub Upload.\n• Nicht-einklappbares Hilfe-Fenster mit Seitenleiste integriert.")
+                    Text("• Auto QSO Trigger: Erweiterung um 73, RR73 und RRR Decodes.\n• Inkrementeller Sync: Startet dynamisch 1 Tag vor dem neuesten QSO in der Datenbank.\n• Duplicate Prevention: Strikte Eindeutigkeitsprüfung in SQLite (uniqueKey).\n• Reset-Funktionen: Sync-Startdatum auf 1900 zurücksetzen & Logbuch von Grund auf neu laden.\n• Zeilenweises Löschen: Einzellöschung per 🗑️, Mehrfachauswahl, Kontextmenü & Tastatur-Shortcut.\n• Speicherort & iCloud: Wahl von benutzerdefinierten Ordnern oder iCloud Drive Sync.\n• Einstellungen-Dialog: Überarbeitung mit linker Seitenleiste (Sidebar-Navigation).\n• Hilfe-System: Nicht-einklappbares Hilfe-Fenster mit Seitenleiste.\n• 3D App Icon: Neues Retina macOS 3D Icon im App-Bundle und DMG Installer.\n• Release Automation: Build-Skript mit .dmg Erstellung, Versionierung & GitHub Releases.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }

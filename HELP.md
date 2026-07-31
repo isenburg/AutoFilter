@@ -25,15 +25,26 @@ When a valid message is received:
 
 ---
 
-## 3. Logbook Sync (LoTW & QRZ)
+## 3. Logbook Sync & Management
 
-- **Logbook of The World (LoTW)**: Query parameters retrieve all confirmed and unconfirmed QSOs back to `1900-01-01`.
-- **QRZ.com**: Downloads logbook records using `MODSINCE:1900-01-01` to capture all contacts before 2014.
-- All downloads are merged into a local SQLite database for instant dupe checking.
+- **Dynamic Incremental Sync**: LoTW and QRZ downloads start 1 day before the latest QSO in your database, preventing redundant data transfers.
+- **Duplicate Protection**: Unique key constraints (`CALL_BAND_MODE_YYYYMMDD_TIME`) in SQLite ensure no duplicates are loaded.
+- **Sync Date Reset**: Options to reset the sync query date to `1900-01-01` to re-fetch full history without deleting local data.
+- **Logbook Re-initialization**: Option to wipe local SQLite database entries and perform a full re-sync from scratch.
+- **Row-by-Row Deletion**: Individual entry deletion via 🗑️ buttons, multi-row selection, context menus, and keyboard shortcuts (`Delete`/`Backspace`).
 
 ---
 
-## 4. Legal & Safety Disclaimer
+## 4. Storage Location & iCloud Sync
+
+- **Default Location**: `~/Documents/AutoQSO/autoqso_log.sqlite`
+- **Custom Folder**: Select any local directory via macOS native `NSOpenPanel`.
+- **iCloud Drive**: Seamlessly store and sync database files across multiple Macs using `iCloud Drive/AutoQSO`.
+- **Automatic Migration**: Changing storage location automatically moves your existing SQLite database file to the new destination.
+
+---
+
+## 5. Legal & Safety Disclaimer
 
 > **IMPORTANT LEGAL NOTICE**
 > 
@@ -47,9 +58,15 @@ When a valid message is received:
 
 ---
 
-## 5. Version & Build History
+## 6. Version & Build History
 
-- **Version 1.0.0 (Build 61)**:
-  - Added support for `73`, `RR73`, and `RRR` decode triggers.
-  - Fixed pre-2014 log fetching for LoTW (`qso_qsos=1`, `qso_startdate=1900-01-01`) and QRZ.com (`MODSINCE:1900-01-01`).
-  - Added DMG release packaging and GitHub upload automation.
+- **Version 1.0.0**:
+  - Auto QSO trigger support for `CQ`, `73`, `RR73`, and `RRR`.
+  - Dynamic 1-day-prior incremental sync with LoTW and QRZ.com.
+  - Reset sync start date to `1900-01-01` & full logbook re-initialization.
+  - Row-by-row & bulk logbook deletion.
+  - Custom storage folder selection & iCloud Drive sync.
+  - Redesigned Settings dialog with non-collapsible left sidebar.
+  - Native Help window with non-collapsible left sidebar.
+  - Custom 3D Retina App Icon for macOS app bundle & DMG installer.
+  - Automated release script generating versioned `.dmg` installers and GitHub releases.
