@@ -40,11 +40,15 @@ if [ $? -eq 0 ]; then
     BUNDLE_DIR="${PROJECT_DIR}/${APP_NAME}.app"
     CONTENTS_DIR="${BUNDLE_DIR}/Contents"
     MACOS_DIR="${CONTENTS_DIR}/MacOS"
+    RESOURCES_DIR="${CONTENTS_DIR}/Resources"
     
     rm -rf "$BUNDLE_DIR"
-    mkdir -p "$MACOS_DIR"
+    mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
     
     cp ".build/debug/$APP_NAME" "$MACOS_DIR/"
+    if [ -f "Resources/AppIcon.icns" ]; then
+        cp "Resources/AppIcon.icns" "$RESOURCES_DIR/"
+    fi
     
     cat > "$CONTENTS_DIR/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -53,6 +57,8 @@ if [ $? -eq 0 ]; then
 <dict>
     <key>CFBundleExecutable</key>
     <string>$APP_NAME</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
     <string>com.autoqso.app</string>
     <key>CFBundleName</key>
