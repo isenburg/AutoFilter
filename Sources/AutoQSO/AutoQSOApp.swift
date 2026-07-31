@@ -16,5 +16,14 @@ struct AutoQSOApp: App {
         Window("Hilfe & Info", id: "help") {
             HelpView()
         }
+        
+        Window("Einstellungen", id: "settings") {
+            SettingsView(viewModel: viewModel)
+        }
+        .windowResizability(.contentSize)
+        
+        Settings {
+            SettingsView(viewModel: viewModel)
+        }
     }
 }

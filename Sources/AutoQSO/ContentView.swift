@@ -23,76 +23,50 @@ struct ContentView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Top Settings Bar (Harmonious & Perfectly Aligned)
+            // Top Toolbar (Clean & Spacious)
             HStack(alignment: .center, spacing: 14) {
-                // UDP Section
+                // Auto Mode Section
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("UDP SERVER")
+                    Text("AUTO MODE")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(.secondary)
-                    HStack(spacing: 4) {
-                        TextField("224.0.0.1", text: $udpAddress)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 95)
-                        
-                        Text(":")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        TextField("2237", value: $udpPort, format: .number.grouping(.never))
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 50)
-                        
-                        Text(isMulticastAddress ? "MC" : "UC")
-                            .font(.system(size: 10, weight: .bold))
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 3)
-                            .background(isMulticastAddress ? Color.blue.opacity(0.15) : Color.orange.opacity(0.15))
-                            .foregroundColor(isMulticastAddress ? .blue : .orange)
-                            .cornerRadius(4)
+                    Button(action: {
+                        viewModel.isAutoModeEnabled.toggle()
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: viewModel.isAutoModeEnabled ? "play.circle.fill" : "play.circle")
+                            Text(viewModel.isAutoModeEnabled ? "AUTO AKTIV" : "AUTO AUS")
+                                .fontWeight(.bold)
+                        }
                     }
+                    .buttonStyle(.borderedProminent)
+                    .tint(viewModel.isAutoModeEnabled ? .green : .gray)
                 }
                 
                 Divider()
                     .frame(height: 36)
                 
-                // LoTW Section
+                // Synchronisation Actions
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("LOTW ZUGANGSDATEN")
+                    Text("SYNCHRONISATION")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(.secondary)
                     HStack(spacing: 6) {
-                        TextField("User", text: $lotwUsername)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 85)
-                        SecureField("Pass", text: $lotwPassword)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 85)
-                        Button("LoTW Sync") {
+                        Button(action: {
                             viewModel.lotwManager.downloadLoTW(username: lotwUsername, password: lotwPassword)
+                        }) {
+                            Label("LoTW Sync", systemImage: "arrow.clockwise")
                         }
                         .disabled(lotwUsername.isEmpty || lotwPassword.isEmpty || viewModel.lotwManager.isDownloading)
-                        .buttonStyle(.borderedProminent)
-                    }
-                }
-                
-                Divider()
-                    .frame(height: 36)
-                
-                // QRZ Section
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("QRZ.COM API KEY")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.secondary)
-                    HStack(spacing: 6) {
-                        SecureField("API Key", text: $qrzApiKey)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 100)
-                        Button("QRZ Sync") {
+                        .buttonStyle(.bordered)
+                        
+                        Button(action: {
                             viewModel.syncQRZ(apiKey: qrzApiKey)
+                        }) {
+                            Label("QRZ Sync", systemImage: "arrow.clockwise")
                         }
                         .disabled(qrzApiKey.isEmpty || viewModel.qrzManager.isDownloading)
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.bordered)
                     }
                 }
                 
@@ -110,14 +84,17 @@ struct ContentView: View {
                     .buttonStyle(.bordered)
                 }
                 
-                Divider()
-                    .frame(height: 36)
+                Spacer()
                 
-                // Help Section
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("HILFE")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.secondary)
+                // Settings & Info Buttons
+                HStack(spacing: 8) {
+                    Button(action: {
+                        openWindow(id: "settings")
+                    }) {
+                        Label("Einstellungen", systemImage: "gearshape")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    
                     Button(action: {
                         openWindow(id: "help")
                     }) {
@@ -125,38 +102,6 @@ struct ContentView: View {
                     }
                     .buttonStyle(.bordered)
                 }
-                
-                Divider()
-                    .frame(height: 36)
-                
-                // Auto QSO Section
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("AUTO MODE")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.secondary)
-                    HStack(spacing: 6) {
-                        Button(action: {
-                            viewModel.isAutoModeEnabled.toggle()
-                        }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: viewModel.isAutoModeEnabled ? "play.circle.fill" : "play.circle")
-                                Text(viewModel.isAutoModeEnabled ? "AUTO AKTIV" : "AUTO AUS")
-                                    .fontWeight(.bold)
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(viewModel.isAutoModeEnabled ? .green : .gray)
-                        
-                        TextField("10", value: $retryCooldownMinutes, format: .number.grouping(.never))
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 45)
-                        Text("Min. Sperre")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                
-                Spacer()
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
