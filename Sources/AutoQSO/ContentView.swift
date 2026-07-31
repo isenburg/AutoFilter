@@ -274,6 +274,140 @@ struct ContentView: View {
                 .width(min: 120, ideal: 260, max: 2000)
                 .customizationID("message")
             }
+            
+            Divider()
+            
+            // Dedicated Most Wanted Section under the Main Table
+            let mostWantedDecodes = viewModel.server.decodes.filter { MostWantedManager.shared.isMostWanted(callsign: $0.callsign) }
+            
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Image(systemName: "flame.fill")
+                        .foregroundColor(.red)
+                        .font(.system(size: 14, weight: .bold))
+                    
+                    Text("MOST WANTED STATIONEN (GESONDERT GEFILTERT)")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.red)
+                    
+                    Text("\(mostWantedDecodes.count)")
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(mostWantedDecodes.isEmpty ? Color.gray.opacity(0.3) : Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                    
+                    Spacer()
+                    
+                    let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
+                    Text("Basis-Locator: \(myGrid)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+                
+                if mostWantedDecodes.isEmpty {
+                    HStack {
+                        Spacer()
+                        Text("Keine Most Wanted Stationen im aktuellen Decode-Fenster empfangen")
+                            .font(.caption)
+                            .italic()
+                            .foregroundStyle(.secondary)
+                            .padding(.vertical, 12)
+                        Spacer()
+                    }
+                    .frame(height: 55)
+                    .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                } else {
+                    ScrollView(.vertical, showsIndicators: true) {
+                        VStack(spacing: 4) {
+                            ForEach(mostWantedDecodes) { decode in
+                                let call = decode.callsign
+                                let rank = MostWantedManager.shared.rankForCallsign(call) ?? 999
+                                let entity = MostWantedManager.shared.entityForCallsign(call)
+                                let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
+                                let dist = decode.distanceKm(myGrid: myGrid)
+                                
+                                HStack(spacing: 12) {
+                                    // Rank Badge
+                                    Text("🔥 RANG #\(rank)")
+                                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 3)
+                                        .background(Color.red)
+                                        .foregroundColor(.white)
+                                        .cornerRadius(4)
+                                    
+                                    // Callsign & Territory
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        HStack(spacing: 6) {
+                                            Text(call)
+                                                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                                .foregroundColor(.red)
+                                            if let ent = entity {
+                                                Text("(\(ent.name) - \(ent.continent))")
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
+                                        Text(decode.message)
+                                            .font(.system(size: 11, design: .monospaced))
+                                            .foregroundStyle(.primary)
+                                            .lineLimit(1)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    // Band & Distance
+                                    VStack(alignment: .trailing, spacing: 1) {
+                                        Text(decode.band)
+                                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Color.blue.opacity(0.15))
+                                            .foregroundColor(.blue)
+                                            .cornerRadius(4)
+                                        
+                                        if let d = dist {
+                                            Text(String(format: "%.0f km", d))
+                                                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    
+                                    // Call Button
+                                    Button(action: {
+                                        viewModel.sendReply(for: decode)
+                                    }) {
+                                        Label("Anrufen", systemImage: "arrow.up.message.fill")
+                                            .font(.caption)
+                                            .fontWeight(.bold)
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(.red)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.red.opacity(0.06))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Color.red.opacity(0.3), lineWidth: 1)
+                                )
+                                .cornerRadius(6)
+                                .onTapGesture(count: 2) {
+                                    viewModel.sendReply(for: decode)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.bottom, 8)
+                    }
+                    .frame(height: 110)
+                }
+            }
+            .background(Color(NSColor.windowBackgroundColor))
         }
         .alert("Fehler beim LoTW Sync", isPresented: Binding(
             get: { viewModel.lotwManager.errorMessage != nil },
