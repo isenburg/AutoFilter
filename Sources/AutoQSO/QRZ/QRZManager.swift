@@ -64,14 +64,14 @@ class QRZManager: ObservableObject {
                     var adifText = str
                     if let dataRange = str.range(of: "DATA=") {
                         let rawData = String(str[dataRange.upperBound...])
-                        adifText = rawData.removingPercentEncoding ?? rawData
+                        adifText = rawData.removingPercentEncoding ?? rawData.replacingOccurrences(of: "%3C", with: "<").replacingOccurrences(of: "%3E", with: ">").replacingOccurrences(of: "%3A", with: ":").replacingOccurrences(of: "%20", with: " ")
                     } else {
-                        adifText = str.removingPercentEncoding ?? str
+                        adifText = str.removingPercentEncoding ?? str.replacingOccurrences(of: "%3C", with: "<").replacingOccurrences(of: "%3E", with: ">").replacingOccurrences(of: "%3A", with: ":").replacingOccurrences(of: "%20", with: " ")
                     }
                     
                     let newEntries = ADIFParser.parseQSOs(from: adifText)
                     DispatchQueue.main.async {
-                        self?.addLog("QRZ Sync abgeschlossen: \(newEntries.count) QSOs verarbeitet.")
+                        self?.addLog("QRZ Sync abgeschlossen: \(newEntries.count) QSOs aus QRZ.com geladen.")
                         completion(newEntries)
                     }
                 }

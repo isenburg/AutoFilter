@@ -135,7 +135,11 @@ class DatabaseManager {
         dbQueue.sync {
             sqlite3_exec(db, "BEGIN TRANSACTION;", nil, nil, nil)
             
-            let insertSQL = "INSERT OR IGNORE INTO qsos (id, callsign, band, mode, qso_date, time_on, dxcc, unique_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?);"
+            let insertSQL = """
+            INSERT OR IGNORE INTO qsos (id, callsign, band, mode, qso_date, time_on, dxcc, unique_key)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+            """
+            
             var statement: OpaquePointer?
             
             if sqlite3_prepare_v2(db, insertSQL, -1, &statement, nil) == SQLITE_OK {
@@ -144,13 +148,14 @@ class DatabaseManager {
                     let callStr = qso.callsign.uppercased()
                     let bandStr = qso.band.uppercased()
                     let modeStr = qso.mode.uppercased()
+                    let cleanDate = qso.qsoDate.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: "/", with: "").replacingOccurrences(of: ".", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
                     let keyStr = qso.uniqueKey
                     
                     sqlite3_bind_text(statement, 1, (idStr as NSString).utf8String, -1, nil)
                     sqlite3_bind_text(statement, 2, (callStr as NSString).utf8String, -1, nil)
                     sqlite3_bind_text(statement, 3, (bandStr as NSString).utf8String, -1, nil)
                     sqlite3_bind_text(statement, 4, (modeStr as NSString).utf8String, -1, nil)
-                    sqlite3_bind_text(statement, 5, (qso.qsoDate as NSString).utf8String, -1, nil)
+                    sqlite3_bind_text(statement, 5, (cleanDate as NSString).utf8String, -1, nil)
                     sqlite3_bind_text(statement, 6, (qso.timeOn as NSString).utf8String, -1, nil)
                     sqlite3_bind_text(statement, 7, (qso.dxcc as NSString).utf8String, -1, nil)
                     sqlite3_bind_text(statement, 8, (keyStr as NSString).utf8String, -1, nil)

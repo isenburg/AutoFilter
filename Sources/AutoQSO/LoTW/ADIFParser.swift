@@ -87,8 +87,18 @@ struct ADIFParser {
                 mode = submode
             }
             
-            let qsoDate = extractTagValue("QSO_DATE", from: upperRecord) ?? ""
-            let timeOn = extractTagValue("TIME_ON", from: upperRecord) ?? ""
+            var rawDate = extractTagValue("QSO_DATE", from: upperRecord) ?? ""
+            if rawDate.isEmpty {
+                rawDate = extractTagValue("QSO_DATE_OFF", from: upperRecord) ?? ""
+            }
+            let qsoDate = rawDate.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: "/", with: "").replacingOccurrences(of: ".", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            var rawTime = extractTagValue("TIME_ON", from: upperRecord) ?? ""
+            if rawTime.isEmpty {
+                rawTime = extractTagValue("TIME_OFF", from: upperRecord) ?? ""
+            }
+            let timeOn = rawTime.replacingOccurrences(of: ":", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            
             let dxcc = extractTagValue("DXCC", from: upperRecord) ?? ""
             
             let entry = QSOEntry(callsign: call, band: band, mode: mode, qsoDate: qsoDate, timeOn: timeOn, dxcc: dxcc)
