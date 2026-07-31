@@ -10,6 +10,12 @@ echo "Beende $APP_NAME falls es läuft..."
 killall "$APP_NAME" 2>/dev/null
 sleep 1
 
+VERSION_FILE=".version"
+if [ ! -f "$VERSION_FILE" ]; then
+    echo "1.0.0" > "$VERSION_FILE"
+fi
+VERSION_NUM=$(cat "$VERSION_FILE" | tr -d ' \n\r')
+
 BUILD_FILE=".build_number"
 if [ ! -f "$BUILD_FILE" ]; then
     echo "0" > "$BUILD_FILE"
@@ -18,10 +24,13 @@ fi
 BUILD_NUM=$(cat "$BUILD_FILE")
 BUILD_NUM=$((BUILD_NUM + 1))
 echo "$BUILD_NUM" > "$BUILD_FILE"
-echo "Neue Build-Nummer: $BUILD_NUM"
+echo "Neue Version: $VERSION_NUM (Build-Nummer: $BUILD_NUM)"
 
-# Speichere die Build-Nummer im Swift Code
-echo "public let APP_BUILD_NUMBER = $BUILD_NUM" > Sources/AutoQSO/BuildNumber.swift
+# Speichere die Version & Build-Nummer im Swift Code
+cat > Sources/AutoQSO/BuildNumber.swift <<EOF
+public let APP_VERSION = "$VERSION_NUM"
+public let APP_BUILD_NUMBER = $BUILD_NUM
+EOF
 
 echo "Kompiliere Debug-Version..."
 swift build -c debug
@@ -51,7 +60,7 @@ if [ $? -eq 0 ]; then
     <key>CFBundleVersion</key>
     <string>$BUILD_NUM</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>$VERSION_NUM</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>LSMinimumSystemVersion</key>

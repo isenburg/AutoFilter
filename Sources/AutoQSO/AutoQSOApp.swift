@@ -12,5 +12,9 @@ struct AutoQSOApp: App {
         Window("LoTW Logbuch", id: "logbook") {
             LogbookView(viewModel: viewModel)
         }
+        
+        Window("Hilfe & Info", id: "help") {
+            HelpView()
+        }
     }
 }

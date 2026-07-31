@@ -1,0 +1,148 @@
+#!/bin/bash
+
+# Navigate to project root directory
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$PROJECT_DIR" || exit 1
+
+APP_NAME="AutoQSO"
+
+echo "=== 1. Beende $APP_NAME falls es läuft ==="
+killall "$APP_NAME" 2>/dev/null
+sleep 1
+
+echo "=== 2. Aktualisiere Build-Nummer & Version ==="
+VERSION_FILE=".version"
+if [ ! -f "$VERSION_FILE" ]; then
+    echo "1.0.0" > "$VERSION_FILE"
+fi
+VERSION_NUM=$(cat "$VERSION_FILE" | tr -d ' \n\r')
+
+BUILD_FILE=".build_number"
+if [ ! -f "$BUILD_FILE" ]; then
+    echo "0" > "$BUILD_FILE"
+fi
+
+BUILD_NUM=$(cat "$BUILD_FILE")
+BUILD_NUM=$((BUILD_NUM + 1))
+echo "$BUILD_NUM" > "$BUILD_FILE"
+echo "Release Version: $VERSION_NUM (Build-Nummer: $BUILD_NUM)"
+
+# Speichere die Version & Build-Nummer im Swift Code
+cat > Sources/AutoQSO/BuildNumber.swift <<EOF
+public let APP_VERSION = "$VERSION_NUM"
+public let APP_BUILD_NUMBER = $BUILD_NUM
+EOF
+
+echo "=== 3. Kompiliere Release-Version ==="
+swift build -c release
+
+if [ $? -ne 0 ]; then
+    echo "Fehler beim Kompilieren der Release-Version!"
+    exit 1
+fi
+
+echo "=== 4. Erstelle App-Bundle im Projektverzeichnis ==="
+BUNDLE_DIR="${PROJECT_DIR}/${APP_NAME}.app"
+CONTENTS_DIR="${BUNDLE_DIR}/Contents"
+MACOS_DIR="${CONTENTS_DIR}/MacOS"
+
+rm -rf "$BUNDLE_DIR"
+mkdir -p "$MACOS_DIR"
+
+cp ".build/release/$APP_NAME" "$MACOS_DIR/"
+
+cat > "$CONTENTS_DIR/Info.plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>$APP_NAME</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.autoqso.app</string>
+    <key>CFBundleName</key>
+    <string>$APP_NAME</string>
+    <key>CFBundleVersion</key>
+    <string>$BUILD_NUM</string>
+    <key>CFBundleShortVersionString</key>
+    <string>$VERSION_NUM</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+</dict>
+</plist>
+EOF
+
+echo "=== 5. Erstelle .dmg Datei im Projektverzeichnis ==="
+DMG_NAME="${APP_NAME}-v${VERSION_NUM}-b${BUILD_NUM}.dmg"
+DMG_PATH="${PROJECT_DIR}/${DMG_NAME}"
+DMG_LINK_PATH="${PROJECT_DIR}/${APP_NAME}.dmg"
+
+# Vorherige DMG entfernen falls vorhanden
+rm -f "$DMG_PATH" "$DMG_LINK_PATH"
+
+STAGING_DIR="$(mktemp -d)"
+cp -R "$BUNDLE_DIR" "$STAGING_DIR/"
+ln -s /Applications "$STAGING_DIR/Applications"
+
+hdiutil create -volname "${APP_NAME} v${VERSION_NUM} (b${BUILD_NUM})" -srcfolder "$STAGING_DIR" -ov -format UDZO "$DMG_PATH"
+rm -rf "$STAGING_DIR"
+
+# Erstelle auch einen festen AutoQSO.dmg Link/Kopie im Projektverzeichnis
+cp "$DMG_PATH" "$DMG_LINK_PATH"
+
+echo "DMG erfolgreich erstellt: $DMG_PATH"
+
+echo "=== 6. Git Tag und GitHub Release ==="
+TAG_NAME="v${VERSION_NUM}-b${BUILD_NUM}"
+
+# Git Tag lokal erstellen
+if git rev-parse --git-dir > /dev/null 2>&1; then
+    git add .version .build_number Sources/AutoQSO/BuildNumber.swift
+    git commit -m "Release v$VERSION_NUM Build $BUILD_NUM" 2>/dev/null || true
+    git tag -a "$TAG_NAME" -m "Release v$VERSION_NUM Build $BUILD_NUM" 2>/dev/null || true
+    echo "Lokaler Git Tag '$TAG_NAME' erstellt."
+fi
+
+# Upload zu GitHub via gh CLI oder GitHub REST API
+REMOTE_URL=$(git config --get remote.origin.url 2>/dev/null || echo "")
+
+if command -v gh >/dev/null 2>&1; then
+    echo "Lade Release auf GitHub hoch mit gh CLI..."
+    gh release create "$TAG_NAME" "$DMG_PATH" --title "AutoQSO v${VERSION_NUM} Build ${BUILD_NUM}" --notes "AutoQSO Release v${VERSION_NUM} (Build ${BUILD_NUM})"
+elif [ -n "$GITHUB_TOKEN" ] || [ -n "$GH_TOKEN" ]; then
+    TOKEN="${GITHUB_TOKEN:-$GH_TOKEN}"
+    echo "Lade Release auf GitHub hoch via GitHub REST API..."
+    
+    # Extract owner/repo from remote URL if available
+    REPO_PATH=$(echo "$REMOTE_URL" | sed -E 's/.*github\.com[:\/](.+)\.git$/\1/')
+    if [ -z "$REPO_PATH" ]; then
+        echo "Hinweis: Git Remote Origin nicht konfiguriert. Bitte Remote einrichten um automatischen Upload durchzuführen."
+    else
+        # Push tag
+        git push origin "$TAG_NAME" 2>/dev/null || true
+        
+        # Create release via API
+        RELEASE_RESP=$(curl -s -X POST -H "Authorization: token $TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$REPO_PATH/releases" \
+            -d "{\"tag_name\":\"$TAG_NAME\",\"name\":\"AutoQSO v$VERSION_NUM Build $BUILD_NUM\",\"body\":\"AutoQSO Release v$VERSION_NUM Build $BUILD_NUM\"}")
+            
+        UPLOAD_URL=$(echo "$RELEASE_RESP" | grep -o 'https://uploads.github.com/[^"{]*' | head -n 1 | sed 's/{?name,label}//')
+        
+        if [ -n "$UPLOAD_URL" ]; then
+            curl -s -X POST -H "Authorization: token $TOKEN" \
+                -H "Content-Type: application/x-apple-diskimage" \
+                "$UPLOAD_URL?name=$DMG_NAME" \
+                --data-binary @"$DMG_PATH"
+            echo "Release Asset $DMG_NAME hochgeladen."
+        fi
+    fi
+else
+    echo "GitHub Upload Hinweis:"
+    echo "  - Sobald ein GitHub Remote gesetzt ist ('git remote add origin ...') und 'gh' installiert ist (oder GITHUB_TOKEN gesetzt ist),"
+    echo "    wird die Datei '$DMG_NAME' automatisch zu GitHub hochgeladen."
+fi
+
+echo "=== Release v$VERSION_NUM Build $BUILD_NUM abgeschlossen! ==="

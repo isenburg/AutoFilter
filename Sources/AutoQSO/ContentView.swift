@@ -113,6 +113,22 @@ struct ContentView: View {
                 Divider()
                     .frame(height: 36)
                 
+                // Help Section
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("HILFE")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.secondary)
+                    Button(action: {
+                        openWindow(id: "help")
+                    }) {
+                        Label("Info", systemImage: "questionmark.circle")
+                    }
+                    .buttonStyle(.bordered)
+                }
+                
+                Divider()
+                    .frame(height: 36)
+                
                 // Auto QSO Section
                 VStack(alignment: .leading, spacing: 3) {
                     Text("AUTO MODE")
