@@ -24,6 +24,7 @@ struct SettingsView: View {
     @ObservedObject var viewModel: DecodeViewModel
     
     @State private var selectedSection: SettingsSection = .udp
+    @State private var showResetAlert = false
     
     @AppStorage("udpAddress") private var udpAddress = "224.0.0.1"
     @AppStorage("udpPort") private var udpPort: Int = 2237
@@ -153,11 +154,18 @@ struct SettingsView: View {
                         .frame(maxWidth: 240)
                 }
                 
-                Button("LoTW Logbuch Synchronisieren") {
-                    viewModel.lotwManager.downloadLoTW(username: lotwUsername, password: lotwPassword)
+                HStack(spacing: 8) {
+                    Button("LoTW Logbuch Synchronisieren") {
+                        viewModel.lotwManager.downloadLoTW(username: lotwUsername, password: lotwPassword)
+                    }
+                    .disabled(lotwUsername.isEmpty || lotwPassword.isEmpty || viewModel.lotwManager.isDownloading)
+                    .buttonStyle(.borderedProminent)
+                    
+                    Button("Sync-Datum auf 1900 zurücksetzen") {
+                        viewModel.lotwManager.resetSyncDateTo1900()
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .disabled(lotwUsername.isEmpty || lotwPassword.isEmpty || viewModel.lotwManager.isDownloading)
-                .buttonStyle(.borderedProminent)
                 .padding(.top, 6)
             }
             
@@ -237,6 +245,37 @@ struct SettingsView: View {
                 .padding()
                 .background(Color.gray.opacity(0.1))
                 .cornerRadius(6)
+                
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Logbuch Neu-Initialisierung:")
+                        .font(.headline)
+                    
+                    HStack(spacing: 12) {
+                        Button("Sync-Datum auf 1900 zurücksetzen") {
+                            viewModel.lotwManager.resetSyncDateTo1900()
+                        }
+                        .buttonStyle(.bordered)
+                        
+                        Button(role: .destructive) {
+                            showResetAlert = true
+                        } label: {
+                            Label("Logbuch leeren & Re-Sync", systemImage: "trash")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.red)
+                    }
+                }
+                .padding(.top, 4)
+                .alert("Logbuch wirklich zurücksetzen?", isPresented: $showResetAlert) {
+                    Button("Abbrechen", role: .cancel) { }
+                    Button("Logbuch leeren & Re-Sync", role: .destructive) {
+                        viewModel.lotwManager.clearLogbookAndResetSync()
+                    }
+                } message: {
+                    Text("Alle lokal gespeicherten QSOs werden gelöscht und das Logbuch wird beim nächsten Sync mit LoTW oder QRZ von 1900-01-01 an neu aufgebaut.")
+                }
             }
             
         case .options:

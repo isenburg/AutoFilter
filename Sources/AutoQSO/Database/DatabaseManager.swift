@@ -299,4 +299,22 @@ class DatabaseManager {
         }
         return deletedCount
     }
+    
+    @discardableResult
+    func clearAllQSOs() -> Int {
+        var count = 0
+        dbQueue.sync {
+            let countSQL = "SELECT COUNT(*) FROM qsos;"
+            var stmt: OpaquePointer?
+            if sqlite3_prepare_v2(db, countSQL, -1, &stmt, nil) == SQLITE_OK {
+                if sqlite3_step(stmt) == SQLITE_ROW {
+                    count = Int(sqlite3_column_int(stmt, 0))
+                }
+                sqlite3_finalize(stmt)
+            }
+            
+            sqlite3_exec(db, "DELETE FROM qsos;", nil, nil, nil)
+        }
+        return count
+    }
 }

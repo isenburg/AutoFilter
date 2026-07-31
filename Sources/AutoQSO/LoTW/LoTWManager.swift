@@ -122,7 +122,24 @@ class LoTWManager: ObservableObject {
             .sorted()
     }
     
+    func resetSyncDateTo1900() {
+        UserDefaults.standard.set("1900-01-01", forKey: "overrideSyncStartDate")
+        addLog("Sync-Startdatum zurückgesetzt auf 1900-01-01.")
+    }
+    
+    func clearLogbookAndResetSync() {
+        let deletedCount = DatabaseManager.shared.clearAllQSOs()
+        UserDefaults.standard.set("1900-01-01", forKey: "overrideSyncStartDate")
+        loadLog()
+        addLog("Logbuch zurückgesetzt (\(deletedCount) Einträge geleert). Sync-Startdatum auf 1900-01-01 gesetzt.")
+    }
+    
     private func getStartDateString() -> String {
+        if let overrideDate = UserDefaults.standard.string(forKey: "overrideSyncStartDate"), !overrideDate.isEmpty {
+            UserDefaults.standard.removeObject(forKey: "overrideSyncStartDate")
+            return overrideDate
+        }
+        
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
