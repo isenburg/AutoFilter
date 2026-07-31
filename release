@@ -116,7 +116,7 @@ REMOTE_URL=$(git config --get remote.origin.url 2>/dev/null || echo "")
 
 if command -v gh >/dev/null 2>&1; then
     echo "Lade Release auf GitHub hoch mit gh CLI..."
-    gh release create "$TAG_NAME" "$DMG_PATH" --title "AutoQSO v${VERSION_NUM} Build ${BUILD_NUM}" --notes "AutoQSO Release v${VERSION_NUM} (Build ${BUILD_NUM})"
+    gh release create "$TAG_NAME" "$DMG_PATH" --draft --title "AutoQSO v${VERSION_NUM} Build ${BUILD_NUM}" --notes "AutoQSO Release v${VERSION_NUM} (Build ${BUILD_NUM})"
 elif [ -n "$GITHUB_TOKEN" ] || [ -n "$GH_TOKEN" ]; then
     TOKEN="${GITHUB_TOKEN:-$GH_TOKEN}"
     echo "Lade Release auf GitHub hoch via GitHub REST API..."
@@ -133,7 +133,7 @@ elif [ -n "$GITHUB_TOKEN" ] || [ -n "$GH_TOKEN" ]; then
         RELEASE_RESP=$(curl -s -X POST -H "Authorization: token $TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/$REPO_PATH/releases" \
-            -d "{\"tag_name\":\"$TAG_NAME\",\"name\":\"AutoQSO v$VERSION_NUM Build $BUILD_NUM\",\"body\":\"AutoQSO Release v$VERSION_NUM Build $BUILD_NUM\"}")
+            -d "{\"tag_name\":\"$TAG_NAME\",\"name\":\"AutoQSO v$VERSION_NUM Build $BUILD_NUM\",\"body\":\"AutoQSO Release v$VERSION_NUM Build $BUILD_NUM\",\"draft\":true}")
             
         UPLOAD_URL=$(echo "$RELEASE_RESP" | grep -o 'https://uploads.github.com/[^"{]*' | head -n 1 | sed 's/{?name,label}//')
         
