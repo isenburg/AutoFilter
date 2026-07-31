@@ -9,6 +9,7 @@ struct ContentView: View {
     @AppStorage("udpPort") private var udpPort: Int = 2237
     @AppStorage("udpAddress") private var udpAddress = "224.0.0.1"
     @AppStorage("retryCooldownMinutes") private var retryCooldownMinutes: Int = 10
+    @AppStorage("mostWantedPanelHeight") private var mostWantedPanelHeight: Double = 120.0
     @AppStorage("decode_column_customization") private var decodeColumnCustomization: TableColumnCustomization<WSJTXDecode>
     
     @Environment(\.openWindow) private var openWindow
@@ -123,12 +124,29 @@ struct ContentView: View {
                 let displayCall = viewModel.displayCallsign
                 let workedBands = Set(viewModel.lotwManager.workedBands(for: displayCall))
                 let allBands = ["160M", "80M", "60M", "40M", "30M", "20M", "17M", "15M", "12M", "10M", "6M"]
+                let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
                 
-                HStack(spacing: 16) {
+                // Find matching decode to get grid locator and calculate distance
+                let matchingDecode = viewModel.server.decodes.first(where: { $0.callsign.uppercased() == displayCall.uppercased() })
+                let grid = matchingDecode?.grid
+                let distanceKm = matchingDecode?.distanceKm(myGrid: myGrid)
+                let mwRank = MostWantedManager.shared.rankForCallsign(displayCall)
+                
+                HStack(spacing: 14) {
                     HStack(spacing: 8) {
                         Text(displayCall)
                             .font(.system(size: 18, weight: .black, design: .monospaced))
-                            .foregroundColor(.orange)
+                            .foregroundColor(mwRank != nil ? .red : .orange)
+                        
+                        if let rank = mwRank {
+                            Text("🔥 #\(rank)")
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.red)
+                                .foregroundColor(.white)
+                                .cornerRadius(4)
+                        }
                         
                         Button(action: {
                             openQRZ(callsign: displayCall)
@@ -138,6 +156,39 @@ struct ContentView: View {
                         .buttonStyle(.borderless)
                         .font(.caption)
                     }
+                    
+                    Divider()
+                        .frame(height: 20)
+                    
+                    // Distance & Grid Badge
+                    HStack(spacing: 6) {
+                        Image(systemName: "location.fill")
+                            .font(.caption2)
+                            .foregroundColor(.blue)
+                        
+                        if let dist = distanceKm {
+                            Text(String(format: "%.0f km", dist))
+                                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                .foregroundColor(.blue)
+                            if let g = grid {
+                                Text("(\(g))")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else if let g = grid {
+                            Text("Grid: \(g)")
+                                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("Entfernung: -")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(6)
                     
                     Divider()
                         .frame(height: 20)
@@ -278,15 +329,22 @@ struct ContentView: View {
             Divider()
             
             // Dedicated Most Wanted Section under the Main Table
-            let mostWantedDecodes = viewModel.server.decodes.filter { MostWantedManager.shared.isMostWanted(callsign: $0.callsign) }
+            let mostWantedDecodes = viewModel.server.decodes.filter { decode in
+                let call = decode.callsign
+                guard !call.isEmpty else { return false }
+                let isMW = MostWantedManager.shared.isMostWanted(callsign: call)
+                let hasWorkedOnBand = viewModel.lotwManager.hasWorked(callsign: call, band: decode.band)
+                return isMW && !hasWorkedOnBand
+            }
             
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
+                // Header & Draggable Resize Bar
                 HStack(spacing: 8) {
                     Image(systemName: "flame.fill")
                         .foregroundColor(.red)
                         .font(.system(size: 14, weight: .bold))
                     
-                    Text("MOST WANTED STATIONEN (GESONDERT GEFILTERT)")
+                    Text("MOST WANTED STATIONEN (UNGEARBEITET AUF DIESEM BAND)")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(.red)
                     
@@ -304,21 +362,43 @@ struct ContentView: View {
                     Text("Basis-Locator: \(myGrid)")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.up.and.down")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.secondary)
+                        Text("\(Int(mostWantedPanelHeight)) pt")
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.gray.opacity(0.15))
+                    .cornerRadius(4)
                 }
                 .padding(.horizontal, 12)
-                .padding(.top, 8)
+                .padding(.top, 6)
+                .padding(.bottom, 2)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 1)
+                        .onChanged { value in
+                            let newHeight = mostWantedPanelHeight - value.translation.height
+                            mostWantedPanelHeight = max(50.0, min(500.0, newHeight))
+                        }
+                )
                 
                 if mostWantedDecodes.isEmpty {
                     HStack {
                         Spacer()
-                        Text("Keine Most Wanted Stationen im aktuellen Decode-Fenster empfangen")
+                        Text("Keine ungearbeiteten Most Wanted Stationen auf diesem Band empfangen")
                             .font(.caption)
                             .italic()
                             .foregroundStyle(.secondary)
                             .padding(.vertical, 12)
                         Spacer()
                     }
-                    .frame(height: 55)
+                    .frame(height: max(45, CGFloat(mostWantedPanelHeight)))
                     .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
                 } else {
                     ScrollView(.vertical, showsIndicators: true) {
@@ -404,7 +484,7 @@ struct ContentView: View {
                         .padding(.horizontal, 10)
                         .padding(.bottom, 8)
                     }
-                    .frame(height: 110)
+                    .frame(height: CGFloat(mostWantedPanelHeight))
                 }
             }
             .background(Color(NSColor.windowBackgroundColor))
@@ -461,14 +541,15 @@ struct ContentView: View {
         let call = decode.callsign
         if call.isEmpty { return .primary }
         
+        if viewModel.lotwManager.hasWorked(callsign: call, band: decode.band) {
+            return .gray
+        }
+        
         let highlightMW = UserDefaults.standard.object(forKey: "highlightMostWanted") as? Bool ?? true
         if highlightMW && MostWantedManager.shared.isMostWanted(callsign: call) {
             return .red
         }
         
-        if viewModel.lotwManager.hasWorked(callsign: call, band: decode.band) {
-            return .gray
-        }
         return .primary
     }
     

@@ -6,81 +6,126 @@
 
 ## 1. Introduction
 
-AutoQSO is an automated FT8/FT4 helper designed for macOS. It interfaces with WSJT-X via UDP, tracks your worked stations across all bands using LoTW and QRZ.com data, highlights rare Most Wanted stations, and automates calling target stations based on distance and priority.
+AutoQSO ist eine macOS-Anwendung zur Automatisierung von FT8- und FT4-Kontakten in Verbindung mit WSJT-X. Die App überwacht eingehende Decodes per UDP, prüft gegen ein lokales SQLite-Logbuch (LoTW & QRZ.com), hebt seltene Most-Wanted-Stationen hervor und ruft automatisch nach Priorität.
 
 ---
 
-## 2. Most Wanted & Distance Prioritization
+## 2. Most Wanted & Entfernungspriorisierung (Neu in v2.0.0)
 
-- **Top 100 Most Wanted DXCC List**: Integrated live Club Log Most Wanted DXCC entity dataset (e.g. #1 North Korea, #2 Johnston Island, #3 Kure Island, #24 Bouvet Island).
-- **Red Highlighting (🔥)**: Decodes from Top 100 Most Wanted entities are highlighted in **bright red** with a rank badge (e.g., `🔥 #1`, `🔥 #24`).
-- **Maidenhead Grid Distance Calculation**: Converts 4-character and 6-character Maidenhead locators (e.g., `JO31`, `FH12`) to calculate precise geodesic distance in kilometers (`km`).
-- **Prioritization Order**: AutoQSO selects targets in strict priority:
-  1. **Priority 1**: Top Most Wanted DXCC entities (Top 10..100).
-  2. **Priority 2**: Furthest distance first (`km`).
-  3. **Priority 3**: Strongest signal-to-noise ratio (`SNR dB`).
-
----
-
-## 3. Trigger Logic
-
-AutoQSO continuously analyzes incoming WSJT-X decodes:
-
-- **CQ Messages**: `CQ DL1ABC JO31`, `CQ DX K1ABC`, `CQ POTA W1AW`
-- **73 / RR73 / RRR Messages**: `DL1ABC G4XYZ 73`, `K1ABC N2DEF RR73`, `HB9AAA W1AW RRR`
-
-When a valid message is received:
-1. AutoQSO extracts the target callsign.
-2. Checks if the callsign has already been worked on that band in your local log.
-3. Checks if the callsign is currently in a retry cooldown (10-15 min).
-4. Sorts all available candidates (Most Wanted > Distance > SNR).
-5. AutoQSO issues a WSJT-X Reply packet (Type 12) to call the highest priority station.
+- **Top 100 Most Wanted DXCC**: Integrierte Club Log Most Wanted Liste (P5, KH3, KH7K, CE0X, FT/X, 3Y/B, Bouvet, etc.)
+- **Rote Hervorhebung (🔥)**: Ungearbeitete Most Wanted Stationen werden in der Decodier-Tabelle knallrot mit Rang-Badge markiert (🔥 #1, 🔥 #24).
+- **Gesondertes Most-Wanted-Panel**: Unterhalb der Haupttabelle erscheint ein eigenes Panel, das ausschließlich Most Wanted Stationen zeigt, die auf dem aktuellen Band noch **nicht gearbeitet** wurden.
+- **Höhenverstellbares Panel**: Die Höhe des Most-Wanted-Feldes kann mit der Maus durch Ziehen der Überschriften-Leiste stufenlos zwischen 50–500 pt eingestellt werden. Die Größe wird dauerhaft gespeichert.
+- **Maidenhead Locator → km**: Umrechnung von 4/6-stelligen Maidenhead-Locatoren in geografische Koordinaten und Berechnung der Großkreis-Entfernung in Kilometern via Haversine-Formel.
+- **Entfernung im Stations-Banner**: Neben dem Rufzeichen und dem QRZ.com-Button zeigt der Stations-Banner die berechnete Entfernung (km) und das Grid-Square der aktuellen Station an.
 
 ---
 
-## 4. Logbook Sync & Management
+## 3. Prioritätsreihenfolge (Auto QSO Engine)
 
-- **Dynamic Incremental Sync**: LoTW and QRZ downloads start 2 days prior to the latest QSO in your database (UTC calendar), preventing redundant data transfers while capturing spillovers.
-- **Duplicate Protection**: Unique key constraints (`CALL_BAND_MODE_YYYYMMDD_TIME`) in SQLite ensure no duplicates are loaded.
-- **Sync Date Reset**: Options to reset the sync query date to `1900-01-01` to re-fetch full history without deleting local data.
-- **Logbook Re-initialization**: Option to wipe local SQLite database entries and perform a full re-sync from scratch.
-- **Row-by-Row Deletion**: Individual entry deletion via 🗑️ buttons, multi-row selection, context menus, and keyboard shortcuts (`Delete`/`Backspace`).
+Bei der automatischen Anrufauswahl in `evaluateAutoQSO()` gilt folgende strikte Priorität:
 
----
-
-## 5. Storage Location & iCloud Sync
-
-- **Default Location**: `~/Documents/AutoQSO/autoqso_log.sqlite`
-- **Custom Folder**: Select any local directory via macOS native `NSOpenPanel`.
-- **iCloud Drive**: Seamlessly store and sync database files across multiple Macs using `iCloud Drive/AutoQSO`.
-- **Automatic Migration**: Changing storage location automatically moves your existing SQLite database file to the new destination.
+1. **Priorität 1**: Most Wanted Entitäten (Top 1–100) zuerst — Rang #1 = höchste Priorität
+2. **Priorität 2**: Weiteste Entfernung (km) zuerst
+3. **Priorität 3**: Stärkstes Signal (SNR dB) als Fallback
 
 ---
 
-## 6. Legal & Safety Disclaimer
+## 4. Auto QSO Trigger Logik
 
-> **IMPORTANT LEGAL NOTICE**
-> 
-> Operating an amateur radio transmitter under automatic control is subject to national laws and regulations (e.g. BNetzA in Germany, FCC in the United States). 
-> 
-> The control operator remains responsible for all transmitted signals. Never leave an automated transmitter running unsupervised unless authorized by your license class and local regulations.
-> 
-> Software provided "AS IS", without warranty of any kind. 
-> 
+AutoQSO analysiert alle WSJT-X Decodes in Echtzeit:
+
+- **CQ Nachrichten**: `CQ DL1ABC JO31`, `CQ DX K1ABC`, `CQ POTA W1AW`
+- **73 / RR73 / RRR Nachrichten**: `DL1ABC G4XYZ 73`, `K1ABC N2DEF RR73`, `HB9AAA W1AW RRR`
+
+Wenn ein gültiges Decode erkannt wird:
+1. Callsign extrahieren & DXCC-Entität bestimmen
+2. Prüfen ob bereits auf diesem Band gearbeitet (SQLite-Logbuch)
+3. Prüfen ob im Retry-Cooldown (10–15 Min.)
+4. Kandidaten sortieren (Most Wanted → Entfernung → SNR)
+5. WSJT-X Reply-Paket (Type 12) an höchstpriore Station senden
+
+---
+
+## 5. Einstellungen: Most Wanted & Priorität
+
+In den **Einstellungen → 🔥 Most Wanted & Priorität**:
+
+| Einstellung | Beschreibung |
+|---|---|
+| **Eigener Grid Locator** | Maidenhead-Locator Ihres Standorts (z.B. `JO31` oder `JO31AA`) |
+| **Most Wanted rot hervorheben** | Rote Hervorhebung in der Tabelle ein-/ausschalten |
+| **Priorität: Most Wanted & Entfernung** | Auto-QSO-Priorisierung nach Seltenheit & Entfernung |
+| **Schwelle Most Wanted** | Top 10 / 20 / 50 / 100 einstellen |
+
+---
+
+## 6. Logbuch-Sync & Verwaltung
+
+- **Inkrementeller Sync**: LoTW & QRZ starten 2 Tage vor dem neuesten QSO in der Datenbank (UTC-Kalender).
+- **Duplicate Prevention**: Eindeutigkeitsprüfung via `CALL_BAND_MODE_YYYYMMDD_TIME` in SQLite.
+- **Reset Sync-Datum**: Auf `1900-01-01` zurücksetzen für vollständige Neu-Synchronisierung.
+- **Logbuch-Neuinitialisierung**: Lokale SQLite-Einträge löschen & komplett neu laden.
+- **Löschen**: Einzellöschung (🗑️), Mehrfachauswahl, Kontextmenü, Tastatur (`Delete`/`Backspace`).
+
+---
+
+## 7. Speicherort & iCloud Sync
+
+- **Standard**: `~/Documents/AutoQSO/autoqso_log.sqlite`
+- **Eigener Ordner**: Auswahl via macOS `NSOpenPanel`
+- **iCloud Drive**: `iCloud Drive/AutoQSO` für geräteübergreifende Synchronisierung
+- **Automatische Migration**: Beim Wechsel des Speicherorts wird die bestehende Datenbank automatisch verschoben.
+
+---
+
+## 8. Rechtlicher Hinweis
+
+> **WICHTIGER RECHTLICHER HINWEIS**
+>
+> Das Betreiben eines Amateurfunksenders unter automatischer Steuerung unterliegt nationalen Gesetzen und Vorschriften (z.B. BNetzA in Deutschland, FCC in den USA).
+>
+> Der Steuernde (Control Operator) ist für alle gesendeten Signale verantwortlich. Lassen Sie einen automatisierten Sender niemals unbeaufsichtigt laufen, sofern dies nicht durch Ihre Lizenzklasse und lokale Vorschriften erlaubt ist.
+>
+> Software wird „AS IS" bereitgestellt, ohne jegliche Garantie.
+>
 > **Copyright (c) Georg Isenbürger - DJ6GI**
 
 ---
 
-## 7. Version & Build History
+## 9. Changelog
 
-- **Version 1.0.0**:
-  - Most Wanted & Distance Prioritization: Red highlighting (🔥) of Top 100 DXCC entities, Maidenhead grid distance calculation (km), and prioritized candidate selection (Most Wanted > Distance > SNR).
-  - Auto QSO trigger support for `CQ`, `73`, `RR73`, and `RRR`.
-  - Dynamic 2-day-prior incremental sync (UTC calendar) with LoTW and QRZ.com.
-  - Reset sync start date to `1900-01-01` & full logbook re-initialization.
-  - Row-by-row & bulk logbook deletion.
-  - Custom storage folder selection & iCloud Drive sync.
-  - Redesigned Settings dialog with non-collapsible left sidebar.
-  - Native Help window with non-collapsible left sidebar.
-  - Custom 3D Retina App Icon for macOS app bundle & DMG installer.
-  - Automated release script generating versioned `.dmg` installers and GitHub releases.
+### Version 2.0.0 (AKTUELL)
+
+#### 🔥 Most Wanted & Entfernungsfeatures
+- Club Log Top 100 Most Wanted DXCC integriert
+- Rote Hervorhebung (🔥 #Rang) für ungearbeitete Most Wanted Stationen in der Tabelle
+- Gesondertes Most-Wanted-Panel unterhalb der Tabelle (nur ungearbeitete Stationen auf aktuellem Band)
+- Panel-Höhe stufenlos verstellbar (50–500 pt), dauerhaft gespeichert
+- Maidenhead Locator → Großkreis-Entfernung (km) via Haversine-Formel
+- Entfernungsspalte in der Haupttabelle
+- Entfernung & Grid-Square im Stations-Banner (Evaluierungsleiste)
+- Most Wanted Rang-Badge im Stations-Banner
+
+#### 🎯 Auto QSO Priorisierung
+- Neue Prioritätsreihenfolge: Most Wanted (#1–#100) → Weiteste Entfernung → SNR
+- Nur ungearbeitete Stationen auf dem aktuellen Band werden berücksichtigt
+
+#### ⚙️ Einstellungen
+- Neue Kategorie „Most Wanted & Priorität" in den Einstellungen
+- Grid-Locator Eingabe, Schalter für Hervorhebung/Priorität, Rang-Schwelle
+
+---
+
+### Version 1.0.0
+
+- Auto QSO Trigger für CQ, 73, RR73 und RRR Decodes
+- Inkrementeller LoTW & QRZ Sync (2 Tage vor letztem QSO, UTC)
+- Duplicate Prevention via SQLite uniqueKey
+- Reset Sync-Startdatum auf 1900 & Logbuch-Neuinitialisierung
+- Zeilenweises & Mehrfach-Löschen (🗑️, Kontextmenü, Tastatur)
+- Freie Speicherort-Wahl & iCloud Drive Sync
+- Einstellungen mit linker Sidebar-Navigation
+- Hilfe-Fenster mit Seitenleiste
+- 3D Retina App Icon für macOS App-Bundle & DMG
+- Release-Skript: Versioniertes .dmg, Git-Tagging & GitHub Releases

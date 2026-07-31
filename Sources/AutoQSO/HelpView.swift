@@ -99,7 +99,12 @@ struct HelpView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label("Automatische Antworten auf CQ, 73, RR73 und RRR", systemImage: "bolt.fill")
                     Label("Echtzeit-Prüfung gegen SQLite-Logbuch (bereits auf Band gearbeitet)", systemImage: "checkmark.seal.fill")
-                    Label("Inkrementeller Sync mit LoTW & QRZ.com (1 Tag vor letztem QSO)", systemImage: "arrow.triangle.2.circlepath")
+                    Label("Top 100 Most Wanted DXCC – Rote Hervorhebung (🔥) & Priorität", systemImage: "flame.fill")
+                    Label("Maidenhead Locator → km Entfernungsberechnung & Anzeige", systemImage: "location.fill")
+                    Label("Priorität: Most Wanted zuerst, dann weiteste Entfernung, dann SNR", systemImage: "arrow.up.arrow.down")
+                    Label("Gesondertes Most-Wanted-Panel (höhenverstellbar) unter der Tabelle", systemImage: "rectangle.split.2x1")
+                    Label("Entfernung & Grid-Square in der Stations-Evaluierungsleiste", systemImage: "antenna.radiowaves.left.and.right")
+                    Label("Inkrementeller Sync mit LoTW & QRZ.com (2 Tage vor letztem QSO)", systemImage: "arrow.triangle.2.circlepath")
                     Label("Zeilenweises & Mehrfach-Löschen von Logbucheinträgen", systemImage: "trash")
                     Label("Freie Speicherort-Wahl (Ordner oder iCloud Drive)", systemImage: "folder.fill")
                     Label("Automatische Sperre / Cooldown bei Timeout oder Abbruch", systemImage: "clock.arrow.circlepath")
@@ -211,17 +216,90 @@ struct HelpView: View {
             }
             
         case .changelog:
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 16) {
                 Text("Changelog")
                     .font(.title)
                     .bold()
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Version \(APP_VERSION) (Build \(APP_BUILD_NUMBER))")
-                        .font(.headline)
-                    Text("• Most Wanted & Entfernungspriorisierung: Rote Hervorhebung (🔥) von Top 100 Most Wanted DXCC Entitäten, Maidenhead Grid Entfernungsberechnung (km) und automatische Anrufpriorität (Most Wanted > Weiteste Entfernung > SNR).\n• Auto QSO Trigger: Erweiterung um 73, RR73 und RRR Decodes.\n• Inkrementeller Sync: Startet dynamisch 2 Tage vor dem neuesten QSO in der Datenbank (UTC-Kalender).\n• Duplicate Prevention: Strikte Eindeutigkeitsprüfung in SQLite (uniqueKey).\n• Reset-Funktionen: Sync-Startdatum auf 1900 zurücksetzen & Logbuch von Grund auf neu laden.\n• Zeilenweises Löschen: Einzellöschung per 🗑️, Mehrfachauswahl, Kontextmenü & Tastatur-Shortcut.\n• Speicherort & iCloud: Wahl von benutzerdefinierten Ordnern oder iCloud Drive Sync.\n• Einstellungen-Dialog: Überarbeitung mit linker Seitenleiste (Sidebar-Navigation).\n• Hilfe-System: Nicht-einklappbares Hilfe-Fenster mit Seitenleiste.\n• 3D App Icon: Neues Retina macOS 3D Icon im App-Bundle und DMG Installer.\n• Release Automation: Build-Skript mit .dmg Erstellung, Versionierung & GitHub Releases.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                
+                // Version 2.0.0
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 2.0.0")
+                            .font(.headline)
+                            .bold()
+                        Text("(Build \(APP_BUILD_NUMBER))")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Text("AKTUELL")
+                            .font(.system(size: 10, weight: .bold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.green)
+                            .foregroundColor(.white)
+                            .cornerRadius(4)
+                    }
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("🔥 Most Wanted & Entfernungspriorisierung")
+                            .font(.subheadline)
+                            .bold()
+                        Text("• Club Log Top 100 Most Wanted DXCC integriert (P5, KH3, KH7K, CE0X, FT/X, 3Y/B, Bouvet, etc.)")
+                        Text("• Rote Hervorhebung (🔥 #Rang) in der Decodier-Tabelle für ungearbeitete Most Wanted Stationen")
+                        Text("• Gesondertes Most-Wanted-Panel unterhalb der Tabelle – nur Stationen die auf diesem Band noch nicht gearbeitet wurden")
+                        Text("• Panel-Höhe mit der Maus stufenlos verstellbar (50–500 pt), Größe wird dauerhaft gespeichert")
+                        Text("• Maidenhead Locator → Großkreis-Entfernung (km) via Haversine-Formel")
+                        Text("• Entfernungsspalte in der Haupttabelle")
+                        Text("• Entfernung & Grid-Square im Stations-Banner (Evaluierungsleiste)")
+                        Text("• Most Wanted Rang-Badge im Stations-Banner bei seltenen Entitäten")
+                        
+                        Text("🎯 Prioritätsreihenfolge (Auto QSO Engine)")
+                            .font(.subheadline)
+                            .bold()
+                            .padding(.top, 4)
+                        Text("• Priorität 1: Most Wanted Entitäten zuerst (Rang #1 = höchste Priorität)")
+                        Text("• Priorität 2: Weiteste Entfernung (km) zuerst")
+                        Text("• Priorität 3: Stärkstes Signal (SNR dB) als Fallback")
+                        
+                        Text("⚙️ Einstellungen (Most Wanted & Priorität)")
+                            .font(.subheadline)
+                            .bold()
+                            .padding(.top, 4)
+                        Text("• Eigener Maidenhead Grid Locator (z.B. JO31 oder JO31AA)")
+                        Text("• Schalter: Most Wanted rot hervorheben")
+                        Text("• Schalter: Priorität nach Most Wanted & Entfernung")
+                        Text("• Schwelle: Top 10 / 20 / 50 / 100 Most Wanted")
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
                 }
+                .padding()
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+                
+                Divider()
+                
+                // Version 1.0.0
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Version 1.0.0")
+                        .font(.headline)
+                        .bold()
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("• Auto QSO Trigger für CQ, 73, RR73 und RRR Decodes")
+                        Text("• Inkrementeller LoTW & QRZ Sync (2 Tage vor letztem QSO, UTC)")
+                        Text("• Duplicate Prevention via SQLite uniqueKey")
+                        Text("• Reset Sync-Startdatum auf 1900 & Logbuch-Neuinitialisierung")
+                        Text("• Zeilenweises & Mehrfach-Löschen (🗑️, Kontextmenü, Tastatur)")
+                        Text("• Freie Speicherort-Wahl & iCloud Drive Sync")
+                        Text("• Einstellungen mit linker Sidebar-Navigation")
+                        Text("• Hilfe-Fenster mit Seitenleiste")
+                        Text("• 3D Retina App Icon für macOS App-Bundle & DMG")
+                        Text("• Release-Skript: Versioniertes .dmg, Git-Tagging & GitHub Releases")
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.blue.opacity(0.06))
+                .cornerRadius(8)
             }
             
         case .copyright:
