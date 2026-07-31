@@ -140,13 +140,16 @@ class LoTWManager: ObservableObject {
             return overrideDate
         }
         
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         
         if let latestDate = DatabaseManager.shared.getLatestQSODate(),
-           let oneDayBefore = Calendar.current.date(byAdding: .day, value: -1, to: latestDate) {
-            return formatter.string(from: oneDayBefore)
+           let twoDaysBefore = calendar.date(byAdding: .day, value: -2, to: latestDate) {
+            return formatter.string(from: twoDaysBefore)
         }
         
         return "1900-01-01"
