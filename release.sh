@@ -105,7 +105,7 @@ TAG_NAME="v${VERSION_NUM}-b${BUILD_NUM}"
 
 # Git Tag lokal erstellen
 if git rev-parse --git-dir > /dev/null 2>&1; then
-    git add -A
+    git add .version .build_number Sources/AutoQSO/BuildNumber.swift
     git commit -m "Release v$VERSION_NUM Build $BUILD_NUM" 2>/dev/null || true
     git tag -a "$TAG_NAME" -m "Release v$VERSION_NUM Build $BUILD_NUM" 2>/dev/null || true
     echo "Lokaler Git Tag '$TAG_NAME' erstellt."
