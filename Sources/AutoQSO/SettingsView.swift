@@ -183,11 +183,18 @@ struct SettingsView: View {
                         .frame(maxWidth: 280)
                 }
                 
-                Button("QRZ.com Logbuch Synchronisieren") {
-                    viewModel.syncQRZ(apiKey: qrzApiKey)
+                HStack(spacing: 8) {
+                    Button("QRZ.com Logbuch Synchronisieren") {
+                        viewModel.syncQRZ(apiKey: qrzApiKey)
+                    }
+                    .disabled(qrzApiKey.isEmpty || viewModel.qrzManager.isDownloading)
+                    .buttonStyle(.borderedProminent)
+                    
+                    Button("Sync-Datum auf 1900 zurücksetzen") {
+                        viewModel.qrzManager.resetSyncDateTo1900()
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .disabled(qrzApiKey.isEmpty || viewModel.qrzManager.isDownloading)
-                .buttonStyle(.borderedProminent)
                 .padding(.top, 6)
             }
             

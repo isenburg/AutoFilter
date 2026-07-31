@@ -80,7 +80,17 @@ class QRZManager: ObservableObject {
         task.resume()
     }
     
+    func resetSyncDateTo1900() {
+        UserDefaults.standard.set("1900-01-01", forKey: "overrideSyncStartDate")
+        addLog("QRZ Sync-Startdatum zurückgesetzt auf 1900-01-01.")
+    }
+    
     private func getStartDateString() -> String {
+        if let overrideDate = UserDefaults.standard.string(forKey: "overrideSyncStartDate"), !overrideDate.isEmpty {
+            UserDefaults.standard.removeObject(forKey: "overrideSyncStartDate")
+            return overrideDate
+        }
+        
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
