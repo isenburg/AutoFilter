@@ -1,1 +1,1 @@
-public let APP_BUILD_NUMBER = 59
+public let APP_BUILD_NUMBER = 60
