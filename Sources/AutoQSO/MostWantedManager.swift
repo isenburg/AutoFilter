@@ -25,19 +25,127 @@ public class MostWantedManager: ObservableObject {
         return rank <= maxRank
     }
     
+    /// Präzise Prefix-Auflösung mit Validierung für ambige Präfixe.
+    /// Verhindert Fehlalarme z.B. bei KG4ABC (US) vs. KG4AS (Guantanamo Bay).
     public func rankForCallsign(_ callsign: String) -> Int? {
         let upper = callsign.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
         guard !upper.isEmpty else { return nil }
         
-        // 1. Direct prefix matching against Most Wanted prefixes (longest prefix match first)
+        // Präfix-Suche: längste Übereinstimmung zuerst
         let sortedPrefixes = prefixToRank.keys.sorted { $0.count > $1.count }
         for p in sortedPrefixes {
-            if upper == p || upper.hasPrefix(p + "/") || upper.hasSuffix("/" + p) || upper.hasPrefix(p) {
-                return prefixToRank[p]
+            var matched = false
+            if upper == p {
+                matched = true
+            } else if upper.hasPrefix(p + "/") || upper.hasSuffix("/" + p) {
+                matched = true
+            } else if upper.hasPrefix(p) {
+                matched = true
             }
+            
+            guard matched else { continue }
+            
+            // Ambiguitätsprüfung für bekannte problematische Präfixe
+            if let validator = Self.ambiguousValidators[p] {
+                guard validator(upper) else { continue }
+            }
+            
+            return prefixToRank[p]
         }
         return nil
     }
+    
+    /// Validatoren für Präfixe die mit regulären Rufzeichen kollidieren.
+    /// Gibt `true` zurück wenn das Rufzeichen tatsächlich zur seltenen Entität gehört.
+    private static let ambiguousValidators: [String: (String) -> Bool] = [
+        
+        // KG4 = Guantanamo Bay: NUR 5-stellige Rufzeichen (KG4 + genau 2 Buchstaben).
+        // KG4ABC (6 Zeichen) = normales US-Rufzeichen.
+        "KG4": { call in
+            // Entferne eventuelle /P /M /QRP Suffixe
+            let base = call.components(separatedBy: "/").first ?? call
+            // KG4XX = 5 Zeichen, KG4X = 4 Zeichen (historisch) — beide gültig für GTMO
+            // KG4XXX = 6 Zeichen = US-General-Rufzeichen
+            return base.count <= 5
+        },
+        
+        // KH1 = Baker & Howland: Nur kurze Suffixe (KH1/K6VVA oder KH1xx)
+        "KH1": { call in
+            let base = call.components(separatedBy: "/").first ?? call
+            return base.count <= 5 || call.contains("/")
+        },
+        
+        // KH3 = Johnston Island: Nur kurze Suffixe
+        "KH3": { call in
+            let base = call.components(separatedBy: "/").first ?? call
+            return base.count <= 5 || call.contains("/")
+        },
+        
+        // KH4 = Midway: Nur kurze Suffixe
+        "KH4": { call in
+            let base = call.components(separatedBy: "/").first ?? call
+            return base.count <= 5 || call.contains("/")
+        },
+        
+        // KH5 = Palmyra & Jarvis: Nur kurze Suffixe
+        "KH5": { call in
+            let base = call.components(separatedBy: "/").first ?? call
+            return base.count <= 5 || call.contains("/")
+        },
+        
+        // KH9 = Wake Island: Nur kurze Suffixe
+        "KH9": { call in
+            let base = call.components(separatedBy: "/").first ?? call
+            return base.count <= 5 || call.contains("/")
+        },
+        
+        // KP1 = Navassa Island: KP1xx kurz
+        "KP1": { call in
+            let base = call.components(separatedBy: "/").first ?? call
+            return base.count <= 5 || call.contains("/")
+        },
+        
+        // KP5 = Desecheo Island
+        "KP5": { call in
+            let base = call.components(separatedBy: "/").first ?? call
+            return base.count <= 5 || call.contains("/")
+        },
+        
+        // ST = Sudan vs. ST0 = South Sudan — ST0 hat eigenen Eintrag, ST allgemein OK
+        // Aber ST allein matcht viele Rufzeichen — nur wenn Ziffer direkt nach ST folgt
+        "ST": { call in
+            guard call.count >= 3 else { return false }
+            let idx = call.index(call.startIndex, offsetBy: 2)
+            return call[idx].isNumber
+        },
+        
+        // 3C = Equatorial Guinea: Nicht mit 3C0 (Annobon) verwechseln
+        // 3C0 hat eigenen Rang, 3C ohne 0 dahinter = Equatorial Guinea
+        "3C": { call in
+            return !call.hasPrefix("3C0")
+        },
+        
+        // T31 taucht doppelt auf (Rang 47 Banaba & Rang 67 Central Kiribati) — beide gültig
+        // VP6 = Pitcairn, VP6/D = Ducie — VP6/D hat eigenen Eintrag
+        "VP6": { call in
+            return !call.hasPrefix("VP6/D")
+        },
+        
+        // FO/M = Marquesas, FO allein = French Polynesia (nicht in Most Wanted)
+        "FO/M": { call in
+            return call.hasPrefix("FO/M") || call.contains("/M")
+        },
+        
+        // FO/C = Clipperton Island
+        "FO/C": { call in
+            return call.hasPrefix("FO/C") || call.contains("/C")
+        },
+        
+        // FO/A = Austral Islands
+        "FO/A": { call in
+            return call.hasPrefix("FO/A") || call.contains("/A")
+        },
+    ]
     
     public func entityForCallsign(_ callsign: String) -> MostWantedEntity? {
         guard let rank = rankForCallsign(callsign) else { return nil }

@@ -12,6 +12,8 @@ struct ContentView: View {
     @AppStorage("mostWantedPanelHeight") private var mostWantedPanelHeight: Double = 120.0
     @AppStorage("decode_column_customization") private var decodeColumnCustomization: TableColumnCustomization<WSJTXDecode>
     
+    @State private var tableSelection: WSJTXDecode.ID? = nil
+    
     @Environment(\.openWindow) private var openWindow
     
     private var isMulticastAddress: Bool {
@@ -97,20 +99,25 @@ struct ContentView: View {
                 Spacer()
                 
                 // Settings & Info Buttons
-                HStack(spacing: 8) {
-                    Button(action: {
-                        openWindow(id: "settings")
-                    }) {
-                        Label("Einstellungen", systemImage: "gearshape")
+                VStack(alignment: .trailing, spacing: 3) {
+                    Text("FENSTER")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        Button(action: {
+                            openWindow(id: "settings")
+                        }) {
+                            Label("Einstellungen", systemImage: "gearshape")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        
+                        Button(action: {
+                            openWindow(id: "help")
+                        }) {
+                            Label("Info", systemImage: "questionmark.circle")
+                        }
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.borderedProminent)
-                    
-                    Button(action: {
-                        openWindow(id: "help")
-                    }) {
-                        Label("Info", systemImage: "questionmark.circle")
-                    }
-                    .buttonStyle(.bordered)
                 }
             }
             .padding(.horizontal, 14)
@@ -245,7 +252,7 @@ struct ContentView: View {
             }
             
             // Decodes Table
-            Table(viewModel.server.decodes, columnCustomization: $decodeColumnCustomization) {
+            Table(viewModel.server.decodes, selection: $tableSelection, columnCustomization: $decodeColumnCustomization) {
                 TableColumn("Zeit") { decode in
                     cellText(formatTime(decode.time), decode: decode)
                 }
@@ -523,8 +530,26 @@ struct ContentView: View {
             viewModel.retryCooldownMinutes = retryCooldownMinutes
             viewModel.startServer(port: UInt16(udpPort), address: udpAddress)
         }
+        .onChange(of: tableSelection) { _, newID in
+            // Banner auf angeklickte Zeile aktualisieren
+            if let id = newID,
+               let decode = viewModel.server.decodes.first(where: { $0.id == id }) {
+                viewModel.selectedCallsign = decode.callsign
+            } else {
+                // Keine Selektion → zurück auf aktiven DX-Call
+                viewModel.selectedCallsign = ""
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenHelpWindow"))) { _ in
+            openWindow(id: "help")
+        }
         .onChange(of: retryCooldownMinutes) { _, newValue in
             viewModel.retryCooldownMinutes = newValue
+        }
+        .onChange(of: viewModel.server.decodes) { _, _ in
+            // Beim nächsten Decode-Fenster immer auf aktuellen DX-Call zurücksetzen
+            tableSelection = nil
+            viewModel.selectedCallsign = ""
         }
         .onChange(of: udpPort) { _, newValue in
             viewModel.startServer(port: UInt16(newValue), address: udpAddress)

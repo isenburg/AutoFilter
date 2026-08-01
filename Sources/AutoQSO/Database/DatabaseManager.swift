@@ -131,10 +131,21 @@ class DatabaseManager {
     func insertQSOs(_ entries: [QSOEntry]) -> Int {
         guard !entries.isEmpty else { return 0 }
         
+        // In-Memory Deduplication: nur eindeutige uniqueKeys aus dieser Charge behalten
+        var seenKeys = Set<String>()
+        let deduped = entries.filter { qso in
+            let key = qso.uniqueKey
+            guard !key.isEmpty else { return false }
+            if seenKeys.contains(key) { return false }
+            seenKeys.insert(key)
+            return true
+        }
+        
         var insertedCount = 0
         dbQueue.sync {
             sqlite3_exec(db, "BEGIN TRANSACTION;", nil, nil, nil)
             
+            // INSERT OR IGNORE verhindert Doubletten via unique_key UNIQUE Constraint
             let insertSQL = """
             INSERT OR IGNORE INTO qsos (id, callsign, band, mode, qso_date, time_on, dxcc, unique_key)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?);
@@ -143,20 +154,31 @@ class DatabaseManager {
             var statement: OpaquePointer?
             
             if sqlite3_prepare_v2(db, insertSQL, -1, &statement, nil) == SQLITE_OK {
-                for qso in entries {
+                for qso in deduped {
                     let idStr = qso.id.uuidString
-                    let callStr = qso.callsign.uppercased()
-                    let bandStr = qso.band.uppercased()
-                    let modeStr = qso.mode.uppercased()
-                    let cleanDate = qso.qsoDate.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: "/", with: "").replacingOccurrences(of: ".", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
-                    let keyStr = qso.uniqueKey
+                    // Normalisierung: Großschreibung, Leerzeichen entfernen
+                    let callStr = qso.callsign.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                    let bandStr = qso.band.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                                        .replacingOccurrences(of: " ", with: "")
+                    let modeStr = qso.mode.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                    let cleanDate = qso.qsoDate
+                        .replacingOccurrences(of: "-", with: "")
+                        .replacingOccurrences(of: "/", with: "")
+                        .replacingOccurrences(of: ".", with: "")
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    // Zeitformat auf HHMM normalisieren (Sekunden weglassen)
+                    let rawTime = qso.timeOn.replacingOccurrences(of: ":", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    let timeNorm = rawTime.count >= 4 ? String(rawTime.prefix(4)) : rawTime
+                    let keyStr = "\(callStr)_\(bandStr)_\(modeStr)_\(cleanDate)_\(timeNorm)"
+                    
+                    guard !callStr.isEmpty, !bandStr.isEmpty, !cleanDate.isEmpty else { continue }
                     
                     sqlite3_bind_text(statement, 1, (idStr as NSString).utf8String, -1, nil)
                     sqlite3_bind_text(statement, 2, (callStr as NSString).utf8String, -1, nil)
                     sqlite3_bind_text(statement, 3, (bandStr as NSString).utf8String, -1, nil)
                     sqlite3_bind_text(statement, 4, (modeStr as NSString).utf8String, -1, nil)
                     sqlite3_bind_text(statement, 5, (cleanDate as NSString).utf8String, -1, nil)
-                    sqlite3_bind_text(statement, 6, (qso.timeOn as NSString).utf8String, -1, nil)
+                    sqlite3_bind_text(statement, 6, (timeNorm as NSString).utf8String, -1, nil)
                     sqlite3_bind_text(statement, 7, (qso.dxcc as NSString).utf8String, -1, nil)
                     sqlite3_bind_text(statement, 8, (keyStr as NSString).utf8String, -1, nil)
                     

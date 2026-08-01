@@ -202,7 +202,7 @@ class WSJTXServer: ObservableObject {
                 self.onHaltTx?()
             }
         case .decode:
-            let _ = reader.readBool() // isNew unused
+            let isNew = reader.readBool() ?? true
             let time = reader.readTime() ?? 0
             let snr = reader.readInt32() ?? 0
             let dt = reader.readDouble() ?? 0.0
@@ -226,11 +226,25 @@ class WSJTXServer: ObservableObject {
                 offAir: offAir
             )
             
-            print("Decode geparst: \(message)")
+            print("Decode geparst (isNew=\(isNew)): \(message)")
             DispatchQueue.main.async {
+                if !isNew {
+                    // isNew=false signalisiert den Start eines neuen Decode-Fensters → Liste leeren
+                    self.decodes.removeAll()
+                }
+                
+                // Doubletten verhindern: gleiche Nachricht + Zeit + Frequenz → nicht nochmal einfügen
+                let isDuplicate = self.decodes.contains { existing in
+                    existing.message == decode.message &&
+                    existing.time == decode.time &&
+                    existing.deltaFrequency == decode.deltaFrequency
+                }
+                
+                guard !isDuplicate else { return }
+                
                 self.decodes.insert(decode, at: 0)
-                if self.decodes.count > 200 {
-                    self.decodes.removeSubrange(200...)
+                if self.decodes.count > 500 {
+                    self.decodes.removeSubrange(500...)
                 }
             }
         case .loggedAdif:

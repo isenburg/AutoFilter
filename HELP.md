@@ -95,7 +95,22 @@ In den **Einstellungen → 🔥 Most Wanted & Priorität**:
 
 ## 9. Changelog
 
-### Version 2.0.0 (AKTUELL)
+### Version 2.0.1 (AKTUELL)
+
+#### 🐛 Bugfixes & Präzise Callsign-Validierung
+- Präzise Ambiguität-Auflösung für problematische Most-Wanted-Präfixe
+- **KG4**: Nur echte Guantanamo Bay Rufzeichen (≤ 5 Zeichen, z.B. `KG4AS`, `KG4WW`) — `KG4ABC` (US-General) wird **nicht** mehr als Most Wanted erkannt
+- **KH1/3/4/5/9**: Nur kurze Suffixe (≤ 5 Zeichen) oder Expeditions-Format mit `/` (z.B. `KH1/K6VVA`)
+- **KP1/KP5**: Navassa Island / Desecheo Island — nur kurze oder `/P`-Expeditionsrufzeichen
+- **ST**: Sudan — nur wenn das dritte Zeichen eine Ziffer ist (`ST0...`, `ST2...`)
+- **3C**: Äquatorialguinea — wird nicht mit `3C0` (Annobon Island, eigener Rang) verwechselt
+- **VP6/VP6D**: Pitcairn wird nicht mit `VP6/D` (Ducie Island, eigener Rang) verwechselt
+- **FO/M, FO/C, FO/A**: Marquesas/Clipperton/Austral — nur bei explizitem Schrägstrich-Subfix
+- Most-Wanted-Panel zeigt keine Doubletten mehr — pro Rufzeichen nur ein Eintrag (bestes SNR)
+
+---
+
+### Version 2.0.0
 
 #### 🔥 Most Wanted & Entfernungsfeatures
 - Club Log Top 100 Most Wanted DXCC integriert
