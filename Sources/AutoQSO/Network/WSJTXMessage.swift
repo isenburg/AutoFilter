@@ -15,6 +15,9 @@ enum WSJTXMessageType: UInt32 {
     case location = 11
     case loggedAdif = 12
     case highlightCallsign = 13
+    case switchConfiguration = 14
+    case configure = 15
+    case enableTx = 16
 }
 
 struct WSJTXDecode: Identifiable, Equatable {

@@ -221,10 +221,10 @@ struct HelpView: View {
                     .font(.title)
                     .bold()
                 
-                // Version 2.0.1
+                // Version 2.0.2
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 2.0.1")
+                        Text("Version 2.0.2")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -239,24 +239,45 @@ struct HelpView: View {
                             .cornerRadius(4)
                     }
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("🐛 Bugfixes & Präzision")
+                        Text("🛠️ UDP-Protokoll & TX-Steuerung")
                             .font(.subheadline)
                             .bold()
-                        Text("• Präzise Callsign-Validierung für ambige Präfixe — verhindert Fehlalarme bei Most Wanted Erkennung")
-                        Text("• KG4: Nur echte Guantanamo Bay Rufzeichen (≤ 5 Zeichen, z.B. KG4AS) — nicht KG4ABC (US-General)")
-                        Text("• KH1/3/4/5/9: Nur kurze Suffixe oder Expeditions-Format (mit /)")
-                        Text("• KP1/KP5: Navassa / Desecheo — nur kurze oder /P-Expeditionsrufzeichen")
-                        Text("• ST: Sudan — nur wenn dritte Stelle eine Ziffer ist (ST0, ST2 etc.)")
-                        Text("• 3C: Äquatorialguinea — wird nicht mit 3C0 (Annobon, eigener Rang) verwechselt")
-                        Text("• VP6/VP6D: Pitcairn wird nicht mit VP6/D (Ducie Island, eigener Rang) verwechselt")
-                        Text("• FO/M, FO/C, FO/A: Nur bei explizitem Schrägstrich-Subfix erkannt")
-                        Text("• No duplicates im Most-Wanted-Panel — pro Rufzeichen nur ein Eintrag (bestes SNR)")
+                        Text("• WSJT-X Clear-Nachricht (Typ 3) als Signal für den Start eines neuen Decode-Fensters")
+                        Text("• Verwerfen von empfangenen EnableTx & Reply-Paketen auf dem UDP-Port")
+                        Text("• Replay-Decodes (isNew=false) verwerfen die Liste nicht mehr fälschlicherweise")
+                        Text("• SQLite Logbuch Import-Deduplizierung & Key-Normalisierung")
+                        Text("• Banner-Selektion synchronisiert per einfachem Klick auf die Decodier-Tabelle")
+                        Text("• Layout-Harmonisierung der Toolbar (AUTO MODE, SYNCHRONISATION, LOGBUCH, FENSTER)")
+                        Text("• Integriertes Release-Skript für automatische macOS .dmg Erstellung & GitHub Upload")
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 }
                 .padding()
                 .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+                
+                Divider()
+                
+                // Version 2.0.1
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 2.0.1")
+                            .font(.headline)
+                            .bold()
+                    }
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("🐛 Bugfixes & Präzision")
+                            .font(.subheadline)
+                            .bold()
+                        Text("• Präzise Callsign-Validierung für ambige Präfixe (KG4, KH1/3/4/5/9, KP1/5, ST, 3C, VP6)")
+                        Text("• No duplicates im Most-Wanted-Panel — pro Rufzeichen nur ein Eintrag (bestes SNR)")
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.blue.opacity(0.06))
                 .cornerRadius(8)
                 
                 Divider()

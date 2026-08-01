@@ -95,7 +95,20 @@ In den **Einstellungen → 🔥 Most Wanted & Priorität**:
 
 ## 9. Changelog
 
-### Version 2.0.1 (AKTUELL)
+### Version 2.0.2 (AKTUELL)
+
+#### 🛠️ UDP-Protokoll, TX-Steuerung & GUI-Verfeinerungen
+- **Clear-Signal (Typ 3)**: WSJT-X Clear-Nachricht leert die Decodier-Liste exakt zu Beginn jedes neuen 15s-Fensters
+- **Empfangene EnableTx/Reply Pakete**: Werden auf dem UDP-Port abgefangen und verworfen (verhindert Loopback-Konflikte)
+- **Replay-Decodes**: `isNew=false` löscht die Decodier-Liste nicht mehr fälschlicherweise
+- **SQLite Import-Deduplizierung**: Dreistufiger Schutz gegen doppelte QSOs beim LoTW/QRZ Sync
+- **Banner-Selektion**: Einfacher Klick auf eine Zeile schaltet den Banner um; automatisches Reset beim nächsten Decode
+- **Toolbar-Layout**: Perfekt ausgerichtete Sektionen (AUTO MODE, SYNCHRONISATION, LOGBUCH, FENSTER)
+- **Automatisierter Release-Prozess**: Ein-Klick `release.sh` baut Release-Binary, `.app`, `.dmg` & lädt zu GitHub Release hoch
+
+---
+
+### Version 2.0.1
 
 #### 🐛 Bugfixes & Präzise Callsign-Validierung
 - Präzise Ambiguität-Auflösung für problematische Most-Wanted-Präfixe

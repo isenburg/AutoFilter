@@ -201,7 +201,17 @@ class WSJTXServer: ObservableObject {
             DispatchQueue.main.async {
                 self.onHaltTx?()
             }
+        case .clear:
+            // Typ 3: WSJT-X signalisiert Beginn eines neuen Decode-Fensters → Liste leeren
+            let _ = reader.readUInt8() // window type (optional, ignorieren)
+            print("WSJT-X Clear empfangen → Decode-Liste wird geleert")
+            DispatchQueue.main.async {
+                self.decodes.removeAll()
+            }
+            
         case .decode:
+            // isNew=true  → frischer Decode aus aktuellem 15s-Fenster
+            // isNew=false → Replay eines älteren Decodes (Knopf "Replay" in WSJT-X)
             let isNew = reader.readBool() ?? true
             let time = reader.readTime() ?? 0
             let snr = reader.readInt32() ?? 0
@@ -226,20 +236,14 @@ class WSJTXServer: ObservableObject {
                 offAir: offAir
             )
             
-            print("Decode geparst (isNew=\(isNew)): \(message)")
+            print("Decode (isNew=\(isNew)): \(message)")
             DispatchQueue.main.async {
-                if !isNew {
-                    // isNew=false signalisiert den Start eines neuen Decode-Fensters → Liste leeren
-                    self.decodes.removeAll()
-                }
-                
-                // Doubletten verhindern: gleiche Nachricht + Zeit + Frequenz → nicht nochmal einfügen
+                // Doubletten verhindern: gleiche Nachricht + Zeit + Frequenz
                 let isDuplicate = self.decodes.contains { existing in
                     existing.message == decode.message &&
                     existing.time == decode.time &&
                     existing.deltaFrequency == decode.deltaFrequency
                 }
-                
                 guard !isDuplicate else { return }
                 
                 self.decodes.insert(decode, at: 0)
@@ -274,6 +278,11 @@ class WSJTXServer: ObservableObject {
                     self.onQSOLogged?([entry])
                 }
             }
+        case .reply, .enableTx:
+            // Nachführung/Verwerfung: Empfangene EnableTx / Reply-Pakete auf dem UDP-Port ignorieren
+            print("WSJT-X EnableTx / Reply Paket auf UDP-Port empfangen → wird ignoriert/verworfen")
+            return
+            
         default:
             break
         }

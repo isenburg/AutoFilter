@@ -226,7 +226,7 @@ class DecodeViewModel: ObservableObject {
             mode: decode.mode,
             message: decode.message,
             lowConfidence: decode.lowConfidence,
-            modifiers: 0 // No modifiers
+            modifiers: 0
         )
         server.sendReply(reply)
     }
