@@ -89,6 +89,17 @@ class LoTWManager: ObservableObject {
     func mergeEntries(_ newEntries: [QSOEntry]) {
         guard !newEntries.isEmpty else { return }
         
+        // Sofort im Speicher-Set registrieren (damit hasWorked sofort true liefert!)
+        DispatchQueue.main.async { [weak self] in
+            for entry in newEntries {
+                let call = entry.callsign.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                let b = entry.band.uppercased().trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "")
+                if !call.isEmpty && !b.isEmpty {
+                    self?.workedSet.insert("\(call)_\(b)")
+                }
+            }
+        }
+        
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let addedCount = DatabaseManager.shared.insertQSOs(newEntries)
             let updatedLog = DatabaseManager.shared.fetchAllQSOs()
@@ -96,7 +107,11 @@ class LoTWManager: ObservableObject {
             var newSet = Set<String>()
             newSet.reserveCapacity(updatedLog.count)
             for qso in updatedLog {
-                newSet.insert("\(qso.callsign.uppercased())_\(qso.band.uppercased())")
+                let call = qso.callsign.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                let b = qso.band.uppercased().trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "")
+                if !call.isEmpty && !b.isEmpty {
+                    newSet.insert("\(call)_\(b)")
+                }
             }
             
             DispatchQueue.main.async {
@@ -109,7 +124,9 @@ class LoTWManager: ObservableObject {
     
     func hasWorked(callsign: String, band: String) -> Bool {
         guard !callsign.isEmpty, !band.isEmpty else { return false }
-        return workedSet.contains("\(callsign.uppercased())_\(band.uppercased())")
+        let cleanCall = callsign.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanBand = band.uppercased().trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "")
+        return workedSet.contains("\(cleanCall)_\(cleanBand)")
     }
     
     func workedBands(for callsign: String) -> [String] {

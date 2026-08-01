@@ -263,17 +263,28 @@ class WSJTXServer: ObservableObject {
             _ = reader.readUInt64() // DateTime off
             if let dxCall = reader.readString(),
                let _ = reader.readString(), // grid
-               let _ = reader.readUInt64(), // freq
+               let freq = reader.readUInt64(), // freq
                let mode = reader.readString() {
+                
+                let actualFreq = freq > 0 ? freq : self.currentDialFrequency
+                let actualBand = WSJTXDecode.bandFromFrequency(actualFreq)
+                
+                let fmt = DateFormatter()
+                fmt.timeZone = TimeZone(secondsFromGMT: 0)
+                fmt.dateFormat = "yyyyMMdd"
+                let dateStr = fmt.string(from: Date())
+                fmt.dateFormat = "HHmm"
+                let timeStr = fmt.string(from: Date())
+                
                 let entry = QSOEntry(
                     callsign: dxCall,
-                    band: "20M",
+                    band: actualBand,
                     mode: mode,
-                    qsoDate: "",
-                    timeOn: "",
+                    qsoDate: dateStr,
+                    timeOn: timeStr,
                     dxcc: ""
                 )
-                print("WSJT-X QSO Logged: \(dxCall)")
+                print("WSJT-X QSO Logged: \(dxCall) auf \(actualBand)")
                 DispatchQueue.main.async {
                     self.onQSOLogged?([entry])
                 }

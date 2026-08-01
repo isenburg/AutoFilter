@@ -161,17 +161,30 @@ class DatabaseManager {
                     let bandStr = qso.band.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
                                         .replacingOccurrences(of: " ", with: "")
                     let modeStr = qso.mode.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
-                    let cleanDate = qso.qsoDate
+                    var cleanDate = qso.qsoDate
                         .replacingOccurrences(of: "-", with: "")
                         .replacingOccurrences(of: "/", with: "")
                         .replacingOccurrences(of: ".", with: "")
                         .trimmingCharacters(in: .whitespacesAndNewlines)
+                    if cleanDate.isEmpty {
+                        let fmt = DateFormatter()
+                        fmt.timeZone = TimeZone(secondsFromGMT: 0)
+                        fmt.dateFormat = "yyyyMMdd"
+                        cleanDate = fmt.string(from: Date())
+                    }
+                    
                     // Zeitformat auf HHMM normalisieren (Sekunden weglassen)
-                    let rawTime = qso.timeOn.replacingOccurrences(of: ":", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    var rawTime = qso.timeOn.replacingOccurrences(of: ":", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    if rawTime.isEmpty {
+                        let fmt = DateFormatter()
+                        fmt.timeZone = TimeZone(secondsFromGMT: 0)
+                        fmt.dateFormat = "HHmm"
+                        rawTime = fmt.string(from: Date())
+                    }
                     let timeNorm = rawTime.count >= 4 ? String(rawTime.prefix(4)) : rawTime
                     let keyStr = "\(callStr)_\(bandStr)_\(modeStr)_\(cleanDate)_\(timeNorm)"
                     
-                    guard !callStr.isEmpty, !bandStr.isEmpty, !cleanDate.isEmpty else { continue }
+                    guard !callStr.isEmpty, !bandStr.isEmpty else { continue }
                     
                     sqlite3_bind_text(statement, 1, (idStr as NSString).utf8String, -1, nil)
                     sqlite3_bind_text(statement, 2, (callStr as NSString).utf8String, -1, nil)

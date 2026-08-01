@@ -52,9 +52,12 @@ struct WSJTXDecode: Identifiable, Equatable {
     }
     
     var band: String {
-        let freqHz = totalFrequencyHz
-        guard freqHz > 0 else { return "20M" }
-        let mhz = Double(freqHz) / 1_000_000.0
+        return WSJTXDecode.bandFromFrequency(totalFrequencyHz)
+    }
+    
+    static func bandFromFrequency(_ totalFrequencyHz: UInt64) -> String {
+        guard totalFrequencyHz > 0 else { return "20M" }
+        let mhz = Double(totalFrequencyHz) / 1_000_000.0
         switch mhz {
         case 1.800...2.000: return "160M"
         case 3.500...4.000: return "80M"
