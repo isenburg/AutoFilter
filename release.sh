@@ -1,154 +1,219 @@
 #!/bin/bash
+set -euo pipefail
 
-# Navigate to project root directory
+# ============================================================
+# AutoQSO Release Script
+# Baut Release-Version, erstellt .app + .dmg,
+# speichert lokal und lädt als GitHub Release hoch.
+# ============================================================
+
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$PROJECT_DIR" || exit 1
+cd "$PROJECT_DIR"
 
 APP_NAME="AutoQSO"
+GITHUB_REPO="isenburg/AutoQSO"
 
-echo "=== 1. Beende $APP_NAME falls es läuft ==="
-killall "$APP_NAME" 2>/dev/null
-sleep 1
+# ── Farben ────────────────────────────────────────────────────
+RED='\033[0;31m'; GREEN='\033[0;32m'
+YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
+info()    { echo -e "${CYAN}▶ $*${NC}"; }
+success() { echo -e "${GREEN}✓ $*${NC}"; }
+warn()    { echo -e "${YELLOW}⚠ $*${NC}"; }
+err()     { echo -e "${RED}✗ $*${NC}"; exit 1; }
 
-echo "=== 2. Aktualisiere Build-Nummer & Version ==="
-VERSION_FILE=".version"
-if [ ! -f "$VERSION_FILE" ]; then
-    echo "1.0.0" > "$VERSION_FILE"
-fi
-VERSION_NUM=$(cat "$VERSION_FILE" | tr -d ' \n\r')
+# ── GitHub Upload via REST API ────────────────────────────────
+api_create_release() {
+    local TOKEN="$1" TAG="$2" TITLE="$3" NOTES="$4"
+    local NOTES_JSON
+    NOTES_JSON=$(python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))' <<< "$NOTES")
 
-BUILD_FILE=".build_number"
-if [ ! -f "$BUILD_FILE" ]; then
-    echo "0" > "$BUILD_FILE"
-fi
+    curl -s -X POST \
+        -H "Authorization: token $TOKEN" \
+        -H "Accept: application/vnd.github.v3+json" \
+        "https://api.github.com/repos/$GITHUB_REPO/releases" \
+        -d "{\"tag_name\":\"$TAG\",\"name\":\"$TITLE\",\"body\":$NOTES_JSON,\"draft\":false,\"prerelease\":false}"
+}
 
-BUILD_NUM=$(cat "$BUILD_FILE")
-BUILD_NUM=$((BUILD_NUM + 1))
-echo "$BUILD_NUM" > "$BUILD_FILE"
-echo "Release Version: $VERSION_NUM (Build-Nummer: $BUILD_NUM)"
+api_upload_asset() {
+    local TOKEN="$1" UPLOAD_URL="$2" DMG_PATH="$3" DMG_NAME="$4"
+    curl -s -X POST \
+        -H "Authorization: token $TOKEN" \
+        -H "Content-Type: application/x-apple-diskimage" \
+        "${UPLOAD_URL}?name=${DMG_NAME}" \
+        --data-binary @"$DMG_PATH" > /dev/null
+}
 
-# Speichere die Version & Build-Nummer im Swift Code
-cat > Sources/AutoQSO/BuildNumber.swift <<EOF
-public let APP_VERSION = "$VERSION_NUM"
-public let APP_BUILD_NUMBER = $BUILD_NUM
+github_release() {
+    local TOKEN="$1" TAG="$2" TITLE="$3" NOTES="$4" DMG_PATH="$5" DMG_NAME="$6"
+
+    info "Erstelle GitHub Release via API..."
+    RESP=$(api_create_release "$TOKEN" "$TAG" "$TITLE" "$NOTES")
+
+    UPLOAD_URL=$(echo "$RESP" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+url=d.get('upload_url','')
+print(url.split('{')[0])
+" 2>/dev/null || echo "")
+
+    if [ -z "$UPLOAD_URL" ]; then
+        warn "Upload-URL nicht gefunden. Antwort: $RESP"
+        return 1
+    fi
+
+    info "Lade DMG hoch..."
+    api_upload_asset "$TOKEN" "$UPLOAD_URL" "$DMG_PATH" "$DMG_NAME"
+    success "GitHub Release '$TAG' erstellt & DMG hochgeladen!"
+    echo -e "  🌐 https://github.com/$GITHUB_REPO/releases/tag/$TAG"
+}
+
+# ══════════════════════════════════════════════════════════════
+
+# ── 1. App beenden ────────────────────────────────────────────
+info "Beende $APP_NAME falls es läuft..."
+killall "$APP_NAME" 2>/dev/null && sleep 1 || true
+
+# ── 2. Version & Build-Nummer ─────────────────────────────────
+info "Lese Version & Build-Nummer..."
+VERSION_FILE="$PROJECT_DIR/.version"
+BUILD_FILE="$PROJECT_DIR/.build_number"
+[ -f "$VERSION_FILE" ] || err ".version Datei nicht gefunden!"
+VERSION=$(cat "$VERSION_FILE" | tr -d ' \n\r')
+[ -f "$BUILD_FILE" ] || echo "0" > "$BUILD_FILE"
+BUILD=$(( $(cat "$BUILD_FILE") + 1 ))
+echo "$BUILD" > "$BUILD_FILE"
+success "Version: $VERSION  |  Build: $BUILD"
+
+# BuildNumber.swift aktualisieren
+cat > "$PROJECT_DIR/Sources/AutoQSO/BuildNumber.swift" <<EOF
+public let APP_VERSION = "$VERSION"
+public let APP_BUILD_NUMBER = $BUILD
 EOF
 
-echo "=== 3. Kompiliere Release-Version ==="
-swift build -c release
-
-if [ $? -ne 0 ]; then
-    echo "Fehler beim Kompilieren der Release-Version!"
-    exit 1
+# ── 3. Changelog aus Git-Commits ─────────────────────────────
+info "Erzeuge Changelog aus Git-Commits..."
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+if [ -n "$LAST_TAG" ]; then
+    CHANGELOG=$(git log "${LAST_TAG}..HEAD" --pretty=format:"- %s" --no-merges 2>/dev/null)
+else
+    CHANGELOG=$(git log --pretty=format:"- %s" --no-merges -20 2>/dev/null)
 fi
+[ -n "$CHANGELOG" ] || CHANGELOG="- Release v$VERSION (Build $BUILD)"
 
-echo "=== 4. Erstelle App-Bundle im Projektverzeichnis ==="
-BUNDLE_DIR="${PROJECT_DIR}/${APP_NAME}.app"
-CONTENTS_DIR="${BUNDLE_DIR}/Contents"
-MACOS_DIR="${CONTENTS_DIR}/MacOS"
-RESOURCES_DIR="${CONTENTS_DIR}/Resources"
+# ── 4. Release kompilieren ───────────────────────────────────
+info "Kompiliere Release-Version..."
+swift build -c release 2>&1 || err "Kompilierung fehlgeschlagen!"
+success "Build abgeschlossen"
 
-rm -rf "$BUNDLE_DIR"
-mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
+# ── 5. .app Bundle ───────────────────────────────────────────
+info "Erstelle .app Bundle..."
+BUNDLE="$PROJECT_DIR/$APP_NAME.app"
+rm -rf "$BUNDLE"
+mkdir -p "$BUNDLE/Contents/MacOS" "$BUNDLE/Contents/Resources"
+cp "$PROJECT_DIR/.build/release/$APP_NAME" "$BUNDLE/Contents/MacOS/"
+chmod +x "$BUNDLE/Contents/MacOS/$APP_NAME"
+[ -f "$PROJECT_DIR/Resources/AppIcon.icns" ] && \
+    cp "$PROJECT_DIR/Resources/AppIcon.icns" "$BUNDLE/Contents/Resources/"
 
-cp ".build/release/$APP_NAME" "$MACOS_DIR/"
-if [ -f "Resources/AppIcon.icns" ]; then
-    cp "Resources/AppIcon.icns" "$RESOURCES_DIR/"
-fi
-
-cat > "$CONTENTS_DIR/Info.plist" <<EOF
+cat > "$BUNDLE/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>$APP_NAME</string>
-    <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.autoqso.app</string>
-    <key>CFBundleName</key>
-    <string>$APP_NAME</string>
-    <key>CFBundleVersion</key>
-    <string>$BUILD_NUM</string>
-    <key>CFBundleShortVersionString</key>
-    <string>$VERSION_NUM</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
-</dict>
-</plist>
-EOF
+<plist version="1.0"><dict>
+    <key>CFBundleExecutable</key>              <string>$APP_NAME</string>
+    <key>CFBundleIconFile</key>                <string>AppIcon</string>
+    <key>CFBundleIdentifier</key>              <string>com.dj6gi.autoqso</string>
+    <key>CFBundleName</key>                    <string>$APP_NAME</string>
+    <key>CFBundleVersion</key>                 <string>$BUILD</string>
+    <key>CFBundleShortVersionString</key>      <string>$VERSION</string>
+    <key>CFBundlePackageType</key>             <string>APPL</string>
+    <key>NSHighResolutionCapable</key>         <true/>
+    <key>LSMinimumSystemVersion</key>          <string>14.0</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2024–2026 Georg Isenbürger · DJ6GI</string>
+</dict></plist>
+PLIST
+success ".app Bundle erstellt"
 
-echo "=== 5. Erstelle .dmg Datei im Projektverzeichnis ==="
-DMG_NAME="${APP_NAME}-v${VERSION_NUM}-b${BUILD_NUM}.dmg"
-DMG_PATH="${PROJECT_DIR}/${DMG_NAME}"
-DMG_LINK_PATH="${PROJECT_DIR}/${APP_NAME}.dmg"
+# ── 6. .dmg erstellen ────────────────────────────────────────
+info "Erstelle .dmg..."
+DMG_NAME="${APP_NAME}-v${VERSION}-b${BUILD}.dmg"
+DMG_PATH="$PROJECT_DIR/$DMG_NAME"
+DMG_LATEST="$PROJECT_DIR/$APP_NAME.dmg"
+rm -f "$DMG_PATH" "$DMG_LATEST"
 
-# Vorherige DMG entfernen falls vorhanden
-rm -f "$DMG_PATH" "$DMG_LINK_PATH"
+STAGING=$(mktemp -d)
+cp -R "$BUNDLE" "$STAGING/"
+ln -s /Applications "$STAGING/Applications"
+hdiutil create -volname "$APP_NAME v$VERSION" -srcfolder "$STAGING" \
+    -ov -format UDZO "$DMG_PATH" > /dev/null
+rm -rf "$STAGING"
+cp "$DMG_PATH" "$DMG_LATEST"
+success "DMG: $DMG_NAME"
 
-STAGING_DIR="$(mktemp -d)"
-cp -R "$BUNDLE_DIR" "$STAGING_DIR/"
-ln -s /Applications "$STAGING_DIR/Applications"
+# ── 7. Git commit & Tag & Push ───────────────────────────────
+info "Git Commit, Tag & Push..."
+TAG="v${VERSION}-b${BUILD}"
+TITLE="AutoQSO v${VERSION} (Build ${BUILD})"
 
-hdiutil create -volname "${APP_NAME} v${VERSION_NUM} (b${BUILD_NUM})" -srcfolder "$STAGING_DIR" -ov -format UDZO "$DMG_PATH"
-rm -rf "$STAGING_DIR"
+git add \
+    "$PROJECT_DIR/.version" \
+    "$PROJECT_DIR/.build_number" \
+    "$PROJECT_DIR/Sources/AutoQSO/BuildNumber.swift" \
+    "$PROJECT_DIR/Sources/" \
+    "$PROJECT_DIR/HELP.md" 2>/dev/null || true
 
-# Erstelle auch einen festen AutoQSO.dmg Link/Kopie im Projektverzeichnis
-cp "$DMG_PATH" "$DMG_LINK_PATH"
+git commit -m "Release v$VERSION Build $BUILD" 2>/dev/null || warn "Nichts zu committen"
+git tag -a "$TAG" -m "$TITLE" 2>/dev/null || warn "Tag existiert bereits"
 
-echo "DMG erfolgreich erstellt: $DMG_PATH"
-
-echo "=== 6. Git Tag und GitHub Release ==="
-TAG_NAME="v${VERSION_NUM}-b${BUILD_NUM}"
-
-# Git Tag lokal erstellen
-if git rev-parse --git-dir > /dev/null 2>&1; then
-    git add .version .build_number Sources/AutoQSO/BuildNumber.swift
-    git commit -m "Release v$VERSION_NUM Build $BUILD_NUM" 2>/dev/null || true
-    git tag -a "$TAG_NAME" -m "Release v$VERSION_NUM Build $BUILD_NUM" 2>/dev/null || true
-    echo "Lokaler Git Tag '$TAG_NAME' erstellt."
-fi
-
-# Upload zu GitHub via gh CLI oder GitHub REST API
 REMOTE_URL=$(git config --get remote.origin.url 2>/dev/null || echo "")
-
-if command -v gh >/dev/null 2>&1; then
-    echo "Lade Release auf GitHub hoch mit gh CLI..."
-    gh release create "$TAG_NAME" "$DMG_PATH" --title "AutoQSO v${VERSION_NUM} Build ${BUILD_NUM}" --notes "AutoQSO Release v${VERSION_NUM} (Build ${BUILD_NUM})"
-elif [ -n "$GITHUB_TOKEN" ] || [ -n "$GH_TOKEN" ]; then
-    TOKEN="${GITHUB_TOKEN:-$GH_TOKEN}"
-    echo "Lade Release auf GitHub hoch via GitHub REST API..."
-    
-    # Extract owner/repo from remote URL if available
-    REPO_PATH=$(echo "$REMOTE_URL" | sed -E 's/.*github\.com[:\/](.+)\.git$/\1/')
-    if [ -z "$REPO_PATH" ]; then
-        echo "Hinweis: Git Remote Origin nicht konfiguriert. Bitte Remote einrichten um automatischen Upload durchzuführen."
-    else
-        # Push tag
-        git push origin "$TAG_NAME" 2>/dev/null || true
-        
-        # Create release via API
-        RELEASE_RESP=$(curl -s -X POST -H "Authorization: token $TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/$REPO_PATH/releases" \
-            -d "{\"tag_name\":\"$TAG_NAME\",\"name\":\"AutoQSO v$VERSION_NUM Build $BUILD_NUM\",\"body\":\"AutoQSO Release v$VERSION_NUM Build $BUILD_NUM\"}")
-            
-        UPLOAD_URL=$(echo "$RELEASE_RESP" | grep -o 'https://uploads.github.com/[^"{]*' | head -n 1 | sed 's/{?name,label}//')
-        
-        if [ -n "$UPLOAD_URL" ]; then
-            curl -s -X POST -H "Authorization: token $TOKEN" \
-                -H "Content-Type: application/x-apple-diskimage" \
-                "$UPLOAD_URL?name=$DMG_NAME" \
-                --data-binary @"$DMG_PATH"
-            echo "Release Asset $DMG_NAME hochgeladen."
-        fi
-    fi
+if [ -n "$REMOTE_URL" ]; then
+    git push origin main 2>/dev/null || warn "Push fehlgeschlagen"
+    git push origin "$TAG" 2>/dev/null || warn "Tag-Push fehlgeschlagen"
+    success "Code & Tag gepusht → GitHub"
 else
-    echo "GitHub Upload Hinweis:"
-    echo "  - Sobald ein GitHub Remote gesetzt ist ('git remote add origin ...') und 'gh' installiert ist (oder GITHUB_TOKEN gesetzt ist),"
-    echo "    wird die Datei '$DMG_NAME' automatisch zu GitHub hochgeladen."
+    warn "Kein Git Remote – Push übersprungen"
 fi
 
-echo "=== Release v$VERSION_NUM Build $BUILD_NUM abgeschlossen! ==="
+# ── 8. GitHub Release ─────────────────────────────────────────
+RELEASE_NOTES="## $TITLE
+
+### Änderungen seit letztem Release
+$CHANGELOG
+
+---
+**Anforderungen:** macOS 14.0+
+**Copyright:** © 2024–2026 Georg Isenbürger · DJ6GI"
+
+# Token ermitteln: Umgebungsvariable → eingebettet in Remote-URL
+TOKEN="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
+if [ -z "$TOKEN" ]; then
+    TOKEN=$(echo "$REMOTE_URL" | grep -oE 'ghp_[A-Za-z0-9]+' | head -1 || echo "")
+fi
+
+if command -v gh > /dev/null 2>&1 && gh auth status > /dev/null 2>&1; then
+    info "GitHub Release via gh CLI..."
+    gh release create "$TAG" "$DMG_PATH" \
+        --repo "$GITHUB_REPO" \
+        --title "$TITLE" \
+        --notes "$RELEASE_NOTES" \
+        --latest
+    success "GitHub Release erstellt & DMG hochgeladen!"
+    echo -e "  🌐 https://github.com/$GITHUB_REPO/releases/tag/$TAG"
+elif [ -n "$TOKEN" ]; then
+    github_release "$TOKEN" "$TAG" "$TITLE" "$RELEASE_NOTES" "$DMG_PATH" "$DMG_NAME"
+else
+    warn "Kein GitHub Token verfügbar – Release übersprungen."
+    warn "→ Installiere 'gh' und führe 'gh auth login' aus"
+    warn "→ oder setze: export GITHUB_TOKEN=ghp_..."
+fi
+
+# ── Zusammenfassung ───────────────────────────────────────────
+echo ""
+echo -e "${GREEN}╔══════════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║  ✅  Release v$VERSION (Build $BUILD) fertig!        ║${NC}"
+echo -e "${GREEN}╚══════════════════════════════════════════════════╝${NC}"
+echo ""
+echo -e "  📦 DMG:   $DMG_PATH"
+echo -e "  🔖 Tag:   $TAG"
+echo -e "  🌐 Repo:  https://github.com/$GITHUB_REPO/releases"
+echo ""

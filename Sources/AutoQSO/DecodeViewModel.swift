@@ -109,6 +109,7 @@ class DecodeViewModel: ObservableObject {
         var candidates: [WSJTXDecode] = []
         let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
         let prioritizeMW = UserDefaults.standard.object(forKey: "prioritizeMostWanted") as? Bool ?? true
+        let onlyMW = UserDefaults.standard.bool(forKey: "onlyMostWanted")
         let maxRank = UserDefaults.standard.integer(forKey: "maxMostWantedRank") > 0 ? UserDefaults.standard.integer(forKey: "maxMostWantedRank") : 100
         
         for decode in server.decodes {
@@ -122,6 +123,11 @@ class DecodeViewModel: ObservableObject {
             let is73 = msgTokens.contains("73") || msgTokens.contains("RR73") || msgTokens.contains("RRR")
             
             if isCQ || is73 {
+                // Strikter DXCC / Most Wanted Filter wenn nur Most Wanted erlaubt
+                if onlyMW {
+                    guard MostWantedManager.shared.isMostWanted(callsign: call, maxRank: maxRank) else { continue }
+                }
+                
                 // Check if not worked on this band
                 if !lotwManager.hasWorked(callsign: call, band: decode.band) {
                     // Check if callsign is currently in failure/aborted cooldown
@@ -208,11 +214,7 @@ class DecodeViewModel: ObservableObject {
     }
     
     func getBand(from frequency: UInt32) -> String {
-        // Simple mapping, WSJTX sends frequency in Hz? Actually, Decode message doesn't have absolute frequency, only DeltaFrequency.
-        // Status message has dial frequency. We might need to listen to Status message to get current band.
-        // For this minimal setup, let's assume we can map from a setting or just "20M".
-        // To do this perfectly, we'd add parsing for Status message.
-        return "20M" // Placeholder
+        return "20M"
     }
     
     func sendReply(for decode: WSJTXDecode) {
@@ -226,7 +228,7 @@ class DecodeViewModel: ObservableObject {
             mode: decode.mode,
             message: decode.message,
             lowConfidence: decode.lowConfidence,
-            modifiers: 0
+            modifiers: 0x01 // 0x01 = Shift Modifier -> erzwingt "Enable TX = ON" in WSJT-X!
         )
         server.sendReply(reply)
     }

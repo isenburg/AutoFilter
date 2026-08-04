@@ -95,7 +95,15 @@ In den **Einstellungen → 🔥 Most Wanted & Priorität**:
 
 ## 9. Changelog
 
-### Version 2.0.2 (AKTUELL)
+### Version 2.0.3 (AKTUELL)
+
+#### 🎯 Strikter DXCC-Filter & TX-Triggering
+- **Strikter DXCC-Filter**: Neue Option „Ausschließlich Most Wanted Stationen anrufen“ in den Einstellungen.
+- **Erweitertes TX-Triggering**: Sendet Shift Modifier (`0x01`) beim Antworten, was in WSJT-X „Enable TX = ON“ erzwingt.
+
+---
+
+### Version 2.0.2
 
 #### 🛠️ UDP-Protokoll, TX-Steuerung & GUI-Verfeinerungen
 - **Clear-Signal (Typ 3)**: WSJT-X Clear-Nachricht leert die Decodier-Liste exakt zu Beginn jedes neuen 15s-Fensters

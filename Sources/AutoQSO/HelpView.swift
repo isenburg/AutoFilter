@@ -221,10 +221,10 @@ struct HelpView: View {
                     .font(.title)
                     .bold()
                 
-                // Version 2.0.2
+                // Version 2.0.3
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 2.0.2")
+                        Text("Version 2.0.3")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -237,6 +237,32 @@ struct HelpView: View {
                             .background(Color.green)
                             .foregroundColor(.white)
                             .cornerRadius(4)
+                    }
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("🎯 Strikter DXCC-Filter & TX-Triggering")
+                            .font(.subheadline)
+                            .bold()
+                        Text("• Option \"Ausschließlich Most Wanted Stationen anrufen\" in den Einstellungen")
+                        Text("• Senden des Shift Modifiers (0x01) erzwingt jetzt zuverlässig \"Enable TX = ON\" in WSJT-X")
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+                
+                Divider()
+                
+                // Version 2.0.2
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 2.0.2")
+                            .font(.headline)
+                            .bold()
+                        Text("(Build 111)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
                     VStack(alignment: .leading, spacing: 5) {
                         Text("🛠️ UDP-Protokoll & TX-Steuerung")
@@ -254,7 +280,7 @@ struct HelpView: View {
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.green.opacity(0.08))
+                .background(Color.blue.opacity(0.06))
                 .cornerRadius(8)
                 
                 Divider()

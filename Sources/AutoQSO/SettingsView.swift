@@ -38,6 +38,7 @@ struct SettingsView: View {
     @AppStorage("myGridLocator") private var myGridLocator = "JO31"
     @AppStorage("highlightMostWanted") private var highlightMostWanted = true
     @AppStorage("prioritizeMostWanted") private var prioritizeMostWanted = true
+    @AppStorage("onlyMostWanted") private var onlyMostWanted = false
     @AppStorage("maxMostWantedRank") private var maxMostWantedRank = 100
     
     @AppStorage("storageLocationMode") private var storageLocationMode = "default"
@@ -232,6 +233,9 @@ struct SettingsView: View {
                         .toggleStyle(.checkbox)
                     
                     Toggle("Priorität: Most Wanted zuerst, danach weiteste Entfernung", isOn: $prioritizeMostWanted)
+                        .toggleStyle(.checkbox)
+                    
+                    Toggle("Ausschließlich Most Wanted Stationen anrufen (Strikter DXCC-Filter)", isOn: $onlyMostWanted)
                         .toggleStyle(.checkbox)
                     
                     HStack {
