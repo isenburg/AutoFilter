@@ -6,9 +6,33 @@ class DecodeViewModel: ObservableObject {
     @Published var lotwManager = LoTWManager()
     @Published var qrzManager = QRZManager()
     @Published var selectedCallsign: String = ""
-    @Published var isAutoModeEnabled: Bool = false
+    @Published var isAutoModeEnabled: Bool = false {
+        didSet {
+            if !isAutoModeEnabled {
+                currentTargetCall = ""
+                qsoStartTime = nil
+                currentQSOStatus = "Bereit"
+                addLog("Auto Mode deaktiviert. Aktiver Anruf zurückgesetzt.")
+            } else {
+                addLog("Auto Mode aktiviert.")
+            }
+        }
+    }
     @Published var retryCooldownMinutes: Int = 10
     @Published var currentQSOStatus: String = "Bereit"
+    @Published var logHistory: [String] = []
+    
+    func addLog(_ message: String) {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        let ts = formatter.string(from: Date())
+        DispatchQueue.main.async {
+            self.logHistory.append("[\(ts)] \(message)")
+            if self.logHistory.count > 150 {
+                self.logHistory.removeFirst()
+            }
+        }
+    }
     
     private var blacklistedCalls: [String: Date] = [:]
     private var currentTargetCall: String = ""
@@ -94,15 +118,24 @@ class DecodeViewModel: ObservableObject {
         
         // If currently in an active QSO attempt, monitor status/timeout before starting any new target
         if !currentTargetCall.isEmpty {
-            if let start = qsoStartTime, Date().timeIntervalSince(start) > 120.0 {
-                let failedCall = currentTargetCall
-                blacklistedCalls[failedCall.uppercased()] = Date()
-                currentQSOStatus = "QSO mit \(failedCall) erfolglos (Timeout). Gesperrt für \(retryCooldownMinutes) Min."
+            if let start = qsoStartTime {
+                let elapsed = Date().timeIntervalSince(start)
+                if elapsed > 120.0 {
+                    let failedCall = currentTargetCall
+                    blacklistedCalls[failedCall.uppercased()] = Date()
+                    let msg = "QSO mit \(failedCall) erfolglos (Timeout). Gesperrt für \(retryCooldownMinutes) Min."
+                    currentQSOStatus = msg
+                    addLog("⚠️ \(msg)")
+                    currentTargetCall = ""
+                    qsoStartTime = nil
+                } else {
+                    // Still waiting for current QSO to complete, halt, or timeout
+                    return
+                }
+            } else {
+                // stuck state workaround
                 currentTargetCall = ""
                 qsoStartTime = nil
-            } else {
-                // Still waiting for current QSO to complete, halt, or timeout
-                return
             }
         }
         
@@ -111,10 +144,18 @@ class DecodeViewModel: ObservableObject {
         let prioritizeMW = UserDefaults.standard.object(forKey: "prioritizeMostWanted") as? Bool ?? true
         let onlyMW = UserDefaults.standard.bool(forKey: "onlyMostWanted")
         let maxRank = UserDefaults.standard.integer(forKey: "maxMostWantedRank") > 0 ? UserDefaults.standard.integer(forKey: "maxMostWantedRank") : 100
+        let ownCall = (UserDefaults.standard.string(forKey: "lotwUsername") ?? "").uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        var skippedCounts = [String: Int]()
+        var totalCQsOr73s = 0
         
         for decode in server.decodes {
             let call = decode.callsign.uppercased()
             guard !call.isEmpty else { continue }
+            if !ownCall.isEmpty && call == ownCall {
+                skippedCounts["Eigenes Rufzeichen"] = (skippedCounts["Eigenes Rufzeichen"] ?? 0) + 1
+                continue
+            }
             
             let upperMsg = decode.message.uppercased()
             let msgTokens = upperMsg.components(separatedBy: .whitespacesAndNewlines).map { $0.trimmingCharacters(in: CharacterSet.alphanumerics.inverted) }
@@ -123,9 +164,14 @@ class DecodeViewModel: ObservableObject {
             let is73 = msgTokens.contains("73") || msgTokens.contains("RR73") || msgTokens.contains("RRR")
             
             if isCQ || is73 {
+                totalCQsOr73s += 1
+                
                 // Strikter DXCC / Most Wanted Filter wenn nur Most Wanted erlaubt
                 if onlyMW {
-                    guard MostWantedManager.shared.isMostWanted(callsign: call, maxRank: maxRank) else { continue }
+                    guard MostWantedManager.shared.isMostWanted(callsign: call, maxRank: maxRank) else {
+                        skippedCounts["Nicht in Most Wanted (\(maxRank))"] = (skippedCounts["Nicht in Most Wanted (\(maxRank))"] ?? 0) + 1
+                        continue
+                    }
                 }
                 
                 // Check if not worked on this band
@@ -134,17 +180,26 @@ class DecodeViewModel: ObservableObject {
                     if let blacklistedAt = blacklistedCalls[call] {
                         let elapsedMinutes = Date().timeIntervalSince(blacklistedAt) / 60.0
                         if elapsedMinutes < Double(retryCooldownMinutes) {
+                            skippedCounts["In Sperrzeit (\(Int(Double(retryCooldownMinutes) - elapsedMinutes) + 1) Min.)"] = (skippedCounts["In Sperrzeit (\(Int(Double(retryCooldownMinutes) - elapsedMinutes) + 1) Min.)"] ?? 0) + 1
                             continue // Still in retry cooldown
                         } else {
                             blacklistedCalls.removeValue(forKey: call) // Cooldown expired
                         }
                     }
                     candidates.append(decode)
+                } else {
+                    skippedCounts["Bereits auf \(decode.band) gearbeitet"] = (skippedCounts["Bereits auf \(decode.band) gearbeitet"] ?? 0) + 1
                 }
             }
         }
         
-        guard !candidates.isEmpty else { return }
+        if candidates.isEmpty {
+            if totalCQsOr73s > 0 {
+                let reasons = skippedCounts.map { "\($0.key): \($0.value)" }.joined(separator: ", ")
+                addLog("Auswertung: Keine Anruf-Kandidaten unter \(totalCQsOr73s) CQs/73s gefunden (\(reasons))")
+            }
+            return
+        }
         
         // Sort candidates: Most Wanted Rank (1..100) first, then Furthest Distance (km) second, then SNR third
         candidates.sort { d1, d2 in
@@ -198,6 +253,7 @@ class DecodeViewModel: ObservableObject {
         }
         
         currentQSOStatus = "AutoQSO: Rufe \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo)..."
+        addLog("🚀 Rufe \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo) [Msg: \(bestTarget.message)]")
         
         print("AutoQSO Engine: Starte Anruf -> \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo) [Msg: \(bestTarget.message)]")
         sendReply(for: bestTarget)

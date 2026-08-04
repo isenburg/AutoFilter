@@ -13,7 +13,7 @@ class WSJTXServer: ObservableObject {
     private let queue = DispatchQueue(label: "com.autoqso.wsjtx", qos: .userInitiated)
     private var wsjtSocketFd: Int32 = -1
     private var readSource: DispatchSourceRead?
-    private var wsjtxClientId: String = ""
+    @Published var wsjtxClientId: String = ""
     private var lastWSJTClientAddr: sockaddr_in?
     
     private var currentPort: UInt16 = 0
@@ -175,7 +175,9 @@ class WSJTXServer: ObservableObject {
         print("Message Type erkannt: \(msgType)")
         
         guard let clientId = reader.readString() else { print("Fehler: Konnte Client ID nicht lesen"); return }
-        self.wsjtxClientId = clientId
+        DispatchQueue.main.async {
+            self.wsjtxClientId = clientId
+        }
         
         switch msgType {
         case .status:

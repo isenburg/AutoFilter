@@ -232,15 +232,19 @@ struct ContentView: View {
                 Divider()
             }
             
-            // Log History Terminal (LoTW + QRZ)
-            let logs = (viewModel.lotwManager.logHistory + viewModel.qrzManager.logHistory)
+            // Log History Terminal (LoTW + QRZ + Engine)
+            let logs = (viewModel.logHistory + viewModel.lotwManager.logHistory + viewModel.qrzManager.logHistory).sorted()
             if !logs.isEmpty {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 2) {
                         ForEach(logs, id: \.self) { log in
                             Text(log)
                                 .font(.system(size: 11, design: .monospaced))
-                                .foregroundColor(log.contains("Fehler") ? .red : .primary)
+                                .foregroundColor(
+                                    log.contains("Fehler") || log.contains("⚠️") ? .red :
+                                    log.contains("🚀") ? .green :
+                                    log.contains("Auswertung") ? .secondary : .primary
+                                )
                         }
                     }
                     .padding(8)
@@ -517,6 +521,9 @@ struct ContentView: View {
                 }
             }
             .background(Color(NSColor.windowBackgroundColor))
+            
+            Divider()
+            bottomStatusBar
         }
         .alert("Fehler beim LoTW Sync", isPresented: Binding(
             get: { viewModel.lotwManager.errorMessage != nil },
@@ -558,6 +565,100 @@ struct ContentView: View {
             viewModel.startServer(port: UInt16(udpPort), address: newValue)
         }
         .frame(minWidth: 800, minHeight: 500)
+    }
+    
+    @ViewBuilder
+    private var bottomStatusBar: some View {
+        HStack(spacing: 12) {
+            // Left Side: QSO Status
+            HStack(spacing: 6) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundColor(.blue)
+                    .font(.system(size: 11))
+                Text(viewModel.currentQSOStatus)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.primary)
+            }
+            
+            Spacer()
+            
+            // Right Side: WSJT-X Connection & TX Status Indicators
+            HStack(spacing: 10) {
+                // WSJT-X Client Connection
+                if !viewModel.server.wsjtxClientId.isEmpty {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 6, height: 6)
+                        Text("WSJT-X: \(viewModel.server.wsjtxClientId)")
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Color.green.opacity(0.1))
+                    .cornerRadius(4)
+                } else {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 6, height: 6)
+                        Text("WSJT-X: Keine Verbindung")
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                            .foregroundColor(.red.opacity(0.8))
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(4)
+                }
+                
+                // TX Status Indicator
+                if viewModel.server.isTransmitting {
+                    HStack(spacing: 4) {
+                        Image(systemName: "antenna.radiowaves.left.and.right")
+                            .font(.system(size: 9, weight: .bold))
+                        Text("SENDET (TX)")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.red)
+                    .foregroundColor(.white)
+                    .cornerRadius(4)
+                    .shadow(color: .red.opacity(0.5), radius: 2)
+                } else if viewModel.server.isTxEnabled {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(Color.orange)
+                            .frame(width: 6, height: 6)
+                        Text("TX BEREIT")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.orange.opacity(0.2))
+                    .foregroundColor(.orange)
+                    .cornerRadius(4)
+                } else {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(Color.gray)
+                            .frame(width: 6, height: 6)
+                        Text("TX AUS")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.gray.opacity(0.15))
+                    .foregroundColor(.secondary)
+                    .cornerRadius(4)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Color(NSColor.controlBackgroundColor))
     }
     
     private func cellText(_ text: String, decode: WSJTXDecode) -> some View {
