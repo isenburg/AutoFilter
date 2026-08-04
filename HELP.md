@@ -95,7 +95,17 @@ In den **Einstellungen → 🔥 Most Wanted & Priorität**:
 
 ## 9. Changelog
 
-### Version 2.0.3 (AKTUELL)
+### Version 2.0.4 (AKTUELL)
+
+#### ⚡ Stabilitäts- & Timing-Verbesserungen beim Senden
+- **200ms Sendeverzögerung**: AutoQSO wartet nun 200 ms mit dem Senden des Trigger-Kommandos, bis WSJT-X den CPU-intensiven Decodierzyklus abgeschlossen hat. Verhindert Zuverlässigkeitsprobleme und Paketverluste.
+- **Smarte Sende-Wiederholung (Retries)**: Ist die Sende-Bereitschaft (TX BEREIT) nach 3 Sekunden nicht aktiv, versucht AutoQSO das Kommando erneut (max. 3-mal). Wird sofort abgebrochen, sobald WSJT-X Sende-Bereitschaft signalisiert.
+- **Engine-Logbuch**: Live-Anzeige detaillierter Auswertungsergebnisse in der Log-Konsole (warum CQ-Rufe übersprungen wurden).
+- **Eigene Rufzeichen-Sperre**: Filtert das eigene Rufzeichen aus den Kandidaten, um Selbstanrufe zu verhindern.
+
+---
+
+### Version 2.0.3
 
 #### 🎯 Strikter DXCC-Filter & TX-Triggering
 - **Strikter DXCC-Filter**: Neue Option „Ausschließlich Most Wanted Stationen anrufen“ in den Einstellungen.

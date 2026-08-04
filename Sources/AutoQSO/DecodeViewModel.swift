@@ -37,6 +37,9 @@ class DecodeViewModel: ObservableObject {
     private var blacklistedCalls: [String: Date] = [:]
     private var currentTargetCall: String = ""
     private var qsoStartTime: Date?
+    private var txTriggerAttempts: Int = 0
+    private var lastTxTriggerTime: Date?
+    private var lastTriggeredTarget: WSJTXDecode?
     
     var displayCallsign: String {
         if !selectedCallsign.isEmpty {
@@ -91,6 +94,9 @@ class DecodeViewModel: ObservableObject {
                     self.currentQSOStatus = "QSO mit \(entry.callsign) erfolgreich beendet!"
                     self.currentTargetCall = ""
                     self.qsoStartTime = nil
+                    self.lastTriggeredTarget = nil
+                    self.txTriggerAttempts = 0
+                    self.lastTxTriggerTime = nil
                 }
             }
             
@@ -109,6 +115,9 @@ class DecodeViewModel: ObservableObject {
                 self.currentQSOStatus = "QSO mit \(call) abgebrochen. Gesperrt für \(self.retryCooldownMinutes) Min."
                 self.currentTargetCall = ""
                 self.qsoStartTime = nil
+                self.lastTriggeredTarget = nil
+                self.txTriggerAttempts = 0
+                self.lastTxTriggerTime = nil
             }
         }
     }
@@ -116,8 +125,50 @@ class DecodeViewModel: ObservableObject {
     func evaluateAutoQSO() {
         guard isAutoModeEnabled else { return }
         
-        // If currently in an active QSO attempt, monitor status/timeout before starting any new target
+        // If currently in an active QSO attempt, monitor status/timeout/retries before starting any new target
         if !currentTargetCall.isEmpty {
+            // Check if WSJT-X enabled TX (TX Bereit)
+            let hasWSJTXAccepted = server.isTxEnabled
+            
+            if hasWSJTXAccepted {
+                // Trigger war erfolgreich! Wiederholungs-Versuche zurücksetzen und deaktivieren.
+                if txTriggerAttempts > 0 {
+                    addLog("✅ WSJT-X Sende-Bereitschaft (TX BEREIT) erfolgreich erkannt.")
+                }
+                txTriggerAttempts = 0
+                lastTxTriggerTime = nil
+                lastTriggeredTarget = nil
+            } else {
+                if let triggerTime = lastTxTriggerTime {
+                    let elapsedSinceTrigger = Date().timeIntervalSince(triggerTime)
+                    if elapsedSinceTrigger >= 3.0 { // Wait 3 seconds per trigger attempt
+                        if txTriggerAttempts >= 3 {
+                            let failedCall = currentTargetCall
+                            blacklistedCalls[failedCall.uppercased()] = Date()
+                            let msg = "WSJT-X hat den Anruf auf \(failedCall) nach 3 Versuchen nicht gestartet (Verbindung prüfen)."
+                            currentQSOStatus = "Anruf-Trigger fehlgeschlagen."
+                            addLog("⚠️ \(msg)")
+                            
+                            // Reset state
+                            currentTargetCall = ""
+                            qsoStartTime = nil
+                            lastTriggeredTarget = nil
+                            txTriggerAttempts = 0
+                            lastTxTriggerTime = nil
+                            return
+                        } else {
+                            txTriggerAttempts += 1
+                            lastTxTriggerTime = Date()
+                            addLog("🔁 WSJT-X hat noch nicht gesendet. Erneuter Anruf-Versuch (\(txTriggerAttempts)/3) für \(currentTargetCall)...")
+                            if let target = lastTriggeredTarget {
+                                sendReply(for: target)
+                            }
+                            return
+                        }
+                    }
+                }
+            }
+            
             if let start = qsoStartTime {
                 let elapsed = Date().timeIntervalSince(start)
                 if elapsed > 120.0 {
@@ -128,6 +179,9 @@ class DecodeViewModel: ObservableObject {
                     addLog("⚠️ \(msg)")
                     currentTargetCall = ""
                     qsoStartTime = nil
+                    lastTriggeredTarget = nil
+                    txTriggerAttempts = 0
+                    lastTxTriggerTime = nil
                 } else {
                     // Still waiting for current QSO to complete, halt, or timeout
                     return
@@ -136,7 +190,11 @@ class DecodeViewModel: ObservableObject {
                 // stuck state workaround
                 currentTargetCall = ""
                 qsoStartTime = nil
+                lastTriggeredTarget = nil
+                txTriggerAttempts = 0
+                lastTxTriggerTime = nil
             }
+            return
         }
         
         var candidates: [WSJTXDecode] = []
@@ -237,6 +295,9 @@ class DecodeViewModel: ObservableObject {
         
         currentTargetCall = bestCall
         qsoStartTime = Date()
+        lastTriggeredTarget = bestTarget
+        txTriggerAttempts = 1
+        lastTxTriggerTime = Date()
         
         let mwInfo: String
         if let rank = MostWantedManager.shared.rankForCallsign(bestCall) {
@@ -286,6 +347,10 @@ class DecodeViewModel: ObservableObject {
             lowConfidence: decode.lowConfidence,
             modifiers: 0x01 // 0x01 = Shift Modifier -> erzwingt "Enable TX = ON" in WSJT-X!
         )
-        server.sendReply(reply)
+        // Verzögerung von 200ms, damit WSJT-X das CPU-intensive Decodieren/UI-Zeichnen abschließen kann,
+        // bevor es das UDP-Paket verarbeitet. Verhindert Paketverluste.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.server.sendReply(reply)
+        }
     }
 }
