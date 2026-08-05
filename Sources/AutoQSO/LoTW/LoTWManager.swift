@@ -13,7 +13,7 @@ class LoTWManager: ObservableObject {
         loadLog()
     }
     
-    private func addLog(_ message: String) {
+    func addLog(_ message: String) {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss"
         let ts = formatter.string(from: Date())

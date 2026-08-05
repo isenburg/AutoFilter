@@ -31,6 +31,8 @@ struct WSJTXDecode: Identifiable, Equatable {
     var message: String
     var lowConfidence: Bool
     var offAir: Bool
+    var isClusterSpot: Bool = false
+    var spotter: String = "WSJTX"
     
     var grid: String? {
         return Maidenhead.extractGrid(from: message)
@@ -76,7 +78,12 @@ struct WSJTXDecode: Identifiable, Equatable {
         }
     }
     
+    var customCallsign: String = ""
+    
     var callsign: String {
+        if !customCallsign.isEmpty {
+            return customCallsign
+        }
         return parseWSJTDecodeMessage(message)
     }
     
@@ -151,4 +158,23 @@ struct WSJTXReply {
         writer.writeUInt8(modifiers)
         return writer.data
     }
+}
+
+enum WSJTXRawLogType: String, Codable {
+    case decode = "Decode"
+    case incoming = "Eingang"
+    case outgoing = "Ausgang"
+}
+
+struct WSJTXRawLogEntry: Identifiable, Equatable {
+    let id = UUID()
+    let timestamp: Date
+    let type: WSJTXRawLogType
+    let message: String
+}
+
+struct ClusterRawLogEntry: Identifiable, Equatable {
+    let id = UUID()
+    let timestamp: Date
+    let message: String
 }

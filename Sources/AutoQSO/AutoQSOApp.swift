@@ -4,10 +4,20 @@ import SwiftUI
 struct AutoQSOApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var viewModel = DecodeViewModel()
+    @AppStorage("appColorScheme") private var appColorScheme = "system"
+    
+    var preferredScheme: ColorScheme? {
+        switch appColorScheme {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
+        }
+    }
     
     var body: some Scene {
         WindowGroup("AutoQSO v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))") {
             ContentView(viewModel: viewModel)
+                .preferredColorScheme(preferredScheme)
         }
         .commands {
             // App-Menü: Über AutoQSO mit Copyright-Info
@@ -34,19 +44,28 @@ struct AutoQSOApp: App {
         
         Window("LoTW Logbuch", id: "logbook") {
             LogbookView(viewModel: viewModel)
+                .preferredColorScheme(preferredScheme)
         }
         
         Window("Hilfe & Info", id: "help") {
             HelpView()
+                .preferredColorScheme(preferredScheme)
         }
         
         Window("Einstellungen", id: "settings") {
             SettingsView(viewModel: viewModel)
+                .preferredColorScheme(preferredScheme)
         }
         .windowResizability(.contentSize)
         
+        Window("Logs & Rohdaten", id: "logs_raw") {
+            LogsConsoleView(viewModel: viewModel)
+                .preferredColorScheme(preferredScheme)
+        }
+        
         Settings {
             SettingsView(viewModel: viewModel)
+                .preferredColorScheme(preferredScheme)
         }
     }
 }

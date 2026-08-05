@@ -4,6 +4,8 @@ enum HelpSection: String, CaseIterable, Identifiable {
     case overview = "Übersicht"
     case wsjtx = "WSJT-X Setup"
     case triggers = "Auto QSO Triggers"
+    case cluster = "DX Cluster"
+    case telnet = "Telnet Server"
     case logbook = "Logbuch & Sync"
     case storage = "Speicherort & iCloud"
     case disclaimer = "Rechtlicher Hinweis"
@@ -17,10 +19,12 @@ enum HelpSection: String, CaseIterable, Identifiable {
         case .overview: return "info.circle"
         case .wsjtx: return "antenna.radiowaves.left.and.right"
         case .triggers: return "bolt.horizontal"
+        case .cluster: return "list.bullet.rectangle.portrait"
+        case .telnet: return "terminal"
         case .logbook: return "book.closed"
         case .storage: return "folder.fill"
         case .disclaimer: return "exclamationmark.triangle"
-        case .changelog: return "list.bullet.rectangle"
+        case .changelog: return "clock"
         case .copyright: return "c.circle"
         }
     }
@@ -83,8 +87,7 @@ struct HelpView: View {
         }
         .frame(minWidth: 720, minHeight: 500)
     }
-    
-    @ViewBuilder
+        @ViewBuilder
     private func detailView(for section: HelpSection) -> some View {
         switch section {
         case .overview:
@@ -97,17 +100,18 @@ struct HelpView: View {
                 Text("Hauptfunktionen:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("Automatische Antworten auf CQ, 73, RR73 und RRR", systemImage: "bolt.fill")
-                    Label("Echtzeit-Prüfung gegen SQLite-Logbuch (bereits auf Band gearbeitet)", systemImage: "checkmark.seal.fill")
+                    Label("WSJTX Auto Transmit: Automatisierte Sende-Engine", systemImage: "bolt.fill")
+                    Label("Prüfung gegen SQLite-Logbuch (bereits auf Band gearbeitet)", systemImage: "checkmark.seal.fill")
+                    Label("Detektieren von CQ, 73, RR73 und RRR Decodes", systemImage: "bolt.horizontal.fill")
                     Label("Top 100 Most Wanted DXCC – Rote Hervorhebung (🔥) & Priorität", systemImage: "flame.fill")
-                    Label("Maidenhead Locator → km Entfernungsberechnung & Anzeige", systemImage: "location.fill")
-                    Label("Priorität: Most Wanted zuerst, dann weiteste Entfernung, dann SNR", systemImage: "arrow.up.arrow.down")
-                    Label("Gesondertes Most-Wanted-Panel (höhenverstellbar) unter der Tabelle", systemImage: "rectangle.split.2x1")
-                    Label("Entfernung & Grid-Square in der Stations-Evaluierungsleiste", systemImage: "antenna.radiowaves.left.and.right")
-                    Label("Inkrementeller Sync mit LoTW & QRZ.com (2 Tage vor letztem QSO)", systemImage: "arrow.triangle.2.circlepath")
-                    Label("Zeilenweises & Mehrfach-Löschen von Logbucheinträgen", systemImage: "trash")
-                    Label("Freie Speicherort-Wahl (Ordner oder iCloud Drive)", systemImage: "folder.fill")
-                    Label("Automatische Sperre / Cooldown bei Timeout oder Abbruch", systemImage: "clock.arrow.circlepath")
+                    Label("Maidenhead Locator → km Entfernungsberechnung", systemImage: "location.fill")
+                    Label("Gesondertes Most-Wanted-Panel (höhenverstellbar via VSplitView) unter der Tabelle", systemImage: "rectangle.split.2x1")
+                    Label("DX Cluster Slots (C1, C2, C3) per Dropdown-Picker und Live-Status", systemImage: "list.bullet.rectangle.portrait")
+                    Label("Laufender Telnet-Server zur Spotting-Weiterleitung an externe Programme", systemImage: "terminal")
+                    Label("Umschaltbare Log-Diagnose (System, WSJT-X-Rohdaten, Cluster-Spots)", systemImage: "doc.text")
+                    Label("Abkoppelbare Log-Konsole als eigenständiges, positionierbares Fenster", systemImage: "macwindow.badge.plus")
+                    Label("Chronologische Sortierung wählbar (Neueste oben oder unten)", systemImage: "arrow.up.arrow.down.square")
+                    Label("Unterstützung von Hell-, Dunkel- und System-Farbschemata", systemImage: "circle.lefthalf.filled")
                 }
             }
             
@@ -146,7 +150,41 @@ struct HelpView: View {
                 .cornerRadius(8)
                 Text("Ablauf:")
                     .font(.headline)
-                Text("1. Ermittlung des Rufzeichens der sendenden Station.\n2. Abgleich mit dem Logbuch (falls auf dem aktuellen Band bereits gearbeitet -> grau hinterlegt und übersprungen).\n3. Prüfung auf aktiven Cooldown/Sperre.\n4. Senden des Reply-Kommandos an WSJT-X zum automatischen Anruf.")
+                Text("1. Ermittlung des Rufzeichens der sendenden Station.\n2. Abgleich mit dem Logbuch (falls auf dem aktuellen Band bereits gearbeitet -> grau hinterlegt und übersprungen).\n3. Prüfung auf aktiven Cooldown/Sperre.\n4. Senden des Reply-Kommandos an WSJT-X zum automatischen Anruf (WSJTX Auto Transmit).")
+            }
+            
+        case .cluster:
+            VStack(alignment: .leading, spacing: 12) {
+                Text("DX Cluster Verbindung & Verwaltung")
+                    .font(.title)
+                    .bold()
+                Text("AutoQSO ermöglicht den Anschluss an bis zu drei parallele DX-Cluster-Verbindungen (C1, C2, C3).")
+                    .font(.body)
+                
+                Text("Zuweisung und Status:")
+                    .font(.headline)
+                Text("• In der linken Sidebar oder den Einstellungen wählen Sie die gewünschten Cluster aus einem Dropdown-Menü.\n• Status-Indikatoren zeigen an, ob die Verbindung aktiv ist (Grau = Aus, Orange = Verbindungsaufbau, Grün = Verbunden, Rot = Verbindungsfehler).")
+                
+                Text("Listen-Manager (Einstellungen -> DX Cluster):")
+                    .font(.headline)
+                Text("• Hinzufügen & Bearbeiten: Sie können eigene Cluster mit Name, Host und Port registrieren.\n• Drag-and-Drop: Die Reihenfolge der Cluster kann direkt in der Tabelle per Maus verschoben und angepasst werden.\n• Zurücksetzen (Restore Defaults): Stellt die ursprüngliche Liste der vordefinierten Standard-Cluster wieder her.")
+            }
+            
+        case .telnet:
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Telnet Server & Spotting-Ausgabe")
+                    .font(.title)
+                    .bold()
+                Text("AutoQSO läuft als lokaler Telnet-Cluster-Server, an den Sie externe Log-Software (z.B. MacLoggerDX) koppeln können.")
+                    .font(.body)
+                
+                Text("Konfiguration:")
+                    .font(.headline)
+                Text("• Port & Login: Der Server horcht standardmäßig auf Port 8000. Das Login-Rufzeichen (z.B. GUEST) kann in den Einstellungen angepasst werden.\n• Client-Tracking: Der Live-Status im linken Sidepanel zeigt die Anzahl der aktuell verbundenen externen Programme an.")
+                
+                Text("WSJT-X Spotter Telnet-Ausgabe:")
+                    .font(.headline)
+                Text("• Ist dieser Schalter aktiviert, werden alle gefilterten WSJT-X Dekodierungen als rohe DX-Spots im Telnet-Format ausgegeben, sodass sie sofort in Ihrem Log-Programm auf der Karte erscheinen. Standardmäßig ist diese Option deaktiviert (keine Ausgabe).")
             }
             
         case .logbook:
@@ -157,15 +195,15 @@ struct HelpView: View {
                 
                 Text("Inkrementeller Sync:")
                     .font(.headline)
-                Text("• Startet automatisch 1 Tag vor dem Datum des neuesten QSOs in der SQLite-Datenbank.\n• Verhindert das doppelte Laden bestehender QSOs durch strikte Eindeutigkeitsprüfung (`uniqueKey`).")
+                Text("• Startet automatisch ab dem QSO-Datum (minus 2 Tage Cooldown) Ihres neuesten Eintrags.\n• Synchronisiert Einträge direkt mit LoTW (Logbook of The World) und QRZ.com XML.")
                 
-                Text("Sync-Datum Reset & Neu-Initialisierung:")
+                Text("ADIF-Datei importieren:")
                     .font(.headline)
-                Text("• Sync-Datum auf 1900 zurücksetzen: Erzwingt einen Re-Sync ab 1900-01-01 ohne bestehende Daten zu löschen.\n• Logbuch leeren & Re-Sync: Leert die SQLite-Datenbank komplett und baut das Logbuch neu auf.")
+                Text("• Über den Button 'ADIF Datei hochladen' können Sie bestehende Logbücher im `.adi` / `.adif` Format in Ihre lokale SQLite-Datenbank einspielen. Duplikate werden anhand des eindeutigen Schlüssels (Call, Band, Mode, Zeit) automatisch aussortiert.")
                 
-                Text("Zeilenweises Löschen:")
+                Text("Logbuch leeren / Löschen:")
                     .font(.headline)
-                Text("• Jede Zeile verfügt über ein direktes Mülleimer-Icon 🗑️.\n• Mehrere Einträge können per Shift/Cmd markiert und über den Toolbar-Button oder per Rechtsklick gelöscht werden.")
+                Text("• Löschen (🗑️): QSOs können einzeln oder über Mehrfachauswahl gelöscht werden.\n• Logbuch löschen: Der Button in den Einstellungen entfernt alle lokalen QSOs aus der Datenbank nach Bestätigung eines Sicherheitsdialogs.")
             }
             
         case .storage:
@@ -221,10 +259,10 @@ struct HelpView: View {
                     .font(.title)
                     .bold()
                 
-                // Version 2.0.4
+                // Version 3.0.0
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 2.0.4")
+                        Text("Version 3.0.0")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -239,6 +277,33 @@ struct HelpView: View {
                             .cornerRadius(4)
                     }
                     VStack(alignment: .leading, spacing: 5) {
+                        Text("🌐 Detektierbare Logs, DX Cluster Manager & Layout-Flexibilität")
+                            .font(.subheadline)
+                            .bold()
+                        Text("• Losgelöste Log-Konsole: Das Diagnosefenster lässt sich abkoppeln und dockt beim Schließen wieder im Hauptfenster an.")
+                        Text("• Integrierter Cluster-Manager: Hinzufügen, Editieren, Löschen und per Drag-and-Drop Sortieren von Clustern in den Einstellungen.")
+                        Text("• Telnet Server Splittung: DX Cluster und Telnet Server sind eigenständige Abschnitte in Sidebar und Einstellungen.")
+                        Text("• ADIF Datei Import: Bequemer Import von QSOs via `.adi`/`.adif`-Dateien direkt über die Einstellungen.")
+                        Text("• Ansichtsoptionen: Freie Wahl der chronologischen Sortierung (Neueste oben/unten) und Farbschemas (Hell/Dunkel/System).")
+                        Text("• Höhenerhalt: Speichert die Höhen des Log- und Most Wanted-Panels permanent ab, um ein flüssiges Wiederöffnen zu sichern.")
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+                
+                Divider()
+                
+                // Version 2.0.4
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 2.0.4")
+                            .font(.headline)
+                            .bold()
+                    }
+                    VStack(alignment: .leading, spacing: 5) {
                         Text("⚡ Stabilitäts- & Timing-Verbesserungen")
                             .font(.subheadline)
                             .bold()
@@ -251,7 +316,7 @@ struct HelpView: View {
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.green.opacity(0.08))
+                .background(Color.gray.opacity(0.05))
                 .cornerRadius(8)
                 
                 Divider()

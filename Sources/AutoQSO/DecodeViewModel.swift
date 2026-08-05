@@ -22,6 +22,24 @@ class DecodeViewModel: ObservableObject {
     @Published var currentQSOStatus: String = "Bereit"
     @Published var logHistory: [String] = []
     
+    // Filter Settings
+    @Published var blockedCountries: [String] = []
+    @Published var allowedCountries: [String] = []
+    @Published var allowedSpotterCountries: [String] = []
+    @Published var allowedDXCallsigns: [String] = []
+    @Published var allowedSpotterCallsigns: [String] = []
+    @Published var disabledContinents: [String] = []
+    @Published var blockedCQZones: [Int] = []
+    @Published var blockedITUZones: [Int] = []
+    
+    @Published var isFiltersEnabled: Bool = true
+    @Published var isWsjtSpecialFilterEnabled: Bool = false
+    @Published var isDuplicateFilterEnabled: Bool = true
+    @Published var duplicateSpotWindowMinutes: Int = 1
+    @Published var duplicateSpotFrequencyTolerance: Double = 0.5
+    
+    let matcher = PrefixMatcher()
+    
     func addLog(_ message: String) {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss"
@@ -40,6 +58,7 @@ class DecodeViewModel: ObservableObject {
     private var txTriggerAttempts: Int = 0
     private var lastTxTriggerTime: Date?
     private var lastTriggeredTarget: WSJTXDecode?
+    private var txEnabledStartTime: Date?
     
     var displayCallsign: String {
         if !selectedCallsign.isEmpty {
@@ -51,14 +70,74 @@ class DecodeViewModel: ObservableObject {
     // Default band for now, WSJT-X Status message provides the actual band, but for simplicity we can assume a default or get it from decodes (though decodes don't explicitly send band, only freq).
     // Let's deduce band from frequency.
     
+    // Cluster properties
+    @Published var isConnected1 = false
+    @Published var isConnected2 = false
+    @Published var isConnected3 = false
+    
+    @Published var clusterError1: String? = nil
+    @Published var clusterError2: String? = nil
+    @Published var clusterError3: String? = nil
+    
+    @Published var telnetClientCount = 0
+    @Published var telnetServerError: String? = nil
+    @Published var clusterSpots: [WSJTXDecode] = []
+    @Published var wsjtxRawLogs: [WSJTXRawLogEntry] = []
+    @Published var clusterRawLogs: [ClusterRawLogEntry] = []
+    
+    let client1 = DXClusterClient()
+    let client2 = DXClusterClient()
+    let client3 = DXClusterClient()
+    let telnetServer = DXClusterServer()
+    @Published var availableClusters: [ClusterServer] = []
+
     private var cancellables = Set<AnyCancellable>()
     
     init() {
+        if let data = UserDefaults.standard.data(forKey: "availableClusters"),
+           let list = try? JSONDecoder().decode([ClusterServer].self, from: data) {
+            self.availableClusters = list
+        } else {
+            self.availableClusters = ClusterServer.defaultClusters
+            if let data = try? JSONEncoder().encode(ClusterServer.defaultClusters) {
+                UserDefaults.standard.set(data, forKey: "availableClusters")
+            }
+        }
+        
+        // Load filter settings from UserDefaults
+        loadFilters()
+        
+        // Load CTY.DAT cache & Auto-refresh if > 14 days
+        loadCtyDatabase()
+        
+        // Setup DX Clusters and local Telnet Server
+        setupClusters()
+        
         // Immediately start server on launch from UserDefaults with fallbacks
         let savedPort = UserDefaults.standard.integer(forKey: "udpPort")
         let actualPort = savedPort > 0 ? UInt16(savedPort) : UInt16(2237)
         let savedAddress = UserDefaults.standard.string(forKey: "udpAddress") ?? "224.0.0.1"
         server.start(port: actualPort, address: savedAddress)
+        
+        server.onDecodeReceived = { [weak self] decode, rawData in
+            guard let self = self else { return }
+            let accepted = self.shouldAccept(decode: decode, recordDuplicates: true)
+            self.bridgeDecodeIfEnabled(decode: decode, rawData: rawData, accepted: accepted)
+            if !self.isFiltersEnabled || accepted {
+                if UserDefaults.standard.bool(forKey: "isWsjtTelnetOutputEnabled") {
+                    self.broadcastWSJTSpot(decode: decode)
+                }
+            }
+        }
+        
+        server.onRawLogReceived = { [weak self] type, message in
+            guard let self = self else { return }
+            let entry = WSJTXRawLogEntry(timestamp: Date(), type: type, message: message)
+            self.wsjtxRawLogs.append(entry)
+            if self.wsjtxRawLogs.count > 300 {
+                self.wsjtxRawLogs.removeFirst()
+            }
+        }
         
         server.objectWillChange
             .sink { [weak self] _ in
@@ -94,6 +173,7 @@ class DecodeViewModel: ObservableObject {
                     self.currentQSOStatus = "QSO mit \(entry.callsign) erfolgreich beendet!"
                     self.currentTargetCall = ""
                     self.qsoStartTime = nil
+                    self.txEnabledStartTime = nil
                     self.lastTriggeredTarget = nil
                     self.txTriggerAttempts = 0
                     self.lastTxTriggerTime = nil
@@ -115,6 +195,7 @@ class DecodeViewModel: ObservableObject {
                 self.currentQSOStatus = "QSO mit \(call) abgebrochen. Gesperrt für \(self.retryCooldownMinutes) Min."
                 self.currentTargetCall = ""
                 self.qsoStartTime = nil
+                self.txEnabledStartTime = nil
                 self.lastTriggeredTarget = nil
                 self.txTriggerAttempts = 0
                 self.lastTxTriggerTime = nil
@@ -135,6 +216,9 @@ class DecodeViewModel: ObservableObject {
                 if txTriggerAttempts > 0 {
                     addLog("✅ WSJT-X Sende-Bereitschaft (TX BEREIT) erfolgreich erkannt.")
                 }
+                if txEnabledStartTime == nil {
+                    txEnabledStartTime = Date()
+                }
                 txTriggerAttempts = 0
                 lastTxTriggerTime = nil
                 lastTriggeredTarget = nil
@@ -152,6 +236,7 @@ class DecodeViewModel: ObservableObject {
                             // Reset state
                             currentTargetCall = ""
                             qsoStartTime = nil
+                            txEnabledStartTime = nil
                             lastTriggeredTarget = nil
                             txTriggerAttempts = 0
                             lastTxTriggerTime = nil
@@ -166,33 +251,42 @@ class DecodeViewModel: ObservableObject {
                             return
                         }
                     }
-                }
-            }
-            
-            if let start = qsoStartTime {
-                let elapsed = Date().timeIntervalSince(start)
-                if elapsed > 120.0 {
+                } else if let enabledStart = txEnabledStartTime {
+                    // Sende-Bereitschaft (TX BEREIT) war bereits aktiv, ist nun aber wieder aus!
+                    let elapsed = Date().timeIntervalSince(enabledStart)
                     let failedCall = currentTargetCall
-                    blacklistedCalls[failedCall.uppercased()] = Date()
-                    let msg = "QSO mit \(failedCall) erfolglos (Timeout). Gesperrt für \(retryCooldownMinutes) Min."
-                    currentQSOStatus = msg
-                    addLog("⚠️ \(msg)")
+                    
+                    // "wenn tx bereits nach einem zyklus wieder aus ist, dann hat wsjtx das senden abgebrochen. Dann die Station nicht in Quarantäne nehmen und mit der nächsten weitermachen."
+                    if elapsed <= 25.0 {
+                        let msg = "QSO mit \(failedCall) nach nur einem Sende-Zyklus (\(Int(elapsed))s) abgebrochen (Keine Quarantäne)."
+                        currentQSOStatus = msg
+                        addLog("ℹ️ \(msg)")
+                    } else {
+                        // "Wenn 'TX Bereit' danach wieder aus ist ohne das ein QSO geloggt wurde, Call in Cooldown nehmen."
+                        blacklistedCalls[failedCall.uppercased()] = Date()
+                        let msg = "QSO mit \(failedCall) nach \(Int(elapsed))s erfolglos beendet (TX Bereit aus). Gesperrt für \(retryCooldownMinutes) Min."
+                        currentQSOStatus = msg
+                        addLog("⚠️ \(msg)")
+                    }
+                    
+                    // Reset target
                     currentTargetCall = ""
                     qsoStartTime = nil
+                    txEnabledStartTime = nil
                     lastTriggeredTarget = nil
                     txTriggerAttempts = 0
                     lastTxTriggerTime = nil
+                    return
                 } else {
-                    // Still waiting for current QSO to complete, halt, or timeout
+                    // stuck state workaround
+                    currentTargetCall = ""
+                    qsoStartTime = nil
+                    txEnabledStartTime = nil
+                    lastTriggeredTarget = nil
+                    txTriggerAttempts = 0
+                    lastTxTriggerTime = nil
                     return
                 }
-            } else {
-                // stuck state workaround
-                currentTargetCall = ""
-                qsoStartTime = nil
-                lastTriggeredTarget = nil
-                txTriggerAttempts = 0
-                lastTxTriggerTime = nil
             }
             return
         }
@@ -208,6 +302,7 @@ class DecodeViewModel: ObservableObject {
         var totalCQsOr73s = 0
         
         for decode in server.decodes {
+            if decode.isClusterSpot { continue }
             let call = decode.callsign.uppercased()
             guard !call.isEmpty else { continue }
             if !ownCall.isEmpty && call == ownCall {
@@ -223,6 +318,12 @@ class DecodeViewModel: ObservableObject {
             
             if isCQ || is73 {
                 totalCQsOr73s += 1
+                
+                // DX Filter Check
+                if !shouldAccept(decode: decode) {
+                    skippedCounts["Durch DX-Filter blockiert"] = (skippedCounts["Durch DX-Filter blockiert"] ?? 0) + 1
+                    continue
+                }
                 
                 // Strikter DXCC / Most Wanted Filter wenn nur Most Wanted erlaubt
                 if onlyMW {
@@ -334,6 +435,7 @@ class DecodeViewModel: ObservableObject {
         return "20M"
     }
     
+    
     func sendReply(for decode: WSJTXDecode) {
         server.activeDxCall = decode.callsign
         let reply = WSJTXReply(
@@ -352,5 +454,821 @@ class DecodeViewModel: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
             self?.server.sendReply(reply)
         }
+    }
+    
+    // MARK: - DX Filter System Logic
+
+    private var ctyCacheURL: URL {
+        let paths = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
+        let appSupport = paths[0].appendingPathComponent("com.dj6gi.AutoQSO", isDirectory: true)
+        try? FileManager.default.createDirectory(at: appSupport, withIntermediateDirectories: true)
+        return appSupport.appendingPathComponent("cty_cache.dat")
+    }
+
+    func loadCtyDatabase() {
+        if let savedDate = UserDefaults.standard.object(forKey: "cty_cache_date") as? Date {
+            if let content = try? String(contentsOf: ctyCacheURL, encoding: .utf8) {
+                matcher.parseCtyDat(content)
+                matcher.lastUpdate = savedDate
+                
+                // Auto-refresh check (14 Tage = 1209600 s)
+                if abs(savedDate.timeIntervalSinceNow) > 1209600 {
+                    updateCtyData()
+                }
+            } else {
+                updateCtyData()
+            }
+        } else {
+            updateCtyData()
+        }
+    }
+
+    private func addClusterRawLog(_ line: String, sourceId: Int) {
+        let label: String
+        switch sourceId {
+        case 1:
+            label = UserDefaults.standard.string(forKey: "cluster1Host") ?? "dxc.ve7cc.net"
+        case 2:
+            label = UserDefaults.standard.string(forKey: "cluster2Host") ?? "dxc.ve7cc.net"
+        case 3:
+            label = UserDefaults.standard.string(forKey: "cluster3Host") ?? "dx.k3lr.com"
+        default:
+            label = "Cluster"
+        }
+        
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        let ts = formatter.string(from: Date())
+        
+        DispatchQueue.main.async {
+            self.clusterRawLogs.append(ClusterRawLogEntry(timestamp: Date(), message: "[\(ts)] [\(label)] \(line)"))
+            if self.clusterRawLogs.count > 300 {
+                self.clusterRawLogs.removeFirst()
+            }
+        }
+    }
+
+    func setupClusters() {
+        client1.onLineReceived = { [weak self] line in
+            self?.addClusterRawLog(line, sourceId: 1)
+            self?.processClusterLine(line, sourceId: 1)
+        }
+        client1.onStateChange = { [weak self] state in
+            DispatchQueue.main.async {
+                self?.isConnected1 = (state == .ready)
+                if state == .ready { self?.clusterError1 = nil }
+            }
+        }
+        client1.onError = { [weak self] error in
+            DispatchQueue.main.async { self?.clusterError1 = error }
+        }
+        
+        client2.onLineReceived = { [weak self] line in
+            self?.addClusterRawLog(line, sourceId: 2)
+            self?.processClusterLine(line, sourceId: 2)
+        }
+        client2.onStateChange = { [weak self] state in
+            DispatchQueue.main.async {
+                self?.isConnected2 = (state == .ready)
+                if state == .ready { self?.clusterError2 = nil }
+            }
+        }
+        client2.onError = { [weak self] error in
+            DispatchQueue.main.async { self?.clusterError2 = error }
+        }
+        
+        client3.onLineReceived = { [weak self] line in
+            self?.addClusterRawLog(line, sourceId: 3)
+            self?.processClusterLine(line, sourceId: 3)
+        }
+        client3.onStateChange = { [weak self] state in
+            DispatchQueue.main.async {
+                self?.isConnected3 = (state == .ready)
+                if state == .ready { self?.clusterError3 = nil }
+            }
+        }
+        client3.onError = { [weak self] error in
+            DispatchQueue.main.async { self?.clusterError3 = error }
+        }
+        
+        telnetServer.onStatusChange = { [weak self] error in
+            DispatchQueue.main.async {
+                self?.telnetServerError = error
+            }
+        }
+        telnetServer.onClientCountChange = { [weak self] count in
+            DispatchQueue.main.async {
+                self?.telnetClientCount = count
+            }
+        }
+        
+        startTelnetServer()
+        reconnectClusters()
+    }
+    
+    func startTelnetServer() {
+        telnetServer.stop()
+        let port = UserDefaults.standard.integer(forKey: "telnetServerPort")
+        let actualPort = port > 0 ? UInt16(port) : UInt16(8000)
+        do {
+            try telnetServer.start(port: actualPort)
+            telnetServerError = nil
+        } catch {
+            telnetServerError = "Telnet Server: \(error.localizedDescription)"
+        }
+    }
+    
+    func reconnectClusters() {
+        client1.disconnect()
+        if UserDefaults.standard.bool(forKey: "isCluster1Enabled") {
+            let host = UserDefaults.standard.string(forKey: "cluster1Host") ?? "telnet.reversebeacon.net"
+            let port = UserDefaults.standard.integer(forKey: "cluster1Port")
+            let actualPort = port > 0 ? UInt16(port) : UInt16(7000)
+            client1.connect(host: host, port: actualPort)
+        }
+        
+        client2.disconnect()
+        if UserDefaults.standard.bool(forKey: "isCluster2Enabled") {
+            let host = UserDefaults.standard.string(forKey: "cluster2Host") ?? "dxc.ve7cc.net"
+            let port = UserDefaults.standard.integer(forKey: "cluster2Port")
+            let actualPort = port > 0 ? UInt16(port) : UInt16(23)
+            client2.connect(host: host, port: actualPort)
+        }
+        
+        client3.disconnect()
+        if UserDefaults.standard.bool(forKey: "isCluster3Enabled") {
+            let host = UserDefaults.standard.string(forKey: "cluster3Host") ?? "dx.k3lr.com"
+            let port = UserDefaults.standard.integer(forKey: "cluster3Port")
+            let actualPort = port > 0 ? UInt16(port) : UInt16(23)
+            client3.connect(host: host, port: actualPort)
+        }
+    }
+    
+    func saveClusters() {
+        if let data = try? JSONEncoder().encode(availableClusters) {
+            UserDefaults.standard.set(data, forKey: "availableClusters")
+            self.objectWillChange.send()
+        }
+    }
+    
+    func addCluster(name: String, host: String, port: UInt16) {
+        let newCluster = ClusterServer(name: name, host: host, port: port)
+        if !availableClusters.contains(where: { $0.host == host && $0.port == port }) {
+            availableClusters.append(newCluster)
+            saveClusters()
+        }
+    }
+    
+    func removeCluster(_ cluster: ClusterServer) {
+        availableClusters.removeAll { $0.id == cluster.id }
+        saveClusters()
+    }
+    
+    func restoreDefaultClusters() {
+        availableClusters = ClusterServer.defaultClusters
+        saveClusters()
+    }
+    
+    func sortClusters() {
+        availableClusters.sort { $0.name.lowercased() < $1.name.lowercased() }
+        saveClusters()
+    }
+    
+    func moveCluster(from source: IndexSet, to destination: Int) {
+        availableClusters.move(fromOffsets: source, toOffset: destination)
+        saveClusters()
+    }
+    
+    private func processClusterLine(_ line: String, sourceId: Int) {
+        let lower = line.lowercased()
+        if lower.contains("login:") || lower.contains("enter your call") || lower.contains("callsign:") {
+            let client: DXClusterClient
+            switch sourceId {
+            case 1: client = client1
+            case 2: client = client2
+            case 3: client = client3
+            default: return
+            }
+            let loginCall = UserDefaults.standard.string(forKey: "clusterCallsign") ?? "GUEST"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                client.send(text: loginCall)
+            }
+            return
+        }
+        
+        if line.contains("DX de") {
+            parseLiveSpot(line)
+        } else {
+            parseTableSpot(line)
+        }
+    }
+    
+    private func parseLiveSpot(_ line: String) {
+        guard let deRange = line.range(of: "DX de ", options: .caseInsensitive),
+              let colonIndex = line[deRange.upperBound...].firstIndex(of: ":") else { return }
+        
+        let spotter = String(line[deRange.upperBound..<colonIndex]).trimmingCharacters(in: .whitespaces)
+        let afterColon = String(line[line.index(after: colonIndex)...])
+        let components = afterColon.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+        
+        guard components.count >= 3 else { return }
+        let freqStr = components[0]
+        let dxCall = components[1]
+        
+        var comment = ""
+        if components.count > 3 {
+            if let callRange = afterColon.range(of: dxCall) {
+                let startOfComment = callRange.upperBound
+                let lastWord = components.last!
+                if let endOfComment = afterColon.range(of: lastWord, options: .backwards) {
+                    comment = String(afterColon[startOfComment..<endOfComment.lowerBound]).trimmingCharacters(in: .whitespaces)
+                }
+            }
+        }
+        createAndAddClusterSpot(call: dxCall, freq: Double(freqStr) ?? 0.0, spotter: spotter, comment: comment, raw: line)
+    }
+    
+    private func parseTableSpot(_ line: String) {
+        let components = line.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+        guard components.count >= 4, let firstVal = Double(components[0].replacingOccurrences(of: ":", with: "")), firstVal > 10.0 else { return }
+        
+        let freq = firstVal
+        let dxCall = components[1]
+        
+        var spotter = "Table"
+        if let startBracket = line.lastIndex(of: "<"), let endBracket = line.lastIndex(of: ">"), startBracket < endBracket {
+            let range = line.index(after: startBracket)..<endBracket
+            spotter = String(line[range]).trimmingCharacters(in: .whitespaces)
+        }
+        
+        var comment = ""
+        if let callIndex = components.firstIndex(of: dxCall), components.count > callIndex + 1 {
+            let remaining = components[(callIndex + 1)..<components.count].joined(separator: " ")
+            let datePattern = "\\d{1,2}-[A-Za-z]{3}-\\d{4}"
+            comment = remaining.replacingOccurrences(of: datePattern, with: "", options: .regularExpression)
+            comment = comment.replacingOccurrences(of: "\\d{4}Z", with: "", options: .regularExpression)
+            if let bIndex = comment.firstIndex(of: "<") { comment = String(comment[..<bIndex]) }
+            comment = comment.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
+        createAndAddClusterSpot(call: dxCall, freq: freq, spotter: spotter, comment: comment, raw: line)
+    }
+    
+    private func millisecondsSinceMidnightUTC() -> UInt32 {
+        var calendar = Calendar.current
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = Date()
+        let startOfDay = calendar.startOfDay(for: now)
+        let seconds = now.timeIntervalSince(startOfDay)
+        return UInt32(seconds * 1000)
+    }
+    
+    private func createAndAddClusterSpot(call: String, freq: Double, spotter: String, comment: String, raw: String) {
+        let hfFreqHz = UInt64(freq * 1000)
+        let cleanComment = comment.isEmpty ? "DX spot" : comment
+        
+        var decode = WSJTXDecode(
+            time: millisecondsSinceMidnightUTC(),
+            snr: 0,
+            deltaTime: 0.0,
+            deltaFrequency: 0,
+            dialFrequency: hfFreqHz,
+            mode: "SPOT",
+            message: cleanComment,
+            lowConfidence: false,
+            offAir: false,
+            isClusterSpot: true,
+            spotter: spotter
+        )
+        decode.customCallsign = call
+        
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            let isDuplicate = self.clusterSpots.contains { existing in
+                existing.callsign == decode.callsign &&
+                abs(Double(existing.dialFrequency) / 1000.0 - freq) < 0.5
+            }
+            guard !isDuplicate else { return }
+            
+            self.clusterSpots.insert(decode, at: 0)
+            if self.clusterSpots.count > 500 {
+                self.clusterSpots.removeSubrange(500...)
+            }
+            
+            self.server.decodes.insert(decode, at: 0)
+            if self.server.decodes.count > 500 {
+                self.server.decodes.removeSubrange(500...)
+            }
+            
+            let accepted = self.shouldAccept(decode: decode, recordDuplicates: false)
+            if !self.isFiltersEnabled || accepted {
+                let resolvedCountry = self.matcher.country(for: call)
+                let resolvedContinent = self.matcher.continent(for: call)
+                let resolvedCq = self.matcher.cqZone(for: call)
+                let resolvedItu = self.matcher.ituZone(for: call)
+                let resolvedCoords = self.matcher.coordinates(forCountry: resolvedCountry)
+                
+                let spot = DXSpot(
+                    dxCall: call,
+                    country: resolvedCountry,
+                    continent: resolvedContinent,
+                    cqZone: resolvedCq,
+                    ituZone: resolvedItu,
+                    frequency: freq,
+                    spotter: spotter,
+                    timestamp: Date(),
+                    rawLine: raw.isEmpty ? self.formatAsDXSpot(spotter: spotter, freq: freq, call: call, info: cleanComment) : raw,
+                    isFiltered: false,
+                    comment: cleanComment,
+                    isWsjt: false,
+                    latitude: resolvedCoords?.latitude,
+                    longitude: resolvedCoords?.longitude
+                )
+                self.telnetServer.broadcast(spot: spot)
+            }
+        }
+    }
+
+    private static let dxSpotTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HHmm"
+        f.timeZone = TimeZone(secondsFromGMT: 0)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
+
+    private func formatAsDXSpot(spotter: String, freq: Double, call: String, info: String) -> String {
+        let s = (spotter + ":").padding(toLength: 11, withPad: " ", startingAt: 0)
+        let f = String(format: "%8.1f", freq).padding(toLength: 9, withPad: " ", startingAt: 0)
+        let c = call.padding(toLength: 13, withPad: " ", startingAt: 0)
+        let i = info.padding(toLength: 30, withPad: " ", startingAt: 0)
+        let t = Self.dxSpotTimeFormatter.string(from: Date())
+        return "DX de \(s) \(f) \(c) \(i) \(t)Z"
+    }
+
+    func broadcastWSJTSpot(decode: WSJTXDecode) {
+        let mhz = Double(decode.totalFrequencyHz) / 1_000_000.0
+        let khz = mhz * 1000.0
+        let spotterName = UserDefaults.standard.string(forKey: "clusterCallsign") ?? "GUEST"
+        let fullInfo = "\(decode.mode) \(decode.snr)dB \(decode.message)".trimmingCharacters(in: .whitespaces)
+        let rawLine = formatAsDXSpot(spotter: spotterName, freq: khz, call: decode.callsign, info: fullInfo)
+        
+        let resolvedCountry = matcher.country(for: decode.callsign)
+        let resolvedContinent = matcher.continent(for: decode.callsign)
+        let resolvedCq = matcher.cqZone(for: decode.callsign)
+        let resolvedItu = matcher.ituZone(for: decode.callsign)
+        let resolvedCoords = matcher.coordinates(forCountry: resolvedCountry)
+        
+        let spot = DXSpot(
+            dxCall: decode.callsign,
+            country: resolvedCountry,
+            continent: resolvedContinent,
+            cqZone: resolvedCq,
+            ituZone: resolvedItu,
+            frequency: khz,
+            spotter: spotterName,
+            timestamp: Date(),
+            rawLine: rawLine,
+            isFiltered: false,
+            comment: fullInfo,
+            isWsjt: true,
+            latitude: resolvedCoords?.latitude,
+            longitude: resolvedCoords?.longitude
+        )
+        telnetServer.broadcast(spot: spot)
+    }
+
+    func updateCtyData() {
+        let url = URL(string: "https://www.country-files.com/cty/cty.dat")!
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            guard let self = self else { return }
+            if let data = data, let content = String(data: data, encoding: .utf8) {
+                let now = Date()
+                try? content.write(to: self.ctyCacheURL, atomically: true, encoding: .utf8)
+                UserDefaults.standard.set(now, forKey: "cty_cache_date")
+                DispatchQueue.main.async {
+                    self.matcher.parseCtyDat(content)
+                    self.matcher.lastUpdate = now
+                    self.addLog("CTY.DAT erfolgreich im Hintergrund aktualisiert.")
+                }
+            }
+        }.resume()
+    }
+
+    func loadFilters() {
+        let defaults = UserDefaults.standard
+        isFiltersEnabled = defaults.object(forKey: "dx_filters_enabled_global") as? Bool ?? true
+        blockedCountries = defaults.stringArray(forKey: "blockedCountries") ?? []
+        allowedCountries = defaults.stringArray(forKey: "allowedCountries") ?? []
+        allowedSpotterCountries = defaults.stringArray(forKey: "allowedSpotterCountries") ?? []
+        allowedDXCallsigns = defaults.stringArray(forKey: "allowedDXCallsigns") ?? []
+        allowedSpotterCallsigns = defaults.stringArray(forKey: "allowedSpotterCallsigns") ?? []
+        disabledContinents = defaults.stringArray(forKey: "disabledContinents") ?? []
+        blockedCQZones = defaults.array(forKey: "blockedCQZones") as? [Int] ?? []
+        blockedITUZones = defaults.array(forKey: "blockedITUZones") as? [Int] ?? []
+        
+        isWsjtSpecialFilterEnabled = defaults.bool(forKey: "isWsjtSpecialFilterEnabled")
+        isDuplicateFilterEnabled = defaults.object(forKey: "isDuplicateFilterEnabled") as? Bool ?? true
+        duplicateSpotWindowMinutes = defaults.integer(forKey: "duplicateSpotWindowMinutes")
+        if duplicateSpotWindowMinutes == 0 { duplicateSpotWindowMinutes = 1 }
+        duplicateSpotFrequencyTolerance = defaults.double(forKey: "duplicateSpotFrequencyTolerance")
+        if duplicateSpotFrequencyTolerance == 0.0 { duplicateSpotFrequencyTolerance = 0.5 }
+    }
+    
+    func saveFilters() {
+        let defaults = UserDefaults.standard
+        defaults.set(isFiltersEnabled, forKey: "dx_filters_enabled_global")
+        defaults.set(blockedCountries, forKey: "blockedCountries")
+        defaults.set(allowedCountries, forKey: "allowedCountries")
+        defaults.set(allowedSpotterCountries, forKey: "allowedSpotterCountries")
+        defaults.set(allowedDXCallsigns, forKey: "allowedDXCallsigns")
+        defaults.set(allowedSpotterCallsigns, forKey: "allowedSpotterCallsigns")
+        defaults.set(disabledContinents, forKey: "disabledContinents")
+        defaults.set(blockedCQZones, forKey: "blockedCQZones")
+        defaults.set(blockedITUZones, forKey: "blockedITUZones")
+        
+        defaults.set(isWsjtSpecialFilterEnabled, forKey: "isWsjtSpecialFilterEnabled")
+        defaults.set(isDuplicateFilterEnabled, forKey: "isDuplicateFilterEnabled")
+        defaults.set(duplicateSpotWindowMinutes, forKey: "duplicateSpotWindowMinutes")
+        defaults.set(duplicateSpotFrequencyTolerance, forKey: "duplicateSpotFrequencyTolerance")
+    }
+
+    func shouldAccept(decode: WSJTXDecode, recordDuplicates: Bool = false) -> Bool {
+        guard isFiltersEnabled else { return true }
+        
+        let call = decode.callsign.uppercased()
+        let comment = decode.message
+        
+        let country = matcher.country(for: call)
+        let continent = matcher.continent(for: call)
+        let cq = matcher.cqZone(for: call)
+        let itu = matcher.ituZone(for: call)
+        
+        // 1. Continent Filter
+        if disabledContinents.contains(continent) {
+            return false
+        }
+        
+        // 2. Blocked Countries (Blacklist)
+        if isCountryBlocked(country) {
+            return false
+        }
+        
+        // 3. Allowed DX Countries (Whitelist)
+        if !allowedCountries.isEmpty && !countryMatches(country, in: allowedCountries) {
+            return false
+        }
+        
+        // 4. Blocked CQ Zones
+        if let cqVal = cq, blockedCQZones.contains(cqVal) {
+            return false
+        }
+        
+        // 5. Blocked ITU Zones
+        if let ituVal = itu, blockedITUZones.contains(ituVal) {
+            return false
+        }
+        
+        // 6. Allowed DX Callsigns (Whitelist)
+        if !allowedDXCallsigns.isEmpty && !callsignMatches(call, in: allowedDXCallsigns) {
+            return false
+        }
+        
+        // 7. Spotter Filter (applied to decode.spotter for clusters)
+        if decode.isClusterSpot {
+            let spotter = decode.spotter
+            if isSpotterBlocked(spotter) {
+                return false
+            }
+        }
+        
+        // 8. WSJT Special Filter (Show only CQ, RR, RR73, RRR, 73)
+        if isWsjtSpecialFilterEnabled {
+            let upper = comment.uppercased()
+            let tokens = upper.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
+            var passed = false
+            for token in tokens {
+                if token.hasPrefix("CQ") || token == "RR73" || token == "RRR" || token == "73" || token == "RR" {
+                    passed = true
+                    break
+                }
+            }
+            if !passed { return false }
+        }
+        
+        // 9. Duplicate Filter
+        if isDuplicateFilterEnabled {
+            let freqMhz = Double(decode.dialFrequency) / 1_000_000.0 + Double(decode.deltaFrequency) / 1_000_000.0
+            let freqKhz = freqMhz * 1000.0
+            if isDuplicateSpot(id: decode.id, call: call, freq: freqKhz, record: recordDuplicates) {
+                return false
+            }
+        }
+        
+        return true
+    }
+
+    func isAutoQSOInteresting(decode: WSJTXDecode) -> Bool {
+        let call = decode.callsign.uppercased()
+        guard !call.isEmpty else { return false }
+        
+        let ownCall = (UserDefaults.standard.string(forKey: "lotwUsername") ?? "").uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        if !ownCall.isEmpty && call == ownCall {
+            return false
+        }
+        
+        if !decode.isClusterSpot {
+            let upperMsg = decode.message.uppercased()
+            let msgTokens = upperMsg.components(separatedBy: .whitespacesAndNewlines).map { $0.trimmingCharacters(in: CharacterSet.alphanumerics.inverted) }
+            
+            let isCQ = upperMsg.contains("CQ ") || upperMsg.hasPrefix("CQ")
+            let is73 = msgTokens.contains("73") || msgTokens.contains("RR73") || msgTokens.contains("RRR")
+            
+            guard isCQ || is73 else { return false }
+        }
+        
+        // 1. Filtered out by DX Filters
+        if !shouldAccept(decode: decode) {
+            return false
+        }
+        
+        // 2. Only Most Wanted filter active
+        let onlyMW = UserDefaults.standard.bool(forKey: "onlyMostWanted")
+        let maxRank = UserDefaults.standard.integer(forKey: "maxMostWantedRank") > 0 ? UserDefaults.standard.integer(forKey: "maxMostWantedRank") : 100
+        if onlyMW {
+            if !MostWantedManager.shared.isMostWanted(callsign: call, maxRank: maxRank) {
+                return false
+            }
+        }
+        
+        // 3. Worked before on this band
+        if lotwManager.hasWorked(callsign: call, band: decode.band) {
+            return false
+        }
+        
+        // 4. In cooldown blacklist
+        if let blacklistedAt = blacklistedCalls[call] {
+            let elapsedMinutes = Date().timeIntervalSince(blacklistedAt) / 60.0
+            if elapsedMinutes < Double(retryCooldownMinutes) {
+                return false
+            }
+        }
+        
+        return true
+    }
+
+    func bridgeDecodeIfEnabled(decode: WSJTXDecode, rawData: Data, accepted: Bool) {
+        let bridgePort = UserDefaults.standard.integer(forKey: "udpBridgePort")
+        guard bridgePort > 0 else { return }
+        
+        if isFiltersEnabled && !accepted {
+            return
+        }
+        
+        server.sendRaw(data: rawData, toPort: UInt16(bridgePort))
+    }
+
+    private let usSynonyms = Set(["usa", "united states", "us"])
+    private let usRegions = ["alaska", "hawaii", "puerto rico", "virgin islands", "guam"]
+
+    private func countryMatches(_ country: String, in filters: [String]) -> Bool {
+        let cleanCountry = country.trimmingCharacters(in: .whitespaces).lowercased()
+        return filters.contains(where: { filter in
+            let cleanFilter = filter.trimmingCharacters(in: .whitespaces).lowercased()
+            if cleanCountry.contains(cleanFilter) || cleanFilter.contains(cleanCountry) { return true }
+            if cleanFilter == "deutschland" && cleanCountry.contains("germany") { return true }
+            if usSynonyms.contains(cleanFilter) {
+                if cleanCountry.contains("united states") || usRegions.contains(where: { cleanCountry.contains($0) }) { return true }
+            }
+            return false
+        })
+    }
+
+    private func isCountryBlocked(_ country: String) -> Bool {
+        return countryMatches(country, in: blockedCountries)
+    }
+
+    private func callsignMatches(_ callsign: String, in filters: [String]) -> Bool {
+        let cleanCall = callsign.trimmingCharacters(in: .whitespaces).uppercased()
+        return filters.contains(where: { filter in
+            let cleanFilter = filter.trimmingCharacters(in: .whitespaces).uppercased()
+            if cleanFilter.isEmpty { return false }
+            return cleanCall.hasPrefix(cleanFilter) || cleanCall == cleanFilter
+        })
+    }
+
+    private func isSpotterBlocked(_ spotter: String) -> Bool {
+        if !allowedSpotterCountries.isEmpty {
+            let spotterCountry = matcher.country(for: spotter)
+            if !countryMatches(spotterCountry, in: allowedSpotterCountries) {
+                return true
+            }
+        }
+        if !allowedSpotterCallsigns.isEmpty {
+            let cleanSpotter = spotter.components(separatedBy: "-")[0].trimmingCharacters(in: .whitespaces).uppercased()
+            if !callsignMatches(cleanSpotter, in: allowedSpotterCallsigns) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private var recentSpots: [(id: UUID, dxCall: String, freq: Double, time: Date)] = []
+    private let recentSpotsLock = NSLock()
+
+    private func isDuplicateSpot(id: UUID, call: String, freq: Double, record: Bool) -> Bool {
+        let now = Date()
+        recentSpotsLock.lock()
+        defer { recentSpotsLock.unlock() }
+        recentSpots.removeAll { now.timeIntervalSince($0.time) > Double(duplicateSpotWindowMinutes * 60) }
+        let isDup = recentSpots.contains(where: { $0.id != id && $0.dxCall == call && abs($0.freq - freq) < duplicateSpotFrequencyTolerance })
+        if !isDup && record {
+            recentSpots.append((id: id, dxCall: call, freq: freq, time: now))
+        }
+        return isDup
+    }
+
+    // MARK: - UI helper actions
+
+    func addBlockedCountry(_ country: String) {
+        let trimmed = country.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if !blockedCountries.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) {
+            blockedCountries.append(trimmed)
+            saveFilters()
+            clearBlockedDecodes()
+        }
+    }
+
+    func removeBlockedCountry(_ country: String) {
+        blockedCountries.removeAll { $0.caseInsensitiveCompare(country) == .orderedSame }
+        saveFilters()
+    }
+
+    func addAllowedCountry(_ country: String) {
+        let trimmed = country.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if !allowedCountries.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) {
+            allowedCountries.append(trimmed)
+            saveFilters()
+            clearBlockedDecodes()
+        }
+    }
+
+    func removeAllowedCountry(_ country: String) {
+        allowedCountries.removeAll { $0.caseInsensitiveCompare(country) == .orderedSame }
+        saveFilters()
+    }
+
+    func toggleContinent(_ continent: String) {
+        if disabledContinents.contains(continent) {
+            disabledContinents.removeAll { $0 == continent }
+        } else {
+            disabledContinents.append(continent)
+        }
+        saveFilters()
+        clearBlockedDecodes()
+    }
+
+    func setAllContinents(enabled: Bool) {
+        if enabled {
+            disabledContinents.removeAll()
+        } else {
+            disabledContinents = ["AF", "AN", "AS", "EU", "NA", "OC", "SA"]
+        }
+        saveFilters()
+        clearBlockedDecodes()
+    }
+
+    func addBlockedCQZone(_ zone: Int) {
+        if !blockedCQZones.contains(zone) {
+            blockedCQZones.append(zone)
+            blockedCQZones.sort()
+            saveFilters()
+            clearBlockedDecodes()
+        }
+    }
+
+    func removeBlockedCQZone(_ zone: Int) {
+        blockedCQZones.removeAll { $0 == zone }
+        saveFilters()
+    }
+
+    func addBlockedITUZone(_ zone: Int) {
+        if !blockedITUZones.contains(zone) {
+            blockedITUZones.append(zone)
+            blockedITUZones.sort()
+            saveFilters()
+            clearBlockedDecodes()
+        }
+    }
+
+    func removeBlockedITUZone(_ zone: Int) {
+        blockedITUZones.removeAll { $0 == zone }
+        saveFilters()
+    }
+
+    func addAllowedDXCallsign(_ callsign: String) {
+        let trimmed = callsign.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard !trimmed.isEmpty else { return }
+        if !allowedDXCallsigns.contains(trimmed) {
+            allowedDXCallsigns.append(trimmed)
+            saveFilters()
+            clearBlockedDecodes()
+        }
+    }
+
+    func removeAllowedDXCallsign(_ callsign: String) {
+        allowedDXCallsigns.removeAll { $0 == callsign }
+        saveFilters()
+    }
+
+    func addAllowedSpotterCountry(_ country: String) {
+        let trimmed = country.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if !allowedSpotterCountries.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) {
+            allowedSpotterCountries.append(trimmed)
+            saveFilters()
+            clearBlockedDecodes()
+        }
+    }
+
+    func removeAllowedSpotterCountry(_ country: String) {
+        allowedSpotterCountries.removeAll { $0.caseInsensitiveCompare(country) == .orderedSame }
+        saveFilters()
+    }
+
+    func addAllowedSpotterCallsign(_ callsign: String) {
+        let trimmed = callsign.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard !trimmed.isEmpty else { return }
+        if !allowedSpotterCallsigns.contains(trimmed) {
+            allowedSpotterCallsigns.append(trimmed)
+            saveFilters()
+            clearBlockedDecodes()
+        }
+    }
+
+    func removeAllowedSpotterCallsign(_ callsign: String) {
+        allowedSpotterCallsigns.removeAll { $0 == callsign }
+        saveFilters()
+    }
+
+    func countrySuggestions(for query: String) -> [String] {
+        let clean = query.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !clean.isEmpty else { return [] }
+        return matcher.allCountries().filter { $0.lowercased().hasPrefix(clean) }.prefix(5).map { $0 }
+    }
+
+    func clearBlockedDecodes() {
+        DispatchQueue.main.async { [weak self] in
+            self?.objectWillChange.send()
+        }
+    }
+    
+    // Conflict checking
+    struct FilterConflict {
+        let callsign: String
+        let callsignCountry: String
+        let allowedCountriesText: String
+        let isTotalConflict: Bool
+    }
+
+    var spotterFilterConflict: FilterConflict? {
+        guard !allowedSpotterCountries.isEmpty, !allowedSpotterCallsigns.isEmpty else { return nil }
+        var conflictingCallsigns: [(callsign: String, country: String)] = []
+        var matchingCount = 0
+        for callsign in allowedSpotterCallsigns {
+            let cleanCall = callsign.components(separatedBy: "-")[0].trimmingCharacters(in: .whitespaces).uppercased()
+            let country = matcher.country(for: cleanCall)
+            if countryMatches(country, in: allowedSpotterCountries) {
+                matchingCount += 1
+            } else {
+                conflictingCallsigns.append((callsign: callsign, country: country))
+            }
+        }
+        guard let firstConflict = conflictingCallsigns.first else { return nil }
+        let countriesStr = allowedSpotterCountries.joined(separator: ", ")
+        let isTotal = (matchingCount == 0)
+        return FilterConflict(callsign: firstConflict.callsign, callsignCountry: firstConflict.country, allowedCountriesText: countriesStr, isTotalConflict: isTotal)
+    }
+
+    var dxCallFilterConflict: FilterConflict? {
+        guard !allowedCountries.isEmpty, !allowedDXCallsigns.isEmpty else { return nil }
+        var conflictingCallsigns: [(callsign: String, country: String)] = []
+        var matchingCount = 0
+        for callsign in allowedDXCallsigns {
+            let cleanCall = callsign.components(separatedBy: "-")[0].trimmingCharacters(in: .whitespaces).uppercased()
+            let country = matcher.country(for: cleanCall)
+            if countryMatches(country, in: allowedCountries) {
+                matchingCount += 1
+            } else {
+                conflictingCallsigns.append((callsign: callsign, country: country))
+            }
+        }
+        guard let firstConflict = conflictingCallsigns.first else { return nil }
+        let countriesStr = allowedCountries.joined(separator: ", ")
+        let isTotal = (matchingCount == 0)
+        return FilterConflict(callsign: firstConflict.callsign, callsignCountry: firstConflict.country, allowedCountriesText: countriesStr, isTotalConflict: isTotal)
     }
 }

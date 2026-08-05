@@ -9,6 +9,8 @@ class WSJTXServer: ObservableObject {
     
     var onQSOLogged: (([QSOEntry]) -> Void)?
     var onHaltTx: (() -> Void)?
+    var onDecodeReceived: ((WSJTXDecode, Data) -> Void)?
+    var onRawLogReceived: ((WSJTXRawLogType, String) -> Void)?
     
     private let queue = DispatchQueue(label: "com.autoqso.wsjtx", qos: .userInitiated)
     private var wsjtSocketFd: Int32 = -1
@@ -38,7 +40,9 @@ class WSJTXServer: ObservableObject {
             guard let self = self else { return }
                 let fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
                 guard fd >= 0 else {
-                    print("Failed to create socket: errno=\(errno)")
+                    let errMsg = "Fehler: UDP Socket konnte nicht erstellt werden (errno=\(errno))"
+                    print(errMsg)
+                    self.logRaw(.incoming, errMsg)
                     return
                 }
                 
@@ -65,13 +69,17 @@ class WSJTXServer: ObservableObject {
                         }
                     }
                     if bindResult == 0 { break }
-                    print("bind() attempt \(attempt) failed (errno=\(errno)), retrying in 200ms...")
+                    let attemptMsg = "bind() Versuch \(attempt) fehlgeschlagen (errno=\(errno)), erneuter Versuch in 200ms..."
+                    print(attemptMsg)
+                    self.logRaw(.incoming, attemptMsg)
                     usleep(200_000)
                 }
                 
                 guard bindResult == 0 else {
                     close(fd)
-                    print("bind() error: Konnte Port \(actualPort) nach 5 Versuchen nicht binden (errno=\(errno))")
+                    let errMsg = "Fehler: Konnte Port \(actualPort) nach 5 Versuchen nicht binden (errno=\(errno)). Eventuell blockiert eine andere App (z.B. RUMlogNG) diesen Port."
+                    print(errMsg)
+                    self.logRaw(.incoming, errMsg)
                     return
                 }
                 
@@ -95,12 +103,18 @@ class WSJTXServer: ObservableObject {
                     mreq.imr_interface.s_addr = inet_addr("0.0.0.0")
                     let joinResult = setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, socklen_t(MemoryLayout<ip_mreq>.size))
                     if joinResult == 0 {
-                        print("Multicast-Gruppe \(actualAddress) auf Port \(actualPort) beigetreten")
+                        let okMsg = "Multicast-Gruppe \(actualAddress) auf Port \(actualPort) erfolgreich beigetreten"
+                        print(okMsg)
+                        self.logRaw(.incoming, okMsg)
                     } else {
-                        print("IP_ADD_MEMBERSHIP fehlgeschlagen: errno=\(errno)")
+                        let errMsg = "Fehler: Konnte Multicast-Gruppe \(actualAddress) auf Port \(actualPort) nicht beitreten (errno=\(errno))"
+                        print(errMsg)
+                        self.logRaw(.incoming, errMsg)
                     }
                 } else {
-                    print("Unicast-Modus auf Port \(actualPort) (IP: \(actualAddress))")
+                    let unicastMsg = "Server gestartet im Unicast-Modus auf Port \(actualPort) (IP: \(actualAddress))"
+                    print(unicastMsg)
+                    self.logRaw(.incoming, unicastMsg)
                 }
                 
                 let source = DispatchSource.makeReadSource(fileDescriptor: fd, queue: self.queue)
@@ -126,6 +140,34 @@ class WSJTXServer: ObservableObject {
             readSource = nil
             close(fd)
             print("Socket stopped")
+        }
+    }
+    
+    private func logRaw(_ type: WSJTXRawLogType, _ message: String) {
+        DispatchQueue.main.async {
+            self.onRawLogReceived?(type, message)
+        }
+    }
+    
+    func sendRaw(data: Data, toPort port: UInt16, address: String = "127.0.0.1") {
+        let fd = socket(AF_INET, SOCK_DGRAM, 0)
+        guard fd >= 0 else { return }
+        defer { close(fd) }
+        
+        var dest = sockaddr_in()
+        dest.sin_family = sa_family_t(AF_INET)
+        dest.sin_port = port.bigEndian
+        dest.sin_addr.s_addr = inet_addr(address)
+        
+        let sent = withUnsafePointer(to: &dest) { destPtr in
+            destPtr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
+                sendto(fd, Array(data), data.count, 0, sa, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
+        }
+        if sent >= 0 {
+            self.logRaw(.outgoing, "Bridge: sent \(data.count) bytes to \(address):\(port)")
+        } else {
+            self.logRaw(.outgoing, "Bridge failed (errno=\(errno)): to \(address):\(port)")
         }
     }
     
@@ -184,12 +226,15 @@ class WSJTXServer: ObservableObject {
             if let dialFreq = reader.readUInt64() {
                 self.currentDialFrequency = dialFreq
             }
-            let _ = reader.readString() // mode
+            let mode = reader.readString() ?? ""
             let dxCall = reader.readString() ?? ""
             let _ = reader.readString() // report
             let _ = reader.readString() // txMode
             let txEnabled = reader.readBool() ?? false
             let transmitting = reader.readBool() ?? false
+            
+            let freqMhz = Double(self.currentDialFrequency) / 1_000_000.0
+            self.logRaw(.incoming, "Status: client=\(clientId) freq=\(String(format: "%.6f", freqMhz))MHz mode=\(mode) txEnabled=\(txEnabled) transmitting=\(transmitting) dxCall=\(dxCall)")
             
             DispatchQueue.main.async {
                 self.isTxEnabled = txEnabled
@@ -200,6 +245,7 @@ class WSJTXServer: ObservableObject {
             }
         case .haltTx:
             print("WSJT-X Halt TX empfangen")
+            self.logRaw(.incoming, "Halt TX: client=\(clientId)")
             DispatchQueue.main.async {
                 self.onHaltTx?()
             }
@@ -207,6 +253,7 @@ class WSJTXServer: ObservableObject {
             // Typ 3: WSJT-X signalisiert Beginn eines neuen Decode-Fensters → Liste leeren
             let _ = reader.readUInt8() // window type (optional, ignorieren)
             print("WSJT-X Clear empfangen → Decode-Liste wird geleert")
+            self.logRaw(.incoming, "Clear: client=\(clientId)")
             DispatchQueue.main.async {
                 self.decodes.removeAll()
             }
@@ -238,6 +285,9 @@ class WSJTXServer: ObservableObject {
                 offAir: offAir
             )
             
+            let freqMhz = Double(decode.totalFrequencyHz) / 1_000_000.0
+            self.logRaw(.decode, "Decode: client=\(clientId) msg=\"\(message)\" snr=\(snr) dt=\(dt) freq=\(String(format: "%.6f", freqMhz))MHz mode=\(mode) isNew=\(isNew)")
+            
             print("Decode (isNew=\(isNew)): \(message)")
             DispatchQueue.main.async {
                 // Doubletten verhindern: gleiche Nachricht + Zeit + Frequenz
@@ -249,6 +299,7 @@ class WSJTXServer: ObservableObject {
                 guard !isDuplicate else { return }
                 
                 self.decodes.insert(decode, at: 0)
+                self.onDecodeReceived?(decode, data)
                 if self.decodes.count > 500 {
                     self.decodes.removeSubrange(500...)
                 }
@@ -256,6 +307,7 @@ class WSJTXServer: ObservableObject {
         case .loggedAdif:
             if let adifText = reader.readString() {
                 let entries = ADIFParser.parseQSOs(from: adifText)
+                self.logRaw(.incoming, "Logged ADIF: client=\(clientId), entries=\(entries.count)")
                 print("WSJT-X Logged ADIF empfangen (\(entries.count) QSOs)")
                 DispatchQueue.main.async {
                     self.onQSOLogged?(entries)
@@ -287,17 +339,20 @@ class WSJTXServer: ObservableObject {
                     dxcc: ""
                 )
                 print("WSJT-X QSO Logged: \(dxCall) auf \(actualBand)")
+                self.logRaw(.incoming, "QSO Logged: client=\(clientId) call=\(dxCall) band=\(actualBand) mode=\(mode)")
                 DispatchQueue.main.async {
                     self.onQSOLogged?([entry])
                 }
             }
         case .reply, .enableTx:
+            self.logRaw(.incoming, "Ignored Packet \(msgType) from client \(clientId)")
             // Nachführung/Verwerfung: Empfangene EnableTx / Reply-Pakete auf dem UDP-Port ignorieren
             print("WSJT-X EnableTx / Reply Paket auf UDP-Port empfangen → wird ignoriert/verworfen")
             return
-            
+        case .heartbeat:
+            self.logRaw(.incoming, "Heartbeat: client=\(clientId)")
         default:
-            break
+            self.logRaw(.incoming, "Unhandled Packet (\(msgType)): client=\(clientId)")
         }
     }
     
@@ -308,6 +363,7 @@ class WSJTXServer: ObservableObject {
         
         guard wsjtSocketFd >= 0, let clientAddr = lastWSJTClientAddr else {
             print("Cannot send reply: socket not ready or client address unknown")
+            self.logRaw(.outgoing, "Reply failed: socket not ready/address unknown")
             return
         }
         var addr = clientAddr
@@ -319,8 +375,10 @@ class WSJTXServer: ObservableObject {
                     let sent = sendto(wsjtSocketFd, baseAddress, data.count, 0, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
                     if sent < 0 {
                         print("Error sending reply: errno=\(errno)")
+                        self.logRaw(.outgoing, "Reply failed (errno=\(errno)): client=\(self.wsjtxClientId) msg=\"\(reply.message)\"")
                     } else {
                         print("Sent reply of \(sent) bytes back to WSJT-X client")
+                        self.logRaw(.outgoing, "Reply: client=\(self.wsjtxClientId) msg=\"\(reply.message)\" freq=\(reply.deltaFrequency)Hz mode=\(reply.mode)")
                     }
                 }
             }
