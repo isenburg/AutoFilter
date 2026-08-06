@@ -47,6 +47,8 @@ struct SettingsView: View {
     @AppStorage("isWsjtTelnetOutputEnabled") private var isWsjtTelnetOutputEnabled = false
     @AppStorage("isNewestOnTop") private var isNewestOnTop = true
     @AppStorage("appColorScheme") private var appColorScheme = "system"
+    @AppStorage("fontSizeTable") private var fontSizeTable = 11.0
+    @AppStorage("fontSizeLog") private var fontSizeLog = 11.0
     
     @AppStorage("isCluster1Enabled") private var isCluster1Enabled = false
     @AppStorage("cluster1Host") private var cluster1Host = "telnet.reversebeacon.net"
@@ -614,9 +616,115 @@ struct SettingsView: View {
                     .pickerStyle(.segmented)
                     .frame(width: 280)
                 }
+                
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Schriftgrößen")
+                        .font(.title2)
+                        .bold()
+                    
+                    HStack {
+                        Text("Tabelle Schriftgröße:")
+                            .frame(width: 150, alignment: .leading)
+                        Slider(value: $fontSizeTable, in: 8...20, step: 1) {
+                            Text("")
+                        }
+                        .frame(width: 150)
+                        Text("\(Int(fontSizeTable)) pt")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Logs Schriftgröße:")
+                            .frame(width: 150, alignment: .leading)
+                        Slider(value: $fontSizeLog, in: 8...20, step: 1) {
+                            Text("")
+                        }
+                        .frame(width: 150)
+                        Text("\(Int(fontSizeLog)) pt")
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Farbanpassungen")
+                        .font(.title2)
+                        .bold()
+                    
+                    Text("Haupttabelle:")
+                        .font(.headline)
+                        .padding(.top, 4)
+                    
+                    Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
+                        GridRow {
+                            ColorPicker("Standard-Text", selection: colorBinding(forKey: "colorTableStandard", defaultColor: .primary))
+                            ColorPicker("Most Wanted (🔥)", selection: colorBinding(forKey: "colorTableMostWanted", defaultColor: .red))
+                        }
+                        GridRow {
+                            ColorPicker("Interessante (CQ)", selection: colorBinding(forKey: "colorTableCQ", defaultColor: .green))
+                            ColorPicker("Gearbeitete Stationen", selection: colorBinding(forKey: "colorTableWorked", defaultColor: .red.opacity(0.5)))
+                        }
+                    }
+                    
+                    Text("Log-Konsole:")
+                        .font(.headline)
+                        .padding(.top, 8)
+                    
+                    Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
+                        GridRow {
+                            ColorPicker("Konsolen-Hintergrund", selection: colorBinding(forKey: "colorLogBackground", defaultColor: Color(NSColor.textBackgroundColor)))
+                            ColorPicker("System-Logs", selection: colorBinding(forKey: "colorLogSystem", defaultColor: .primary))
+                        }
+                        GridRow {
+                            ColorPicker("WSJT-X Dekodierungen", selection: colorBinding(forKey: "colorLogWsjtxDecode", defaultColor: .green))
+                            ColorPicker("WSJT-X Eingehend", selection: colorBinding(forKey: "colorLogWsjtxIncoming", defaultColor: .blue))
+                        }
+                        GridRow {
+                            ColorPicker("WSJT-X Ausgehend", selection: colorBinding(forKey: "colorLogWsjtxOutgoing", defaultColor: .orange))
+                            ColorPicker("Cluster-Spots", selection: colorBinding(forKey: "colorLogCluster", defaultColor: .primary))
+                        }
+                    }
+                }
+                
+                Divider()
+                
+                Button("Standard-Farben & Größen wiederherstellen") {
+                    fontSizeTable = 11.0
+                    fontSizeLog = 11.0
+                    UserDefaults.standard.removeObject(forKey: "colorTableStandard")
+                    UserDefaults.standard.removeObject(forKey: "colorTableMostWanted")
+                    UserDefaults.standard.removeObject(forKey: "colorTableWorked")
+                    UserDefaults.standard.removeObject(forKey: "colorTableCQ")
+                    UserDefaults.standard.removeObject(forKey: "colorLogBackground")
+                    UserDefaults.standard.removeObject(forKey: "colorLogSystem")
+                    UserDefaults.standard.removeObject(forKey: "colorLogWsjtxDecode")
+                    UserDefaults.standard.removeObject(forKey: "colorLogWsjtxIncoming")
+                    UserDefaults.standard.removeObject(forKey: "colorLogWsjtxOutgoing")
+                    UserDefaults.standard.removeObject(forKey: "colorLogCluster")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
         }
     }
+    
+    private func colorBinding(forKey key: String, defaultColor: Color) -> Binding<Color> {
+        Binding(
+            get: {
+                let hex = UserDefaults.standard.string(forKey: key) ?? ""
+                return hex.isEmpty ? defaultColor : Color(hex: hex, defaultColor: defaultColor)
+            },
+            set: { newColor in
+                if let hex = newColor.toHex() {
+                    UserDefaults.standard.set(hex, forKey: key)
+                }
+            }
+        )
+    }
+
     
     private func selectCustomFolder() {
         let panel = NSOpenPanel()

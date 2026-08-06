@@ -77,10 +77,41 @@ Zur Diagnose und Rohdaten-Überwachung verfügt die App über drei umschaltbare 
 Im Einstellungsreiter **Ansicht** können visuelle Vorlieben konfiguriert werden:
 - **Sortierung**: Legen Sie fest, ob neue Einträge in der Decodier-Tabelle und den Listen oben (Newest on Top) oder unten (Newest on Bottom) angefügt werden sollen. Dies lässt sich auch direkt in der Hauptansicht über den Pfeil-Button umschalten.
 - **Farbschema**: Wählen Sie zwischen **System** (folgt den macOS-Systemeinstellungen), **Hell** (Light Mode) und **Dunkel** (Sleek Dark Mode).
+- **Schriftgrößen**: Schieberegler für die Schriftgröße der Decodier-Tabelle (8-20 pt) und der Log-Konsole (8-20 pt).
+- **Farbanpassungen**:
+  - **Tabelle**: Eigene Farben für Standard-Text, Most Wanted (🔥), interessante CQ-Rufe und gearbeitete Stationen.
+  - **Log-Konsole**: Anpassbare Farben für Konsolen-Hintergrund, System-Logs, WSJT-X Dekodierungen, Eingang (Steuerdaten), Ausgang (Sendedaten) und Cluster-Spots.
+- **Standardwerte**: Ein Button setzt alle Farben und Schriftgrößen auf den ursprünglichen Standardzustand zurück.
+
+## 9. Ausbreitungskarte (Propagation Map)
+
+Über den Button **Karte ↗** in der Menüleiste/Toolbar (im Bereich FENSTER) kann die **Ausbreitungskarte** in einem eigenständigen, separaten Fenster geöffnet werden:
+- **Karte**: Zeigt eine interaktive Landkarte mit Annotations-Badges der aktiven Länder. Auf den Badges sind die Bänder und die Anzahl der Spots (z.B. `20M:5`) verzeichnet.
+- **Datenbasis**: Die Karte aggregiert ausschließlich Spots und Decodes, die die aktiven Filterkriterien erfolgreich durchlaufen haben (d.h. nicht blockiert sind).
+- **Steuerungsoverlay (oben links)**:
+  - **Zeitfenster**: Stepper zur Einstellung des Auswertungszeitfensters (5 bis 120 Minuten).
+  - **Gearbeitete mitzählen**: Ein Ein-/Ausschalter. Standardmäßig werden bereits gearbeitete Stationen herausgefiltert. Ist dieser Schalter aktiviert, werden auch Stationen, die bereits auf dem Band gearbeitet wurden, in der Karte dargestellt und gezählt.
+  - **Statistik-Zähler**: Zeigt die Gesamtanzahl der empfangenen ("Empf.") und weitergeleiteten ("Durchg.") Decodes/Spots pro Stunde an.
+- **Sidebar**: Listet alle aktiven Länder auf, sortierbar nach Kontinent (einklappbar), alphabetisch (A-Z) oder nach Anzahl der Spots.
 
 ---
 
-## 9. Rechtlicher Hinweis
+## 10. Kompaktmodus (Compact Mode)
+
+Um den Platzbedarf auf dem Bildschirm drastisch zu reduzieren, kann AutoQSO über den Button **Kompakt** in der Menüleiste (Bereich FENSTER) in einen reduzierten Anzeigemodus versetzt werden.
+- **Reduzierte Oberfläche**: Blendet alle Log-Konsolen, Seitenleisten und die Statusleiste aus. Das Fenster lässt sich danach extrem klein zusammenschieben (bis zu `480x320` Pixel).
+- **Steuerleiste (oben)**: Bietet schnellen Zugriff auf:
+  - **Auto ON / Auto OFF**: Aktiviert oder deaktiviert den automatischen Sendebetrieb.
+  - **Filter AN / Filter AUS**: Schaltet die globalen DX-Filterregeln ein oder aus.
+  - **Karte ↗**: Öffnet das separate Fenster der Ausbreitungskarte.
+  - **WSJT-X & TX Status**: Kompakte Status-Lämpchen zur Überwachung der Verbindung und Sendeaktivität.
+  - **Normaler Modus Button**: Über das Pfeilsymbol ganz rechts wird die normale Vollansicht wiederhergestellt.
+- **Haupttabelle**: Zeigt eine reduzierte Decodier-Tabelle (Zeit, DX Call, Land, SNR, Nachricht) der gefilterten Spots.
+- **Most Wanted**: Ein horizontaler, platzsparender Ticker am unteren Rand listet aktive, ungearbeitete Most Wanted Stationen auf, die durch Anklicken sofort im Info-Banner fokussiert werden können.
+
+---
+
+## 11. Rechtlicher Hinweis
 
 > **WICHTIGER RECHTLICHER HINWEIS**
 >

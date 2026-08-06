@@ -26,7 +26,10 @@ struct ContentView: View {
     @AppStorage("isLogConsoleDetached") private var isLogConsoleDetached = false
     @AppStorage("isNewestOnTop") private var isNewestOnTop = true
     @AppStorage("appColorScheme") private var appColorScheme = "system"
+    @AppStorage("mainTab") private var mainTab = 0
     @AppStorage("logConsoleHeight") private var logConsoleHeight = 150.0
+    @AppStorage("fontSizeTable") private var fontSizeTable = 11.0
+    @AppStorage("fontSizeLog") private var fontSizeLog = 11.0
     @AppStorage("wsjtxShowDecodes") private var wsjtxShowDecodes = true
     @AppStorage("wsjtxShowIncoming") private var wsjtxShowIncoming = true
     @AppStorage("wsjtxShowOutgoing") private var wsjtxShowOutgoing = true
@@ -75,6 +78,15 @@ struct ContentView: View {
     @State private var newAllowedSpotterCallsign = ""
     
     @Environment(\.openWindow) private var openWindow
+    @AppStorage("isCompactMode") private var isCompactMode = false
+    @AppStorage("normalWindowWidth") private var normalWindowWidth = 850.0
+    @AppStorage("normalWindowHeight") private var normalWindowHeight = 600.0
+    @AppStorage("compactWindowWidth") private var compactWindowWidth = 500.0
+    @AppStorage("compactWindowHeight") private var compactWindowHeight = 350.0
+    @AppStorage("compactMostWantedHeight") private var compactMostWantedHeight = 60.0
+    
+    @State private var hostingWindow: NSWindow? = nil
+    @State private var isTransitioningMode = true
     
     private var isMulticastAddress: Bool {
         if let firstOctetStr = udpAddress.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: ".").first,
@@ -98,19 +110,42 @@ struct ContentView: View {
     
     @ViewBuilder
     private var topToolbarView: some View {
-        HStack(alignment: .center, spacing: 14) {
-            // WSJTX Auto Mode Section
-            VStack(alignment: .leading, spacing: 3) {
-                Text("WSJTX AUTO TRANSMIT")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.secondary)
+        HStack(alignment: .center, spacing: 0) {
+            // 1. LEFT SIDEBAR TOGGLE: Connection (Verbindung) button aligned above connection sidebar
+            HStack {
+                if isLeftSidebarVisible {
+                    Button(action: {
+                        isLeftSidebarVisible.toggle()
+                    }) {
+                        Image(systemName: "sidebar.left")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.blue)
+                    .help("Verbindungs-Seitenleiste ausblenden")
+                } else {
+                    Button(action: {
+                        isLeftSidebarVisible.toggle()
+                    }) {
+                        Image(systemName: "sidebar.left")
+                    }
+                    .buttonStyle(.bordered)
+                    .help("Verbindungs-Seitenleiste einblenden")
+                }
+            }
+            .frame(width: isLeftSidebarVisible ? CGFloat(leftSidebarWidth) : 100, alignment: .leading)
+            
+            Spacer()
+            
+            // 2. CENTER: AutoQSO / WSJTX Auto Transmit, Logbook, Sortierung, and standard window buttons (all centered on one single line!)
+            HStack(alignment: .center, spacing: 12) {
+                // WSJTX Auto Mode Section (AutoQSO)
                 HStack(spacing: 6) {
                     Button(action: {
                         viewModel.isAutoModeEnabled.toggle()
                     }) {
                         HStack(spacing: 4) {
                             Image(systemName: viewModel.isAutoModeEnabled ? "play.circle.fill" : "play.circle")
-                            Text(viewModel.isAutoModeEnabled ? "WSJTX AUTO TRANSMIT AKTIV" : "WSJTX AUTO TRANSMIT AUS")
+                            Text(viewModel.isAutoModeEnabled ? "Auto ON" : "Auto OFF")
                                 .fontWeight(.bold)
                         }
                     }
@@ -120,104 +155,99 @@ struct ContentView: View {
                     TextField("10", value: $retryCooldownMinutes, format: .number.grouping(.never))
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 45)
+                    
                     Text("Min. Sperre")
-                        .font(.caption2)
+                        .font(.body)
                         .foregroundStyle(.secondary)
                 }
-            }
-            
-            Divider()
-                .frame(height: 36)
-            
-            // Logbook Section
-            VStack(alignment: .leading, spacing: 3) {
-                Text("LOGBUCH")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.secondary)
-                Button("Öffnen ↗") {
+                
+                Divider()
+                    .frame(height: 20)
+                
+                // Logbook Section
+                Button(action: {
                     openWindow(id: "logbook")
+                }) {
+                    Image(systemName: "book")
                 }
                 .buttonStyle(.bordered)
-            }
-            
-            Divider()
-                .frame(height: 36)
-            
-            // Sort Order Section
-            VStack(alignment: .leading, spacing: 3) {
-                Text("SORTIERUNG")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.secondary)
+                .help("LoTW Logbuch öffnen")
+                
+                Divider()
+                    .frame(height: 20)
+                
+                // Sort Order Section
                 Button(action: {
                     isNewestOnTop.toggle()
                 }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: isNewestOnTop ? "arrow.up" : "arrow.down")
-                        Text(isNewestOnTop ? "Neu oben" : "Neu unten")
-                            .fontWeight(.medium)
-                    }
+                    Image(systemName: isNewestOnTop ? "arrow.up" : "arrow.down")
                 }
                 .buttonStyle(.bordered)
-                .help("Reihenfolge der Tabelleneinträge und Logs umschalten (neueste oben/unten)")
-            }
-            
-            Spacer()
-            
-            // Settings, Filter & Info Buttons
-            VStack(alignment: .trailing, spacing: 3) {
-                Text("FENSTER")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.secondary)
-                HStack(spacing: 8) {
-                    if isLeftSidebarVisible {
-                        Button(action: {
-                            isLeftSidebarVisible.toggle()
-                        }) {
-                            Label("Verbindung", systemImage: "sidebar.left")
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.blue)
-                    } else {
-                        Button(action: {
-                            isLeftSidebarVisible.toggle()
-                        }) {
-                            Label("Verbindung", systemImage: "sidebar.left")
-                        }
-                        .buttonStyle(.bordered)
+                .help(isNewestOnTop ? "Sortierung: Neueste unten" : "Sortierung: Neueste oben")
+                
+                Divider()
+                    .frame(height: 20)
+                
+                // Standard Window buttons (centered)
+                HStack(spacing: 6) {
+                    Button(action: {
+                        openWindow(id: "propagation_map")
+                    }) {
+                        Image(systemName: "map")
                     }
+                    .buttonStyle(.bordered)
+                    .help("Ausbreitungskarte in eigenem Fenster öffnen")
                     
-                    if isSidebarVisible {
-                        Button(action: {
-                            isSidebarVisible.toggle()
-                        }) {
-                            Label("DX-Filter", systemImage: "sidebar.right")
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.blue)
-                    } else {
-                        Button(action: {
-                            isSidebarVisible.toggle()
-                        }) {
-                            Label("DX-Filter", systemImage: "sidebar.right")
-                        }
-                        .buttonStyle(.bordered)
+                    Button(action: {
+                        toggleCompactMode(toCompact: true)
+                    }) {
+                        Image(systemName: "rectangle.compress.vertical")
                     }
+                    .buttonStyle(.bordered)
+                    .help("Kompaktmodus aktivieren")
                     
                     Button(action: {
                         openWindow(id: "settings")
                     }) {
-                        Label("Einstellungen", systemImage: "gearshape")
+                        Image(systemName: "gearshape")
                     }
                     .buttonStyle(.bordered)
+                    .help("Einstellungen öffnen")
                     
                     Button(action: {
                         openWindow(id: "help")
                     }) {
-                        Label("Info", systemImage: "questionmark.circle")
+                        Image(systemName: "questionmark.circle")
                     }
                     .buttonStyle(.bordered)
+                    .help("Hilfe & Info öffnen")
                 }
             }
+            
+            Spacer()
+            
+            // 3. RIGHT SIDEBAR TOGGLE: Filter (DX-Filter) button aligned above filter sidebar
+            HStack {
+                if isSidebarVisible {
+                    Button(action: {
+                        isSidebarVisible.toggle()
+                    }) {
+                        Image(systemName: "sidebar.right")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.blue)
+                    .help("Filter-Seitenleiste ausblenden")
+                } else {
+                    Button(action: {
+                        isSidebarVisible.toggle()
+                    }) {
+                        Image(systemName: "sidebar.right")
+                    }
+                    .buttonStyle(.bordered)
+                    .help("Filter-Seitenleiste einblenden")
+                }
+            }
+            .frame(width: isSidebarVisible ? CGFloat(rightSidebarWidth) : 100, alignment: .trailing)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -334,341 +364,11 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            topToolbarView
-            Divider()
-            displayBannerView
-            
-            HSplitView {
-                if isLeftSidebarVisible {
-                    leftSidebar
-                        .frame(minWidth: 220, idealWidth: CGFloat(leftSidebarWidth), maxWidth: 300, maxHeight: .infinity)
-                        .background(Color(NSColor.windowBackgroundColor))
-                        .background(
-                            GeometryReader { geo in
-                                Color.clear
-                                    .preference(key: LeftSidebarWidthPreferenceKey.self, value: geo.size.width)
-                            }
-                        )
-                        .onPreferenceChange(LeftSidebarWidthPreferenceKey.self) { width in
-                            guard isLeftSidebarVisible else { return }
-                            if width >= 220 {
-                                leftSidebarWidth = Double(width)
-                            }
-                        }
-                        .layoutPriority(0)
-                }
-                
-                VStack(spacing: 0) {
-                    if isLogConsoleDetached {
-                        HStack(spacing: 8) {
-                            Text("Logs laufen in separatem Fenster.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Button("Wieder andocken") {
-                                isLogConsoleDetached = false
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.mini)
-                        }
-                        .padding(6)
-                        .background(Color(NSColor.controlBackgroundColor))
-                        Divider()
-                    }
-                    
-                    VSplitView {
-                        if !isLogConsoleDetached {
-                            logConsoleView
-                                .frame(minHeight: 80, idealHeight: CGFloat(logConsoleHeight), maxHeight: 450)
-                                .background(
-                                    GeometryReader { geo in
-                                        Color.clear
-                                            .preference(key: ConsoleHeightPreferenceKey.self, value: geo.size.height)
-                                    }
-                                )
-                                .onPreferenceChange(ConsoleHeightPreferenceKey.self) { height in
-                                    if height >= 80 {
-                                        logConsoleHeight = Double(height)
-                                    }
-                                }
-                        }
-                        
-                        Table(displayDecodes, selection: $tableSelection, columnCustomization: $decodeColumnCustomization) {
-                            TableColumn("Zeit") { decode in
-                                timeCell(for: decode)
-                            }
-                            .width(min: 65, ideal: 75, max: 100)
-                            .customizationID("time")
-                            
-                            TableColumn("DX Call") { decode in
-                                dxCallCell(for: decode)
-                            }
-                            .width(min: 80, ideal: 105, max: 180)
-                            .customizationID("callsign")
-                            
-                            TableColumn("Land") { decode in
-                                landCell(for: decode)
-                            }
-                            .width(min: 80, ideal: 120, max: 200)
-                            .customizationID("country")
-                            
-                            TableColumn("Spotter") { decode in
-                                spotterCell(for: decode)
-                            }
-                            .width(min: 60, ideal: 80, max: 120)
-                            .customizationID("spotter")
-                            
-                            TableColumn("Most Wanted") { decode in
-                                mostWantedCell(for: decode)
-                            }
-                            .width(min: 75, ideal: 95, max: 130)
-                            .customizationID("mostwanted")
-                            
-                            TableColumn("Entfernung") { decode in
-                                distanceCell(for: decode)
-                            }
-                            .width(min: 65, ideal: 85, max: 120)
-                            .customizationID("distance")
-                            
-                            Group {
-                                TableColumn("SNR") { decode in
-                                    snrCell(for: decode)
-                                }
-                                .width(min: 40, ideal: 55, max: 80)
-                                .customizationID("snr")
-                                
-                                TableColumn("DT") { decode in
-                                    dtCell(for: decode)
-                                }
-                                .width(min: 40, ideal: 55, max: 80)
-                                .customizationID("dt")
-                                
-                                TableColumn("HF Freq") { decode in
-                                    hfFreqCell(for: decode)
-                                }
-                                .width(min: 90, ideal: 110, max: 160)
-                                .customizationID("hfFreq")
-                                
-                                TableColumn("Audio (Hz)") { decode in
-                                    audioFreqCell(for: decode)
-                                }
-                                .width(min: 60, ideal: 75, max: 110)
-                                .customizationID("audioFreq")
-                                
-                                TableColumn("Nachricht") { decode in
-                                    messageCell(for: decode)
-                                }
-                                .width(min: 120, ideal: 260, max: 2000)
-                                .customizationID("message")
-                            }
-                        }
-                        .layoutPriority(1)
-                        
-                        // Dedicated Most Wanted Section under the Main Table — dedupliziert nach Rufzeichen (bestes SNR pro Call)
-                        let mostWantedDecodes: [WSJTXDecode] = {
-                            var seen = Set<String>()
-                            var result: [WSJTXDecode] = []
-                            let combined = viewModel.server.decodes + viewModel.clusterSpots
-                            let filtered = combined
-                                .filter { decode in
-                                    let call = decode.callsign
-                                    guard !call.isEmpty else { return false }
-                                    let isMW = MostWantedManager.shared.isMostWanted(callsign: call)
-                                    let hasWorkedOnBand = viewModel.lotwManager.hasWorked(callsign: call, band: decode.band)
-                                    return isMW && !hasWorkedOnBand && viewModel.shouldAccept(decode: decode)
-                                }
-                                .sorted { a, b in
-                                    // Bestes SNR pro Callsign bevorzugen
-                                    a.snr > b.snr
-                                }
-                            for decode in filtered {
-                                let call = decode.callsign.uppercased()
-                                if !seen.contains(call) {
-                                    seen.insert(call)
-                                    result.append(decode)
-                                }
-                            }
-                            // Danach nach Most Wanted Rang sortieren
-                            return result.sorted { a, b in
-                                let rankA = MostWantedManager.shared.rankForCallsign(a.callsign) ?? 999
-                                let rankB = MostWantedManager.shared.rankForCallsign(b.callsign) ?? 999
-                                return rankA < rankB
-                            }
-                        }()
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            // Header
-                            HStack(spacing: 8) {
-                                Image(systemName: "flame.fill")
-                                    .foregroundColor(.red)
-                                    .font(.system(size: 14, weight: .bold))
-                                
-                                Text("MOST WANTED STATIONEN (UNGEARBEITET AUF DIESEM BAND)")
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundColor(.red)
-                                
-                                Text("\(mostWantedDecodes.count)")
-                                    .font(.system(size: 10, weight: .bold))
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(mostWantedDecodes.isEmpty ? Color.gray.opacity(0.3) : Color.red)
-                                    .foregroundColor(.white)
-                                    .cornerRadius(10)
-                                
-                                Spacer()
-                                
-                                let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
-                                Text("Basis-Locator: \(myGrid)")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.top, 6)
-                            .background(Color(NSColor.controlBackgroundColor))
-                            
-                            Divider()
-                            
-                            if mostWantedDecodes.isEmpty {
-                                VStack {
-                                    Spacer()
-                                    HStack {
-                                        Spacer()
-                                        Text("Keine ungearbeiteten Most Wanted Decodes oder Spots empfangen.")
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                        Spacer()
-                                    }
-                                    Spacer()
-                                }
-                                .frame(maxHeight: .infinity)
-                            } else {
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 8) {
-                                        ForEach(mostWantedDecodes, id: \.id) { decode in
-                                            let mwRank = MostWantedManager.shared.rankForCallsign(decode.callsign)
-                                            let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
-                                            let dist = decode.distanceKm(myGrid: myGrid)
-                                            
-                                            HStack(spacing: 8) {
-                                                VStack(alignment: .leading, spacing: 2) {
-                                                    HStack(spacing: 4) {
-                                                        Text(decode.callsign)
-                                                            .font(.system(size: 13, weight: .bold, design: .monospaced))
-                                                            .foregroundColor(.primary)
-                                                        if let rank = mwRank {
-                                                            Text("#\(rank)")
-                                                                .font(.system(size: 8, weight: .bold))
-                                                                .padding(.horizontal, 4)
-                                                                .padding(.vertical, 1)
-                                                                .background(Color.red)
-                                                                .foregroundColor(.white)
-                                                                .cornerRadius(3)
-                                                        }
-                                                    }
-                                                    Text(decode.message)
-                                                        .font(.system(size: 10, design: .monospaced))
-                                                        .foregroundColor(.secondary)
-                                                }
-                                                
-                                                VStack(alignment: .trailing, spacing: 2) {
-                                                    Text("\(decode.snr) dB")
-                                                        .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                                        .padding(.horizontal, 6)
-                                                        .padding(.vertical, 2)
-                                                        .background(Color.blue.opacity(0.15))
-                                                        .foregroundColor(.blue)
-                                                        .cornerRadius(4)
-                                                    
-                                                    if let d = dist {
-                                                        Text(String(format: "%.0f km", d))
-                                                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                                                            .foregroundColor(.secondary)
-                                                    }
-                                                }
-                                                
-                                                // Call Button / Spotter Badge
-                                                if decode.isClusterSpot {
-                                                    Text(decode.spotter.isEmpty ? "SPOT" : "de \(decode.spotter)")
-                                                        .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                                        .padding(.horizontal, 6)
-                                                        .padding(.vertical, 3)
-                                                        .background(Color.purple.opacity(0.15))
-                                                        .foregroundColor(.purple)
-                                                        .cornerRadius(4)
-                                                } else {
-                                                    Button(action: {
-                                                        viewModel.sendReply(for: decode)
-                                                    }) {
-                                                        Label("Anrufen", systemImage: "arrow.up.message.fill")
-                                                            .font(.caption)
-                                                            .fontWeight(.bold)
-                                                    }
-                                                    .buttonStyle(.borderedProminent)
-                                                    .tint(.red)
-                                                }
-                                            }
-                                            .padding(.horizontal, 10)
-                                            .padding(.vertical, 6)
-                                            .background(Color.red.opacity(0.06))
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 6)
-                                                    .stroke(Color.red.opacity(0.3), lineWidth: 1)
-                                            )
-                                            .cornerRadius(6)
-                                            .onTapGesture(count: 2) {
-                                                if !decode.isClusterSpot {
-                                                    viewModel.sendReply(for: decode)
-                                                }
-                                            }
-                                        }
-                                    }
-                                    .padding(.horizontal, 10)
-                                    .padding(.bottom, 8)
-                                }
-                                .frame(maxHeight: .infinity)
-                            }
-                        }
-                        .frame(minHeight: 80, idealHeight: CGFloat(mostWantedPanelHeight), maxHeight: 300)
-                        .background(Color(NSColor.windowBackgroundColor))
-                        .background(
-                            GeometryReader { geo in
-                                Color.clear
-                                    .preference(key: MostWantedHeightPreferenceKey.self, value: geo.size.height)
-                            }
-                        )
-                        .onPreferenceChange(MostWantedHeightPreferenceKey.self) { height in
-                            if height >= 80 {
-                                mostWantedPanelHeight = Double(height)
-                            }
-                        }
-                    }
-                }
-                .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
-                .layoutPriority(1)
-                
-                if isSidebarVisible {
-                    rightSidebar
-                        .frame(minWidth: 250, idealWidth: CGFloat(rightSidebarWidth), maxWidth: 400, maxHeight: .infinity)
-                        .background(Color(NSColor.windowBackgroundColor))
-                        .background(
-                            GeometryReader { geo in
-                                Color.clear
-                                    .preference(key: RightSidebarWidthPreferenceKey.self, value: geo.size.width)
-                            }
-                        )
-                        .onPreferenceChange(RightSidebarWidthPreferenceKey.self) { width in
-                            guard isSidebarVisible else { return }
-                            if width >= 250 {
-                                rightSidebarWidth = Double(width)
-                            }
-                        }
-                        .layoutPriority(0)
-                }
+            if isCompactMode {
+                compactMainView
+            } else {
+                normalMainView
             }
-            .background(Color(NSColor.windowBackgroundColor))
-            
-            Divider()
-            bottomStatusBar
         }
         .alert("Fehler beim LoTW Sync", isPresented: Binding(
             get: { viewModel.lotwManager.errorMessage != nil },
@@ -695,13 +395,34 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenHelpWindow"))) { _ in
             openWindow(id: "help")
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenSettingsWindow"))) { _ in
+            openWindow(id: "settings")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenLogbookWindow"))) { _ in
+            openWindow(id: "logbook")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenPropagationMapWindow"))) { _ in
+            openWindow(id: "propagation_map")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenLogsRawWindow"))) { _ in
+            openWindow(id: "logs_raw")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ToggleCompactMode"))) { _ in
+            toggleCompactMode(toCompact: !isCompactMode)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ToggleLeftSidebar"))) { _ in
+            isLeftSidebarVisible.toggle()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ToggleRightSidebar"))) { _ in
+            isSidebarVisible.toggle()
+        }
         .onChange(of: retryCooldownMinutes) { _, newValue in
             viewModel.retryCooldownMinutes = newValue
         }
-        .onChange(of: viewModel.server.decodes) { _, _ in
-            // Beim nächsten Decode-Fenster immer auf aktuellen DX-Call zurücksetzen
-            tableSelection = nil
-            viewModel.selectedCallsign = ""
+        .onChange(of: viewModel.selectedCallsign) { _, newValue in
+            if newValue.isEmpty {
+                tableSelection = nil
+            }
         }
         .onChange(of: udpPort) { _, newValue in
             viewModel.startServer(port: UInt16(newValue), address: udpAddress)
@@ -710,10 +431,651 @@ struct ContentView: View {
             viewModel.startServer(port: UInt16(udpPort), address: newValue)
         }
         .preferredColorScheme(preferredScheme)
-        .frame(
-            minWidth: 550 + (isLeftSidebarVisible ? 220 : 0) + (isSidebarVisible ? 250 : 0),
-            minHeight: 500
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .onChange(of: geo.size) { _, newSize in
+                        guard !self.isTransitioningMode else { return }
+                        if self.isCompactMode {
+                            if newSize.width >= 480 && newSize.height >= 320 {
+                                self.compactWindowWidth = Double(newSize.width)
+                                self.compactWindowHeight = Double(newSize.height)
+                            }
+                        } else {
+                            if newSize.width >= 550 && newSize.height >= 500 {
+                                self.normalWindowWidth = Double(newSize.width)
+                                self.normalWindowHeight = Double(newSize.height)
+                            }
+                        }
+                    }
+            }
         )
+        .background(WindowAccessor { window in
+            if self.hostingWindow == nil {
+                self.hostingWindow = window
+                let targetWidth = self.isCompactMode ? self.compactWindowWidth : self.normalWindowWidth
+                let targetHeight = self.isCompactMode ? self.compactWindowHeight : self.normalWindowHeight
+                let currentFrame = window.frame
+                let newY = currentFrame.maxY - CGFloat(targetHeight)
+                let newFrame = NSRect(
+                    x: currentFrame.minX,
+                    y: newY,
+                    width: CGFloat(targetWidth),
+                    height: CGFloat(targetHeight)
+                )
+                window.setFrame(newFrame, display: true)
+                
+                // Allow layout to stabilize before enabling tracking
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.isTransitioningMode = false
+                }
+            }
+        })
+        .frame(
+            minWidth: isCompactMode ? 480 : (550 + (isLeftSidebarVisible ? 220 : 0) + (isSidebarVisible ? 250 : 0)),
+            minHeight: isCompactMode ? 320 : 500
+        )
+    }
+
+    @ViewBuilder
+    private var normalMainView: some View {
+        topToolbarView
+        Divider()
+        displayBannerView
+        
+        HSplitView {
+            if isLeftSidebarVisible {
+                leftSidebar
+                    .frame(minWidth: 220, idealWidth: CGFloat(leftSidebarWidth), maxWidth: 300, maxHeight: .infinity)
+                    .background(Color(NSColor.windowBackgroundColor))
+                    .background(
+                        GeometryReader { geo in
+                            Color.clear
+                                .preference(key: LeftSidebarWidthPreferenceKey.self, value: geo.size.width)
+                        }
+                    )
+                    .onPreferenceChange(LeftSidebarWidthPreferenceKey.self) { width in
+                        guard isLeftSidebarVisible else { return }
+                        if width >= 220 {
+                            leftSidebarWidth = Double(width)
+                        }
+                    }
+                    .layoutPriority(0)
+            }
+            
+            VStack(spacing: 0) {
+                if isLogConsoleDetached {
+                    HStack(spacing: 8) {
+                        Text("Logs laufen in separatem Fenster.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Button("Wieder andocken") {
+                            isLogConsoleDetached = false
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.mini)
+                    }
+                    .padding(6)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    Divider()
+                }
+                
+                VSplitView {
+                    if !isLogConsoleDetached {
+                        logConsoleView
+                            .frame(minHeight: 80, idealHeight: CGFloat(logConsoleHeight), maxHeight: 450)
+                            .background(
+                                GeometryReader { geo in
+                                    Color.clear
+                                        .preference(key: ConsoleHeightPreferenceKey.self, value: geo.size.height)
+                                }
+                            )
+                            .onPreferenceChange(ConsoleHeightPreferenceKey.self) { height in
+                                if height >= 80 {
+                                    logConsoleHeight = Double(height)
+                                }
+                            }
+                    }
+                    
+                    Table(displayDecodes, selection: $tableSelection, columnCustomization: $decodeColumnCustomization) {
+                        TableColumn("Zeit") { decode in
+                            timeCell(for: decode)
+                        }
+                        .width(min: 65, ideal: 75, max: 100)
+                        .customizationID("time")
+                        
+                        TableColumn("DX Call") { decode in
+                            dxCallCell(for: decode)
+                        }
+                        .width(min: 80, ideal: 105, max: 180)
+                        .customizationID("callsign")
+                        
+                        TableColumn("Land") { decode in
+                            landCell(for: decode)
+                        }
+                        .width(min: 80, ideal: 120, max: 200)
+                        .customizationID("country")
+                        
+                        TableColumn("Spotter") { decode in
+                            spotterCell(for: decode)
+                        }
+                        .width(min: 60, ideal: 80, max: 120)
+                        .customizationID("spotter")
+                        
+                        TableColumn("Most Wanted") { decode in
+                            mostWantedCell(for: decode)
+                        }
+                        .width(min: 75, ideal: 95, max: 130)
+                        .customizationID("mostwanted")
+                        
+                        TableColumn("Entfernung") { decode in
+                            distanceCell(for: decode)
+                        }
+                        .width(min: 65, ideal: 85, max: 120)
+                        .customizationID("distance")
+                        
+                        Group {
+                            TableColumn("SNR") { decode in
+                                snrCell(for: decode)
+                            }
+                            .width(min: 40, ideal: 55, max: 80)
+                            .customizationID("snr")
+                            
+                            TableColumn("DT") { decode in
+                                dtCell(for: decode)
+                            }
+                            .width(min: 40, ideal: 55, max: 80)
+                            .customizationID("dt")
+                            
+                            TableColumn("HF Freq") { decode in
+                                hfFreqCell(for: decode)
+                            }
+                            .width(min: 90, ideal: 110, max: 160)
+                            .customizationID("hfFreq")
+                            
+                            TableColumn("Audio (Hz)") { decode in
+                                audioFreqCell(for: decode)
+                            }
+                            .width(min: 60, ideal: 75, max: 110)
+                            .customizationID("audioFreq")
+                            
+                            TableColumn("Nachricht") { decode in
+                                messageCell(for: decode)
+                            }
+                            .width(min: 120, ideal: 260, max: 2000)
+                            .customizationID("message")
+                        }
+                    }
+                    .layoutPriority(1)
+                    
+                    // Dedicated Most Wanted Section under the Main Table — dedupliziert nach Rufzeichen (bestes SNR pro Call)
+                    let mostWantedDecodes: [WSJTXDecode] = {
+                        var seen = Set<String>()
+                        var result: [WSJTXDecode] = []
+                        let combined = viewModel.server.decodes + viewModel.clusterSpots
+                        let filtered = combined
+                            .filter { decode in
+                                let call = decode.callsign
+                                guard !call.isEmpty else { return false }
+                                let isMW = MostWantedManager.shared.isMostWanted(callsign: call)
+                                let hasWorkedOnBand = viewModel.lotwManager.hasWorked(callsign: call, band: decode.band)
+                                return isMW && !hasWorkedOnBand && viewModel.shouldAccept(decode: decode)
+                            }
+                            .sorted { a, b in
+                                // Bestes SNR pro Callsign bevorzugen
+                                a.snr > b.snr
+                            }
+                        for decode in filtered {
+                            let call = decode.callsign.uppercased()
+                            if !seen.contains(call) {
+                                seen.insert(call)
+                                result.append(decode)
+                            }
+                        }
+                        // Danach nach Most Wanted Rang sortieren
+                        return result.sorted { a, b in
+                            let rankA = MostWantedManager.shared.rankForCallsign(a.callsign) ?? 999
+                            let rankB = MostWantedManager.shared.rankForCallsign(b.callsign) ?? 999
+                            return rankA < rankB
+                        }
+                    }()
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        // Header
+                        HStack(spacing: 8) {
+                            Image(systemName: "flame.fill")
+                                .foregroundColor(.red)
+                                .font(.system(size: 14, weight: .bold))
+                            
+                            Text("MOST WANTED STATIONEN (UNGEARBEITET AUF DIESEM BAND)")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.red)
+                            
+                            Text("\(mostWantedDecodes.count)")
+                                .font(.system(size: 10, weight: .bold))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(mostWantedDecodes.isEmpty ? Color.gray.opacity(0.3) : Color.red)
+                                .foregroundColor(.white)
+                                .cornerRadius(10)
+                            
+                            Spacer()
+                            
+                            let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
+                            Text("Basis-Locator: \(myGrid)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.top, 6)
+                        .background(Color(NSColor.controlBackgroundColor))
+                        
+                        Divider()
+                        
+                        if mostWantedDecodes.isEmpty {
+                            VStack {
+                                Spacer()
+                                HStack {
+                                    Spacer()
+                                    Text("Keine ungearbeiteten Most Wanted Decodes oder Spots empfangen.")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                }
+                                Spacer()
+                            }
+                            .frame(maxHeight: .infinity)
+                        } else {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(mostWantedDecodes, id: \.id) { decode in
+                                        let mwRank = MostWantedManager.shared.rankForCallsign(decode.callsign)
+                                        let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
+                                        let dist = decode.distanceKm(myGrid: myGrid)
+                                        
+                                        HStack(spacing: 8) {
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                HStack(spacing: 4) {
+                                                    Text(decode.callsign)
+                                                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                                        .foregroundColor(.primary)
+                                                    if let rank = mwRank {
+                                                        Text("#\(rank)")
+                                                            .font(.system(size: 8, weight: .bold))
+                                                            .padding(.horizontal, 4)
+                                                            .padding(.vertical, 1)
+                                                            .background(Color.red)
+                                                            .foregroundColor(.white)
+                                                            .cornerRadius(3)
+                                                    }
+                                                }
+                                                Text(decode.message)
+                                                    .font(.system(size: 10, design: .monospaced))
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            
+                                            VStack(alignment: .trailing, spacing: 2) {
+                                                Text("\(decode.snr) dB")
+                                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                                    .padding(.horizontal, 6)
+                                                    .padding(.vertical, 2)
+                                                    .background(Color.blue.opacity(0.15))
+                                                    .foregroundColor(.blue)
+                                                    .cornerRadius(4)
+                                                
+                                                if let d = dist {
+                                                    Text(String(format: "%.0f km", d))
+                                                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                                        .foregroundColor(.secondary)
+                                                }
+                                            }
+                                            
+                                            // Call Button / Spotter Badge
+                                            if decode.isClusterSpot {
+                                                Text(decode.spotter.isEmpty ? "SPOT" : "de \(decode.spotter)")
+                                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                                    .padding(.horizontal, 6)
+                                                    .padding(.vertical, 3)
+                                                    .background(Color.purple.opacity(0.15))
+                                                    .foregroundColor(.purple)
+                                                    .cornerRadius(4)
+                                            } else {
+                                                Button(action: {
+                                                    viewModel.sendReply(for: decode)
+                                                }) {
+                                                    Label("Anrufen", systemImage: "arrow.up.message.fill")
+                                                        .font(.caption)
+                                                        .fontWeight(.bold)
+                                                }
+                                                .buttonStyle(.borderedProminent)
+                                                .tint(.red)
+                                            }
+                                        }
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(Color.red.opacity(0.06))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .stroke(Color.red.opacity(0.3), lineWidth: 1)
+                                        )
+                                        .cornerRadius(6)
+                                        .onTapGesture(count: 2) {
+                                            if !decode.isClusterSpot {
+                                                viewModel.sendReply(for: decode)
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.bottom, 8)
+                            }
+                            .frame(maxHeight: .infinity)
+                        }
+                    }
+                    .frame(minHeight: 80, idealHeight: CGFloat(mostWantedPanelHeight), maxHeight: 300)
+                    .background(Color(NSColor.windowBackgroundColor))
+                    .background(
+                        GeometryReader { geo in
+                            Color.clear
+                                .preference(key: MostWantedHeightPreferenceKey.self, value: geo.size.height)
+                        }
+                    )
+                    .onPreferenceChange(MostWantedHeightPreferenceKey.self) { height in
+                        if height >= 80 {
+                            mostWantedPanelHeight = Double(height)
+                        }
+                    }
+                }
+            }
+            .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
+            .layoutPriority(1)
+            
+            if isSidebarVisible {
+                rightSidebar
+                    .frame(minWidth: 250, idealWidth: CGFloat(rightSidebarWidth), maxWidth: 400, maxHeight: .infinity)
+                    .background(Color(NSColor.windowBackgroundColor))
+                    .background(
+                        GeometryReader { geo in
+                            Color.clear
+                                .preference(key: RightSidebarWidthPreferenceKey.self, value: geo.size.width)
+                        }
+                    )
+                    .onPreferenceChange(RightSidebarWidthPreferenceKey.self) { width in
+                        guard isSidebarVisible else { return }
+                        if width >= 250 {
+                            rightSidebarWidth = Double(width)
+                        }
+                    }
+                    .layoutPriority(0)
+            }
+        }
+        .background(Color(NSColor.windowBackgroundColor))
+        
+        Divider()
+        bottomStatusBar
+    }
+
+    @ViewBuilder
+    private var compactMainView: some View {
+        compactToolbarView
+        Divider()
+        
+        if !viewModel.displayCallsign.isEmpty {
+            displayBannerView
+            Divider()
+        }
+        
+        VSplitView {
+            Table(displayDecodes, selection: $tableSelection, columnCustomization: $decodeColumnCustomization) {
+                TableColumn("Zeit") { decode in
+                    timeCell(for: decode)
+                }
+                .width(min: 50, ideal: 60, max: 70)
+                .customizationID("time")
+                
+                TableColumn("DX Call") { decode in
+                    dxCallCell(for: decode)
+                }
+                .width(min: 75, ideal: 90, max: 120)
+                .customizationID("callsign")
+                
+                TableColumn("Land") { decode in
+                    landCell(for: decode)
+                }
+                .width(min: 70, ideal: 100, max: 150)
+                .customizationID("country")
+                
+                TableColumn("SNR") { decode in
+                    snrCell(for: decode)
+                }
+                .width(min: 35, ideal: 45, max: 60)
+                .customizationID("snr")
+                
+                TableColumn("Nachricht") { decode in
+                    messageCell(for: decode)
+                }
+                .width(min: 100, ideal: 200, max: 1000)
+                .customizationID("message")
+            }
+            .layoutPriority(1)
+            
+            compactMostWantedView
+                .frame(minHeight: 50, idealHeight: CGFloat(compactMostWantedHeight), maxHeight: 150)
+                .background(
+                    GeometryReader { geo in
+                        Color.clear
+                            .preference(key: CompactMostWantedHeightPreferenceKey.self, value: geo.size.height)
+                    }
+                )
+                .onPreferenceChange(CompactMostWantedHeightPreferenceKey.self) { height in
+                    if height >= 50 {
+                        compactMostWantedHeight = Double(height)
+                    }
+                }
+        }
+    }
+
+    @ViewBuilder
+    private var compactToolbarView: some View {
+        HStack(spacing: 12) {
+            Button(action: {
+                viewModel.isAutoModeEnabled.toggle()
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: viewModel.isAutoModeEnabled ? "play.circle.fill" : "play.circle")
+                    Text(viewModel.isAutoModeEnabled ? "Auto ON" : "Auto OFF")
+                        .fontWeight(.bold)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(viewModel.isAutoModeEnabled ? .green : .gray)
+            .controlSize(.small)
+            
+            Button(action: {
+                viewModel.isFiltersEnabled.toggle()
+                viewModel.saveFilters()
+                viewModel.clearBlockedDecodes()
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: viewModel.isFiltersEnabled ? "funnel.fill" : "funnel")
+                    Text(viewModel.isFiltersEnabled ? "Filter AN" : "Filter AUS")
+                        .fontWeight(.semibold)
+                }
+            }
+            .buttonStyle(.bordered)
+            .tint(viewModel.isFiltersEnabled ? .accentColor : .secondary)
+            .controlSize(.small)
+            .help("Filter anwenden / umgehen")
+            
+            Button(action: {
+                openWindow(id: "propagation_map")
+            }) {
+                Label("Karte ↗", systemImage: "map")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Ausbreitungskarte öffnen")
+            
+            Spacer()
+            
+            HStack(spacing: 8) {
+                if !viewModel.server.wsjtxClientId.isEmpty {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 6, height: 6)
+                        .help("WSJT-X verbunden (ID: \(viewModel.server.wsjtxClientId))")
+                } else {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 6, height: 6)
+                        .help("WSJT-X nicht verbunden")
+                }
+                
+                if viewModel.server.isTransmitting {
+                    Text("TX")
+                        .font(.system(size: 9, weight: .bold))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(3)
+                        .help("SENDET (TX)")
+                } else if viewModel.server.isTxEnabled {
+                    Text("TX")
+                        .font(.system(size: 9, weight: .bold))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Color.orange)
+                        .foregroundColor(.white)
+                        .cornerRadius(3)
+                        .help("TX BEREIT")
+                } else {
+                    Text("TX")
+                        .font(.system(size: 9, weight: .bold))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Color.gray)
+                        .foregroundColor(.white)
+                        .cornerRadius(3)
+                        .help("TX AUS")
+                }
+            }
+            
+            Divider().frame(height: 16)
+            
+            Button(action: {
+                toggleCompactMode(toCompact: false)
+            }) {
+                Image(systemName: "rectangle.expand.vertical")
+            }
+            .buttonStyle(.plain)
+            .help("Normalen Modus aktivieren")
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color(NSColor.windowBackgroundColor))
+    }
+
+    @ViewBuilder
+    private var compactMostWantedView: some View {
+        let mostWantedDecodes: [WSJTXDecode] = {
+            var seen = Set<String>()
+            var result: [WSJTXDecode] = []
+            let combined = viewModel.server.decodes + viewModel.clusterSpots
+            let filtered = combined
+                .filter { decode in
+                    let call = decode.callsign
+                    guard !call.isEmpty else { return false }
+                    let isMW = MostWantedManager.shared.isMostWanted(callsign: call)
+                    let hasWorkedOnBand = viewModel.lotwManager.hasWorked(callsign: call, band: decode.band)
+                    return isMW && !hasWorkedOnBand && viewModel.shouldAccept(decode: decode)
+                }
+                .sorted { a, b in
+                    a.snr > b.snr
+                }
+            for decode in filtered {
+                let call = decode.callsign.uppercased()
+                if !seen.contains(call) {
+                    seen.insert(call)
+                    result.append(decode)
+                }
+            }
+            return result.sorted { a, b in
+                let rankA = MostWantedManager.shared.rankForCallsign(a.callsign) ?? 999
+                let rankB = MostWantedManager.shared.rankForCallsign(b.callsign) ?? 999
+                return rankA < rankB
+            }
+        }()
+        
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Image(systemName: "flame.fill")
+                    .foregroundColor(.red)
+                    .font(.system(size: 11, weight: .bold))
+                
+                Text("MOST WANTED")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.red)
+                
+                Text("\(mostWantedDecodes.count)")
+                    .font(.system(size: 9, weight: .bold))
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(mostWantedDecodes.isEmpty ? Color.gray.opacity(0.3) : Color.red)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+            }
+            .padding(.horizontal, 8)
+            .padding(.top, 4)
+            
+            Divider()
+            
+            if mostWantedDecodes.isEmpty {
+                HStack {
+                    Spacer()
+                    Text("Keine Most Wanted Stationen.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .italic()
+                    Spacer()
+                }
+                .padding(.vertical, 8)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(mostWantedDecodes, id: \.id) { decode in
+                            let mwRank = MostWantedManager.shared.rankForCallsign(decode.callsign)
+                            Button(action: {
+                                viewModel.selectedCallsign = decode.callsign
+                            }) {
+                                HStack(spacing: 4) {
+                                    Text(decode.callsign)
+                                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                    if let rank = mwRank {
+                                        Text("#\(rank)")
+                                            .font(.system(size: 7, weight: .bold))
+                                            .padding(.horizontal, 3)
+                                            .padding(.vertical, 0.5)
+                                            .background(Color.red)
+                                            .foregroundColor(.white)
+                                            .cornerRadius(2)
+                                    }
+                                }
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(Color.red.opacity(0.08))
+                                .cornerRadius(4)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 4)
+                }
+            }
+        }
+        .background(Color(NSColor.windowBackgroundColor))
     }
     
     @ViewBuilder
@@ -893,6 +1255,7 @@ struct ContentView: View {
 
     private func cellText(_ text: String, decode: WSJTXDecode) -> some View {
         Text(text)
+            .font(.system(size: CGFloat(fontSizeTable)))
             .foregroundStyle(rowColor(for: decode))
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
@@ -917,14 +1280,19 @@ struct ContentView: View {
     
     private func rowColor(for decode: WSJTXDecode) -> Color {
         let call = decode.callsign
-        if call.isEmpty { return .primary }
+        if call.isEmpty {
+            let hex = UserDefaults.standard.string(forKey: "colorTableStandard") ?? ""
+            return hex.isEmpty ? .primary : Color(hex: hex)
+        }
         
         if viewModel.isAutoQSOInteresting(decode: decode) {
-            return .green
+            let hex = UserDefaults.standard.string(forKey: "colorTableCQ") ?? ""
+            return hex.isEmpty ? .green : Color(hex: hex)
         }
         
         if viewModel.lotwManager.hasWorked(callsign: call, band: decode.band) {
-            return .red.opacity(0.5)
+            let hex = UserDefaults.standard.string(forKey: "colorTableWorked") ?? ""
+            return hex.isEmpty ? .red.opacity(0.5) : Color(hex: hex)
         }
         
         if !viewModel.shouldAccept(decode: decode) {
@@ -933,10 +1301,12 @@ struct ContentView: View {
         
         let highlightMW = UserDefaults.standard.object(forKey: "highlightMostWanted") as? Bool ?? true
         if highlightMW && MostWantedManager.shared.isMostWanted(callsign: call) {
-            return .red
+            let hex = UserDefaults.standard.string(forKey: "colorTableMostWanted") ?? ""
+            return hex.isEmpty ? .red : Color(hex: hex)
         }
         
-        return .primary
+        let hex = UserDefaults.standard.string(forKey: "colorTableStandard") ?? ""
+        return hex.isEmpty ? .primary : Color(hex: hex)
     }
     
     private func formatTime(_ ms: UInt32) -> String {
@@ -955,18 +1325,22 @@ struct ContentView: View {
         } else if log.contains("Auswertung") {
             return .secondary
         } else {
-            return .primary
+            let hex = UserDefaults.standard.string(forKey: "colorLogSystem") ?? ""
+            return hex.isEmpty ? .primary : Color(hex: hex)
         }
     }
     
     private func wsjtxLogColor(for type: WSJTXRawLogType) -> Color {
         switch type {
         case .decode:
-            return .green
+            let hex = UserDefaults.standard.string(forKey: "colorLogWsjtxDecode") ?? ""
+            return hex.isEmpty ? .green : Color(hex: hex)
         case .incoming:
-            return .blue
+            let hex = UserDefaults.standard.string(forKey: "colorLogWsjtxIncoming") ?? ""
+            return hex.isEmpty ? .blue : Color(hex: hex)
         case .outgoing:
-            return .orange
+            let hex = UserDefaults.standard.string(forKey: "colorLogWsjtxOutgoing") ?? ""
+            return hex.isEmpty ? .orange : Color(hex: hex)
         }
     }
     
@@ -981,7 +1355,7 @@ struct ContentView: View {
     @ViewBuilder
     private var rightSidebar: some View {
         VStack(spacing: 0) {
-            Text("DX-Filter")
+            Text("Filter")
                 .font(.headline)
                 .padding(.top, 10)
                 .padding(.bottom, 6)
@@ -1733,6 +2107,7 @@ struct ContentView: View {
                         Toggle("WSJT-X Decodes über Telnet ausgeben", isOn: $isWsjtTelnetOutputEnabled)
                             .toggleStyle(.checkbox)
                             .controlSize(.small)
+                            .font(.system(size: 10.5))
                     }
                 } header: {
                     sidebarHeader("Telnet Server", isExpanded: $isTelnetServerExpanded, activeCount: viewModel.telnetClientCount > 0 ? 1 : 0)
@@ -1747,6 +2122,24 @@ struct ContentView: View {
     private var logConsoleView: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
+                if consoleTab == 1 {
+                    HStack(spacing: 8) {
+                        Toggle("Decodes", isOn: $wsjtxShowDecodes)
+                            .toggleStyle(.checkbox)
+                            .controlSize(.small)
+                        Toggle("Eingang", isOn: $wsjtxShowIncoming)
+                            .toggleStyle(.checkbox)
+                            .controlSize(.small)
+                        Toggle("Ausgang", isOn: $wsjtxShowOutgoing)
+                            .toggleStyle(.checkbox)
+                            .controlSize(.small)
+                    }
+                } else {
+                    Spacer().frame(width: 1)
+                }
+                
+                Spacer()
+                
                 Picker("", selection: $consoleTab) {
                     Text("System-Logs").tag(0)
                     Text("WSJT-X Rohdaten").tag(1)
@@ -1755,18 +2148,6 @@ struct ContentView: View {
                 .pickerStyle(.segmented)
                 .controlSize(.small)
                 .frame(width: 320)
-                
-                if consoleTab == 1 {
-                    Toggle("Decodes", isOn: $wsjtxShowDecodes)
-                        .toggleStyle(.checkbox)
-                        .controlSize(.small)
-                    Toggle("Eingang", isOn: $wsjtxShowIncoming)
-                        .toggleStyle(.checkbox)
-                        .controlSize(.small)
-                    Toggle("Ausgang", isOn: $wsjtxShowOutgoing)
-                        .toggleStyle(.checkbox)
-                        .controlSize(.small)
-                }
                 
                 Spacer()
                 
@@ -1797,11 +2178,11 @@ struct ContentView: View {
                             Text("Keine System-Logs vorhanden.")
                                 .foregroundColor(.secondary)
                                 .italic()
-                                .font(.system(size: 11))
+                                .font(.system(size: CGFloat(fontSizeLog)))
                         } else {
                             ForEach(logs, id: \.self) { log in
                                 Text(log)
-                                    .font(.system(size: 11, design: .monospaced))
+                                    .font(.system(size: CGFloat(fontSizeLog), design: .monospaced))
                                     .foregroundColor(logColor(for: log))
                             }
                         }
@@ -1818,12 +2199,12 @@ struct ContentView: View {
                             Text("Keine WSJT-X Rohdaten für die gewählten Filter.")
                                 .foregroundColor(.secondary)
                                 .italic()
-                                .font(.system(size: 11))
+                                .font(.system(size: CGFloat(fontSizeLog)))
                         } else {
                             ForEach(filteredWSJTXLogs) { log in
                                 let ts = formatLogTime(log.timestamp)
                                 Text("[\(ts)] [\(log.type.rawValue)] \(log.message)")
-                                    .font(.system(size: 11, design: .monospaced))
+                                    .font(.system(size: CGFloat(fontSizeLog), design: .monospaced))
                                     .foregroundColor(wsjtxLogColor(for: log.type))
                             }
                         }
@@ -1833,12 +2214,12 @@ struct ContentView: View {
                             Text("Keine DX-Cluster Rohdaten vorhanden.")
                                 .foregroundColor(.secondary)
                                 .italic()
-                                .font(.system(size: 11))
+                                .font(.system(size: CGFloat(fontSizeLog)))
                         } else {
                             ForEach(clusterLogs) { log in
                                 Text(log.message)
-                                    .font(.system(size: 11, design: .monospaced))
-                                    .foregroundColor(.primary)
+                                    .font(.system(size: CGFloat(fontSizeLog), design: .monospaced))
+                                    .foregroundColor(Color(hex: UserDefaults.standard.string(forKey: "colorLogCluster") ?? "", defaultColor: .primary))
                             }
                         }
                     }
@@ -1847,7 +2228,37 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(NSColor.textBackgroundColor))
+            .background(Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor)))
+        }
+    }
+
+    private func toggleCompactMode(toCompact: Bool) {
+        self.isTransitioningMode = true
+        self.isCompactMode = toCompact
+        
+        DispatchQueue.main.async {
+            if let window = self.hostingWindow {
+                let currentFrame = window.frame
+                let targetWidth = toCompact ? self.compactWindowWidth : self.normalWindowWidth
+                let targetHeight = toCompact ? self.compactWindowHeight : self.normalWindowHeight
+                
+                let newY = currentFrame.maxY - CGFloat(targetHeight)
+                let newFrame = NSRect(
+                    x: currentFrame.minX,
+                    y: newY,
+                    width: CGFloat(targetWidth),
+                    height: CGFloat(targetHeight)
+                )
+                
+                window.setFrame(newFrame, display: true, animate: true)
+                
+                // Allow the frame resize animation to finish before tracking user size updates again
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    self.isTransitioningMode = false
+                }
+            } else {
+                self.isTransitioningMode = false
+            }
         }
     }
 }
@@ -1891,7 +2302,6 @@ struct CountryInputField: View {
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(4)
                 .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.secondary.opacity(0.2), lineWidth: 1))
-                .padding(.top, 2)
             }
         }
     }
@@ -1934,5 +2344,32 @@ struct MostWantedHeightPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = nextValue()
+    }
+}
+
+struct CompactMostWantedHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+struct WindowAccessor: NSViewRepresentable {
+    var onChange: (NSWindow) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async {
+            if let window = view.window {
+                onChange(window)
+            }
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        if let window = nsView.window {
+            onChange(window)
+        }
     }
 }

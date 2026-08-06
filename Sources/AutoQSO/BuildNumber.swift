@@ -1,2 +1,2 @@
-public let APP_VERSION = "3.0.0"
-public let APP_BUILD_NUMBER = 166
+public let APP_VERSION = "3.1.0"
+public let APP_BUILD_NUMBER = 186

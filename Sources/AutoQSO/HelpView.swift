@@ -6,6 +6,8 @@ enum HelpSection: String, CaseIterable, Identifiable {
     case triggers = "Auto QSO Triggers"
     case cluster = "DX Cluster"
     case telnet = "Telnet Server"
+    case propagationMap = "Ausbreitungskarte"
+    case compactMode = "Kompaktmodus"
     case logbook = "Logbuch & Sync"
     case storage = "Speicherort & iCloud"
     case disclaimer = "Rechtlicher Hinweis"
@@ -21,6 +23,8 @@ enum HelpSection: String, CaseIterable, Identifiable {
         case .triggers: return "bolt.horizontal"
         case .cluster: return "list.bullet.rectangle.portrait"
         case .telnet: return "terminal"
+        case .propagationMap: return "map"
+        case .compactMode: return "rectangle.compress.vertical"
         case .logbook: return "book.closed"
         case .storage: return "folder.fill"
         case .disclaimer: return "exclamationmark.triangle"
@@ -85,7 +89,7 @@ struct HelpView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(minWidth: 720, minHeight: 500)
+        .frame(width: 720, height: 500)
     }
         @ViewBuilder
     private func detailView(for section: HelpSection) -> some View {
@@ -93,40 +97,58 @@ struct HelpView: View {
         case .overview:
             VStack(alignment: .leading, spacing: 12) {
                 Text("System-Übersicht")
-                    .font(.title)
+                    .font(.title2)
                     .bold()
                 Text("AutoQSO ist eine macOS-Anwendung zur Automatisierung von FT8- und FT4-Kontakten in Verbindung mit WSJT-X.")
                     .font(.body)
+                
                 Text("Hauptfunktionen:")
                     .font(.headline)
+                VStack(alignment: .leading, spacing: 6) {
+                    bullet("WSJTX Auto Transmit: Automatisierte Sende-Engine")
+                    bullet("Prüfung gegen SQLite-Logbuch (bereits auf Band gearbeitet)")
+                    bullet("Detektieren von CQ, 73, RR73 und RRR Decodes")
+                    bullet("Top 100 Most Wanted DXCC – Rote Hervorhebung (🔥) & Priorität")
+                    bullet("Maidenhead Locator → km Entfernungsberechnung")
+                    bullet("Gesondertes Most-Wanted-Panel (höhenverstellbar via VSplitView) unter der Tabelle")
+                    bullet("DX Cluster Slots (C1, C2, C3) per Dropdown-Picker und Live-Status")
+                    bullet("Laufender Telnet-Server zur Spotting-Weiterleitung an externe Programme")
+                    bullet("Umschaltbare Log-Diagnose (System, WSJT-X-Rohdaten, Cluster-Spots)")
+                    bullet("Abkoppelbare Log-Konsole als eigenständiges, positionierbares Fenster")
+                    bullet("Chronologische Sortierung wählbar (Neueste oben oder unten)")
+                    bullet("Unterstützung von Hell-, Dunkel- und System-Farbschemata")
+                }
+                
+                Divider()
+                    .padding(.vertical, 4)
+                
+                Text("Bedienelemente der Toolbar:")
+                    .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("WSJTX Auto Transmit: Automatisierte Sende-Engine", systemImage: "bolt.fill")
-                    Label("Prüfung gegen SQLite-Logbuch (bereits auf Band gearbeitet)", systemImage: "checkmark.seal.fill")
-                    Label("Detektieren von CQ, 73, RR73 und RRR Decodes", systemImage: "bolt.horizontal.fill")
-                    Label("Top 100 Most Wanted DXCC – Rote Hervorhebung (🔥) & Priorität", systemImage: "flame.fill")
-                    Label("Maidenhead Locator → km Entfernungsberechnung", systemImage: "location.fill")
-                    Label("Gesondertes Most-Wanted-Panel (höhenverstellbar via VSplitView) unter der Tabelle", systemImage: "rectangle.split.2x1")
-                    Label("DX Cluster Slots (C1, C2, C3) per Dropdown-Picker und Live-Status", systemImage: "list.bullet.rectangle.portrait")
-                    Label("Laufender Telnet-Server zur Spotting-Weiterleitung an externe Programme", systemImage: "terminal")
-                    Label("Umschaltbare Log-Diagnose (System, WSJT-X-Rohdaten, Cluster-Spots)", systemImage: "doc.text")
-                    Label("Abkoppelbare Log-Konsole als eigenständiges, positionierbares Fenster", systemImage: "macwindow.badge.plus")
-                    Label("Chronologische Sortierung wählbar (Neueste oben oder unten)", systemImage: "arrow.up.arrow.down.square")
-                    Label("Unterstützung von Hell-, Dunkel- und System-Farbschemata", systemImage: "circle.lefthalf.filled")
+                    iconBullet(icon: "sidebar.left", text: "**Verbindungs-Sidebar**: Blendet die linke Status- und Konfigurations-Seitenleiste ein oder aus.")
+                    iconBullet(icon: "play.circle", text: "**Auto Transmit Toggle (Auto ON/OFF)**: Aktiviert oder deaktiviert die automatische Sende-Engine.")
+                    iconBullet(icon: "book", text: "**Logbuch**: Öffnet das LoTW/QRZ-Logbuchfenster zur Ansicht der getätigten QSOs.")
+                    iconBullet(icon: "arrow.up", text: "**Sortierung**: Schaltet die chronologische Sortierung der Tabelleneinträge und Logs um (Neueste oben oder unten).")
+                    iconBullet(icon: "map", text: "**Ausbreitungskarte**: Öffnet die Live-Karte zur Visualisierung empfangener Spots.")
+                    iconBullet(icon: "rectangle.compress.vertical", text: "**Kompaktmodus**: Reduziert das Layout auf eine minimale Steuerleiste und Spot-Tabelle.")
+                    iconBullet(icon: "gearshape", text: "**Einstellungen**: Öffnet den Einstellungsdialog zur Konfiguration der Syncs, Cluster und Farben.")
+                    iconBullet(icon: "questionmark.circle", text: "**Hilfe**: Öffnet dieses Hilfe- und Changelog-Fenster.")
+                    iconBullet(icon: "sidebar.right", text: "**Filter-Sidebar**: Blendet das rechte Panel zur Konfiguration von Rufzeichen- und Spotter-Filtern ein oder aus.")
                 }
             }
             
         case .wsjtx:
             VStack(alignment: .leading, spacing: 12) {
                 Text("WSJT-X Konfiguration")
-                    .font(.title)
+                    .font(.title2)
                     .bold()
                 Text("In WSJT-X unter Settings -> Reporting:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("1. Option 'Prompt me to log QSO' aktivieren.")
-                    Text("2. Option 'Accept UDP requests' aktivieren.")
-                    Text("3. UDP Server Address: 224.0.0.1 (Multicast) oder 127.0.0.1 (Unicast).")
-                    Text("4. UDP Server Port: 2237.")
+                    numberedItem("1.", "Option 'Prompt me to log QSO' aktivieren.")
+                    numberedItem("2.", "Option 'Accept UDP requests' aktivieren.")
+                    numberedItem("3.", "UDP Server Address: `224.0.0.1` (Multicast) oder `127.0.0.1` (Unicast).")
+                    numberedItem("4.", "UDP Server Port: `2237`.")
                 }
                 .padding()
                 .background(Color.blue.opacity(0.08))
@@ -136,55 +158,113 @@ struct HelpView: View {
         case .triggers:
             VStack(alignment: .leading, spacing: 12) {
                 Text("Auto QSO Trigger Logik")
-                    .font(.title)
+                    .font(.title2)
                     .bold()
                 Text("AutoQSO analysiert alle empfangenen WSJT-X Decodes in Echtzeit:")
                     .font(.body)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("• CQ Anrufe: CQ, CQ DX, CQ POTA, CQ TEST, etc.")
-                    Text("• 73 Nachrichten: z.B. DL1ABC G4XYZ 73")
-                    Text("• RR73 / RRR Nachrichten: z.B. K1ABC W1AW RR73")
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet("**CQ Anrufe**: CQ, CQ DX, CQ POTA, CQ TEST, etc.")
+                    bullet("**73 Nachrichten**: z.B. `DL1ABC G4XYZ 73`")
+                    bullet("**RR73 / RRR Nachrichten**: z.B. `K1ABC W1AW RR73`")
                 }
                 .padding()
                 .background(Color.gray.opacity(0.1))
                 .cornerRadius(8)
                 Text("Ablauf:")
                     .font(.headline)
-                Text("1. Ermittlung des Rufzeichens der sendenden Station.\n2. Abgleich mit dem Logbuch (falls auf dem aktuellen Band bereits gearbeitet -> grau hinterlegt und übersprungen).\n3. Prüfung auf aktiven Cooldown/Sperre.\n4. Senden des Reply-Kommandos an WSJT-X zum automatischen Anruf (WSJTX Auto Transmit).")
+                VStack(alignment: .leading, spacing: 8) {
+                    numberedItem("1.", "Ermittlung des Rufzeichens der sendenden Station.")
+                    numberedItem("2.", "Abgleich mit dem Logbuch (falls auf dem aktuellen Band bereits gearbeitet -> grau hinterlegt und übersprungen).")
+                    numberedItem("3.", "Prüfung auf aktiven Cooldown/Sperre.")
+                    numberedItem("4.", "Senden des Reply-Kommandos an WSJT-X zum automatischen Anruf (WSJTX Auto Transmit).")
+                }
             }
             
         case .cluster:
             VStack(alignment: .leading, spacing: 12) {
                 Text("DX Cluster Verbindung & Verwaltung")
-                    .font(.title)
+                    .font(.title2)
                     .bold()
                 Text("AutoQSO ermöglicht den Anschluss an bis zu drei parallele DX-Cluster-Verbindungen (C1, C2, C3).")
                     .font(.body)
                 
                 Text("Zuweisung und Status:")
                     .font(.headline)
-                Text("• In der linken Sidebar oder den Einstellungen wählen Sie die gewünschten Cluster aus einem Dropdown-Menü.\n• Status-Indikatoren zeigen an, ob die Verbindung aktiv ist (Grau = Aus, Orange = Verbindungsaufbau, Grün = Verbunden, Rot = Verbindungsfehler).")
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet("In der linken Sidebar oder den Einstellungen wählen Sie die gewünschten Cluster aus einem Dropdown-Menü.")
+                    bullet("**Status-Indikatoren** zeigen an, ob die Verbindung aktiv ist (Grau = Aus, Orange = Verbindungsaufbau, Grün = Verbunden, Rot = Verbindungsfehler).")
+                }
                 
                 Text("Listen-Manager (Einstellungen -> DX Cluster):")
                     .font(.headline)
-                Text("• Hinzufügen & Bearbeiten: Sie können eigene Cluster mit Name, Host und Port registrieren.\n• Drag-and-Drop: Die Reihenfolge der Cluster kann direkt in der Tabelle per Maus verschoben und angepasst werden.\n• Zurücksetzen (Restore Defaults): Stellt die ursprüngliche Liste der vordefinierten Standard-Cluster wieder her.")
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet("**Hinzufügen & Bearbeiten**: Sie können eigene Cluster mit Name, Host und Port registrieren.")
+                    bullet("**Drag-and-Drop**: Die Reihenfolge der Cluster kann direkt in der Tabelle per Maus verschoben und angepasst werden.")
+                    bullet("**Zurücksetzen (Restore Defaults)**: Stellt die ursprüngliche Liste der vordefinierten Standard-Cluster wieder her.")
+                }
             }
             
         case .telnet:
             VStack(alignment: .leading, spacing: 12) {
                 Text("Telnet Server & Spotting-Ausgabe")
-                    .font(.title)
+                    .font(.title2)
                     .bold()
                 Text("AutoQSO läuft als lokaler Telnet-Cluster-Server, an den Sie externe Log-Software (z.B. MacLoggerDX) koppeln können.")
                     .font(.body)
                 
                 Text("Konfiguration:")
                     .font(.headline)
-                Text("• Port & Login: Der Server horcht standardmäßig auf Port 8000. Das Login-Rufzeichen (z.B. GUEST) kann in den Einstellungen angepasst werden.\n• Client-Tracking: Der Live-Status im linken Sidepanel zeigt die Anzahl der aktuell verbundenen externen Programme an.")
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet("**Port & Login**: Der Server horcht standardmäßig auf Port 8000. Das Login-Rufzeichen (z.B. GUEST) kann in den Einstellungen angepasst werden.")
+                    bullet("**Client-Tracking**: Der Live-Status im linken Sidepanel zeigt die Anzahl der aktuell verbundenen externen Programme an.")
+                }
                 
                 Text("WSJT-X Spotter Telnet-Ausgabe:")
                     .font(.headline)
-                Text("• Ist dieser Schalter aktiviert, werden alle gefilterten WSJT-X Dekodierungen als rohe DX-Spots im Telnet-Format ausgegeben, sodass sie sofort in Ihrem Log-Programm auf der Karte erscheinen. Standardmäßig ist diese Option deaktiviert (keine Ausgabe).")
+                bullet("Ist dieser Schalter aktiviert, werden alle gefilterten WSJT-X Dekodierungen als rohe DX-Spots im Telnet-Format ausgegeben, sodass sie sofort in Ihrem Log-Programm auf der Karte erscheinen. Standardmäßig ist diese Option deaktiviert (keine Ausgabe).")
+            }
+            
+        case .propagationMap:
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Ausbreitungskarte (Propagation Map)")
+                    .font(.title2)
+                    .bold()
+                Text("Die Ausbreitungskarte stellt die Funkwellenausbreitung visuell auf einer interaktiven Weltkarte dar. Sie kann über den Button **Karte ↗** in der Menüleiste/Toolbar (im Bereich FENSTER) als eigenständiges, separates Fenster geöffnet werden.")
+                    .font(.body)
+                
+                Text("Wichtige Steuerungsmöglichkeiten:")
+                    .font(.headline)
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet("**Zeitfenster**: Bestimmt, wie weit Spots und Dekodierungen in die Vergangenheit zurückreichen (5 bis 120 Minuten).")
+                    bullet("**Gearbeitete mitzählen**: Ein Umschalter, der es ermöglicht, auch Stationen, die bereits auf dem Band gearbeitet wurden, mit auf der Karte anzuzeigen und zu zählen (Standardmäßig werden diese herausgefiltert).")
+                }
+                
+                Text("Filterung der Spots:")
+                    .font(.headline)
+                bullet("Die Karte aggregiert ausschließlich Dekodierungen und DX-Spots, die die aktiven DX-Filterregeln erfolgreich bestanden haben.")
+                
+                Text("Aktive Länder Liste:")
+                    .font(.headline)
+                bullet("In der rechten Seitenleiste der Karte werden alle aktiven Länder nach Kontinent, alphabetisch oder nach Spot-Häufigkeit aufgelistet.")
+            }
+            
+        case .compactMode:
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Kompaktmodus (Compact Mode)")
+                    .font(.title2)
+                    .bold()
+                Text("Der Kompaktmodus reduziert den Platzbedarf von AutoQSO auf ein absolutes Minimum.")
+                    .font(.body)
+                
+                Text("Funktionsumfang im Kompaktmodus:")
+                    .font(.headline)
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet("**Kompakte Steuerleiste**: Bietet Zugriff auf Auto Transmit (Auto ON/OFF), den globalen Filter-Schalter, das Öffnen der Ausbreitungskarte und die Verbindungs-/TX-Statuslämpchen.")
+                    bullet("**Reduzierte Tabelle**: Zeigt eine fokussierte Tabelle mit Zeit, DX Call, Land, SNR und Nachricht.")
+                    bullet("**Ticker für Most Wanted**: Unten scrollt eine Zeile mit ungearbeiteten seltenen Stationen durch. Durch Doppelklick/Anklicken können Sie diese anrufen bzw. im Banner fokussieren.")
+                    bullet("**Minimalmaße**: Das Hauptfenster lässt sich bis auf 480x320 Pixel herunterskalieren, um perfekt in einer Bildschirmecke Platz zu finden.")
+                    bullet("**Zurückwechseln**: Über das Pfeilsymbol ganz rechts in der kompakten Leiste gelangen Sie wieder in die Normalansicht.")
+                }
             }
             
         case .logbook:
@@ -195,15 +275,21 @@ struct HelpView: View {
                 
                 Text("Inkrementeller Sync:")
                     .font(.headline)
-                Text("• Startet automatisch ab dem QSO-Datum (minus 2 Tage Cooldown) Ihres neuesten Eintrags.\n• Synchronisiert Einträge direkt mit LoTW (Logbook of The World) und QRZ.com XML.")
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet("Startet automatisch ab dem QSO-Datum (minus 2 Tage Cooldown) Ihres neuesten Eintrags.")
+                    bullet("Synchronisiert Einträge direkt mit LoTW (Logbook of The World) und QRZ.com XML.")
+                }
                 
                 Text("ADIF-Datei importieren:")
                     .font(.headline)
-                Text("• Über den Button 'ADIF Datei hochladen' können Sie bestehende Logbücher im `.adi` / `.adif` Format in Ihre lokale SQLite-Datenbank einspielen. Duplikate werden anhand des eindeutigen Schlüssels (Call, Band, Mode, Zeit) automatisch aussortiert.")
+                bullet("Über den Button '**ADIF Datei hochladen**' können Sie bestehende Logbücher im `.adi` / `.adif` Format in Ihre lokale SQLite-Datenbank einspielen. Duplikate werden anhand des eindeutigen Schlüssels (Call, Band, Mode, Zeit) automatisch aussortiert.")
                 
                 Text("Logbuch leeren / Löschen:")
                     .font(.headline)
-                Text("• Löschen (🗑️): QSOs können einzeln oder über Mehrfachauswahl gelöscht werden.\n• Logbuch löschen: Der Button in den Einstellungen entfernt alle lokalen QSOs aus der Datenbank nach Bestätigung eines Sicherheitsdialogs.")
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet("**Löschen (🗑️)**: QSOs können einzeln oder über Mehrfachauswahl gelöscht werden.")
+                    bullet("**Logbuch löschen**: Der Button in den Einstellungen entfernt alle lokalen QSOs aus der Datenbank nach Bestätigung eines Sicherheitsdialogs.")
+                }
             }
             
         case .storage:
@@ -216,9 +302,9 @@ struct HelpView: View {
                     .font(.body)
                 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("• Standard-Ordner: Speichert die Datenbank unter ~/Documents/AutoQSO.")
-                    Text("• Benutzerdefinierter Ordner: Freie Wahl eines lokalen Ordners via macOS Dialog.")
-                    Text("• iCloud Drive: Speichert in iCloud Drive/AutoQSO zur automatischen Synchronisation zwischen mehreren Macs.")
+                    bullet("**Standard-Ordner**: Speichert die Datenbank unter `~/Documents/AutoQSO`.")
+                    bullet("**Benutzerdefinierter Ordner**: Freie Wahl eines lokalen Ordners via macOS Dialog.")
+                    bullet("**iCloud Drive**: Speichert in `iCloud Drive/AutoQSO` zur automatischen Synchronisation zwischen mehreren Macs.")
                 }
                 .padding()
                 .background(Color.blue.opacity(0.08))
@@ -234,19 +320,21 @@ struct HelpView: View {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.orange)
-                        .font(.title)
+                        .font(.title2)
                     Text("Rechtlicher Hinweis & Haftungsausschluss")
-                        .font(.title)
+                        .font(.title2)
                         .bold()
                         .foregroundColor(.orange)
                 }
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Aufsichtspflicht & Amateurfunkrecht:")
                         .font(.headline)
-                    Text("1. Stationskontrolle: Der lizenzierte Funkamateur ist für alle von seiner Station ausgesendeten Signale gemäß den nationalen Fernmeldegesetzen (z.B. TKG/AFuG in Deutschland, BNetzA, FCC) voll verantwortlich.")
-                    Text("2. Beaufsichtigter Betrieb: Der automatische Sendebetrieb muss stets beaufsichtigt werden.")
-                    Text("3. Gewährleistungsausschluss: Die Software wird 'OHNE JEDE GEWÄHRLEISTUNG' zur Verfügung gestellt.")
-                    Text("4. Haftungsbeschränkung: Der Autor (Georg Isenbürger - DJ6GI) übernimmt keinerlei Haftung für Schäden, Ordnungswidrigkeiten oder Folgeschäden.")
+                    VStack(alignment: .leading, spacing: 8) {
+                        numberedItem("1.", "**Stationskontrolle**: Der lizenzierte Funkamateur ist für alle von seiner Station ausgesendeten Signale gemäß den nationalen Fernmeldegesetzen (z.B. TKG/AFuG in Deutschland, BNetzA, FCC) voll verantwortlich.")
+                        numberedItem("2.", "**Beaufsichtigter Betrieb**: Der automatische Sendebetrieb muss stets beaufsichtigt werden.")
+                        numberedItem("3.", "**Gewährleistungsausschluss**: Die Software wird 'OHNE JEDE GEWÄHRLEISTUNG' zur Verfügung gestellt.")
+                        numberedItem("4.", "**Haftungsbeschränkung**: Der Autor (Georg Isenbürger - DJ6GI) übernimmt keinerlei Haftung für Schäden, Ordnungswidrigkeiten oder Folgeschäden.")
+                    }
                 }
                 .padding()
                 .background(Color.orange.opacity(0.1))
@@ -259,10 +347,10 @@ struct HelpView: View {
                     .font(.title)
                     .bold()
                 
-                // Version 3.0.0
+                // Version 3.1.0
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 3.0.0")
+                        Text("Version 3.1.0")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -277,15 +365,14 @@ struct HelpView: View {
                             .cornerRadius(4)
                     }
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("🌐 Detektierbare Logs, DX Cluster Manager & Layout-Flexibilität")
+                        Text("🗺️ Ausbreitungskarte, persistente Spot-Auswahl & zentriertes Layout")
                             .font(.subheadline)
                             .bold()
-                        Text("• Losgelöste Log-Konsole: Das Diagnosefenster lässt sich abkoppeln und dockt beim Schließen wieder im Hauptfenster an.")
-                        Text("• Integrierter Cluster-Manager: Hinzufügen, Editieren, Löschen und per Drag-and-Drop Sortieren von Clustern in den Einstellungen.")
-                        Text("• Telnet Server Splittung: DX Cluster und Telnet Server sind eigenständige Abschnitte in Sidebar und Einstellungen.")
-                        Text("• ADIF Datei Import: Bequemer Import von QSOs via `.adi`/`.adif`-Dateien direkt über die Einstellungen.")
-                        Text("• Ansichtsoptionen: Freie Wahl der chronologischen Sortierung (Neueste oben/unten) und Farbschemas (Hell/Dunkel/System).")
-                        Text("• Höhenerhalt: Speichert die Höhen des Log- und Most Wanted-Panels permanent ab, um ein flüssiges Wiederöffnen zu sichern.")
+                        bullet("Ausbreitungskarte (Propagation Map): Vollständige Live-Visualisierung von spots und decodes auf einer Weltkarte. Die Karte lässt sich über das Menü FENSTER -> \"Karte ↗\" als eigenständiges macOS-Fenster öffnen.", font: .subheadline, color: .secondary)
+                        bullet("Persistente Spot-Auswahl: Manuell selektierte Spots bleiben im Info-Banner permanent sichtbar und werden erst dann überschrieben, wenn die Auto-Transmit-Automatik eine neue Zielstation anruft.", font: .subheadline, color: .secondary)
+                        bullet("Zentriertes Konsolen-Layout: Der Segment-Umschalter für die Log-Tabellen ist nun sowohl im Hauptfenster als auch im abgetrennten Konsolenfenster exakt zentriert.", font: .subheadline, color: .secondary)
+                        bullet("Sende-Schalter Umbenennung: Der Hauptschalter für das automatische Senden wurde kompakter benannt und heißt nun \"Auto ON\" / \"Auto OFF\".", font: .subheadline, color: .secondary)
+                        bullet("Dynamische Schriftgrößen: Die Schriftgrößen der Länderlisten und Kartentexte skalieren automatisch mit der Tabellen-Schriftgröße mit. Die Anzeige für den Telnet-Login wurde leicht verkleinert, um ein Abschneiden langer Texte zu vermeiden.", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -293,6 +380,33 @@ struct HelpView: View {
                 .padding()
                 .background(Color.green.opacity(0.08))
                 .cornerRadius(8)
+                
+                Divider()
+                
+                // Version 3.0.0
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 3.0.0")
+                            .font(.headline)
+                            .bold()
+                        Text("(Build 166)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("🌐 Detektierbare Logs, DX Cluster Manager & Layout-Flexibilität")
+                            .font(.subheadline)
+                            .bold()
+                        bullet("Losgelöste Log-Konsole: Das Diagnosefenster lässt sich abkoppeln und dockt beim Schließen wieder im Hauptfenster an.", font: .subheadline, color: .secondary)
+                        bullet("Integrierter Cluster-Manager: Hinzufügen, Editieren, Löschen und per Drag-and-Drop Sortieren von Clustern in den Einstellungen.", font: .subheadline, color: .secondary)
+                        bullet("Telnet Server Splittung: DX Cluster und Telnet Server sind eigenständige Abschnitte in Sidebar und Einstellungen.", font: .subheadline, color: .secondary)
+                        bullet("ADIF Datei Import: Bequemer Import von QSOs via `.adi`/`.adif`-Dateien direkt über die Einstellungen.", font: .subheadline, color: .secondary)
+                        bullet("Ansichtsoptionen: Freie Wahl der chronologischen Sortierung (Neueste oben/unten), Farbschemas (Hell/Dunkel/System) sowie anpassbare Farben und Schriftgrößen in der Liste und in den Logs.", font: .subheadline, color: .secondary)
+                        bullet("Höhenerhalt: Speichert die Höhen des Log- und Most Wanted-Panels permanent ab, um ein flüssiges Wiederöffnen zu sichern.", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
                 
                 Divider()
                 
@@ -307,10 +421,10 @@ struct HelpView: View {
                         Text("⚡ Stabilitäts- & Timing-Verbesserungen")
                             .font(.subheadline)
                             .bold()
-                        Text("• 200ms Sendeverzögerung vermindert Paketverluste bei hoher CPU-Last in WSJT-X")
-                        Text("• Smarte Wiederholung (max. 3-mal, 3s Takt) falls WSJT-X den TX-Trigger verwirft")
-                        Text("• Detaillierte Live-Konsole zur Nachverfolgung übersprungener Stationen")
-                        Text("• Sicherheits-Filter verhindert das Anrufen des eigenen Rufzeichens")
+                        bullet("200ms Sendeverzögerung vermindert Paketverluste bei hoher CPU-Last in WSJT-X", font: .subheadline, color: .secondary)
+                        bullet("Smarte Wiederholung (max. 3-mal, 3s Takt) falls WSJT-X den TX-Trigger verwirft", font: .subheadline, color: .secondary)
+                        bullet("Detaillierte Live-Konsole zur Nachverfolgung übersprungener Stationen", font: .subheadline, color: .secondary)
+                        bullet("Sicherheits-Filter verhindert das Anrufen des eigenen Rufzeichens", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -335,8 +449,8 @@ struct HelpView: View {
                         Text("🎯 Strikter DXCC-Filter & TX-Triggering")
                             .font(.subheadline)
                             .bold()
-                        Text("• Option \"Ausschließlich Most Wanted Stationen anrufen\" in den Einstellungen")
-                        Text("• Senden des Shift Modifiers (0x01) erzwingt jetzt zuverlässig \"Enable TX = ON\" in WSJT-X")
+                        bullet("Option \"Ausschließlich Most Wanted Stationen anrufen\" in den Einstellungen", font: .subheadline, color: .secondary)
+                        bullet("Senden des Shift Modifiers (0x01) erzwingt jetzt zuverlässig \"Enable TX = ON\" in WSJT-X", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -361,13 +475,13 @@ struct HelpView: View {
                         Text("🛠️ UDP-Protokoll & TX-Steuerung")
                             .font(.subheadline)
                             .bold()
-                        Text("• WSJT-X Clear-Nachricht (Typ 3) als Signal für den Start eines neuen Decode-Fensters")
-                        Text("• Verwerfen von empfangenen EnableTx & Reply-Paketen auf dem UDP-Port")
-                        Text("• Replay-Decodes (isNew=false) verwerfen die Liste nicht mehr fälschlicherweise")
-                        Text("• SQLite Logbuch Import-Deduplizierung & Key-Normalisierung")
-                        Text("• Banner-Selektion synchronisiert per einfachem Klick auf die Decodier-Tabelle")
-                        Text("• Layout-Harmonisierung der Toolbar (AUTO MODE, SYNCHRONISATION, LOGBUCH, FENSTER)")
-                        Text("• Integriertes Release-Skript für automatische macOS .dmg Erstellung & GitHub Upload")
+                        bullet("WSJT-X Clear-Nachricht (Typ 3) als Signal für den Start eines neuen Decode-Fensters", font: .subheadline, color: .secondary)
+                        bullet("Verwerfen von empfangenen EnableTx & Reply-Paketen auf dem UDP-Port", font: .subheadline, color: .secondary)
+                        bullet("Replay-Decodes (isNew=false) verwerfen die Liste nicht mehr fälschlicherweise", font: .subheadline, color: .secondary)
+                        bullet("SQLite Logbuch Import-Deduplizierung & Key-Normalisierung", font: .subheadline, color: .secondary)
+                        bullet("Banner-Selektion synchronisiert per einfachem Klick auf die Decodier-Tabelle", font: .subheadline, color: .secondary)
+                        bullet("Layout-Harmonisierung der Toolbar (AUTO MODE, SYNCHRONISATION, LOGBUCH, FENSTER)", font: .subheadline, color: .secondary)
+                        bullet("Integriertes Release-Skript für automatische macOS .dmg Erstellung & GitHub Upload", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -389,8 +503,8 @@ struct HelpView: View {
                         Text("🐛 Bugfixes & Präzision")
                             .font(.subheadline)
                             .bold()
-                        Text("• Präzise Callsign-Validierung für ambige Präfixe (KG4, KH1/3/4/5/9, KP1/5, ST, 3C, VP6)")
-                        Text("• No duplicates im Most-Wanted-Panel — pro Rufzeichen nur ein Eintrag (bestes SNR)")
+                        bullet("Präzise Callsign-Validierung für ambige Präfixe (KG4, KH1/3/4/5/9, KP1/5, ST, 3C, VP6)", font: .subheadline, color: .secondary)
+                        bullet("No duplicates im Most-Wanted-Panel — pro Rufzeichen nur ein Eintrag (bestes SNR)", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -415,31 +529,31 @@ struct HelpView: View {
                         Text("🔥 Most Wanted & Entfernungspriorisierung")
                             .font(.subheadline)
                             .bold()
-                        Text("• Club Log Top 100 Most Wanted DXCC integriert (P5, KH3, KH7K, CE0X, FT/X, 3Y/B, Bouvet, etc.)")
-                        Text("• Rote Hervorhebung (🔥 #Rang) in der Decodier-Tabelle für ungearbeitete Most Wanted Stationen")
-                        Text("• Gesondertes Most-Wanted-Panel unterhalb der Tabelle – nur Stationen die auf diesem Band noch nicht gearbeitet wurden")
-                        Text("• Panel-Höhe mit der Maus stufenlos verstellbar (50–500 pt), Größe wird dauerhaft gespeichert")
-                        Text("• Maidenhead Locator → Großkreis-Entfernung (km) via Haversine-Formel")
-                        Text("• Entfernungsspalte in der Haupttabelle")
-                        Text("• Entfernung & Grid-Square im Stations-Banner (Evaluierungsleiste)")
-                        Text("• Most Wanted Rang-Badge im Stations-Banner bei seltenen Entitäten")
+                        bullet("Club Log Top 100 Most Wanted DXCC integriert (P5, KH3, KH7K, CE0X, FT/X, 3Y/B, Bouvet, etc.)", font: .subheadline, color: .secondary)
+                        bullet("Rote Hervorhebung (🔥 #Rang) in der Decodier-Tabelle für ungearbeitete Most Wanted Stationen", font: .subheadline, color: .secondary)
+                        bullet("Gesondertes Most-Wanted-Panel unterhalb der Tabelle – nur Stationen die auf diesem Band noch nicht gearbeitet wurden", font: .subheadline, color: .secondary)
+                        bullet("Panel-Höhe mit der Maus stufenlos verstellbar (50–500 pt), Größe wird dauerhaft gespeichert", font: .subheadline, color: .secondary)
+                        bullet("Maidenhead Locator → Großkreis-Entfernung (km) via Haversine-Formel", font: .subheadline, color: .secondary)
+                        bullet("Entfernungsspalte in der Haupttabelle", font: .subheadline, color: .secondary)
+                        bullet("Entfernung & Grid-Square im Stations-Banner (Evaluierungsleiste)", font: .subheadline, color: .secondary)
+                        bullet("Most Wanted Rang-Badge im Stations-Banner bei seltenen Entitäten", font: .subheadline, color: .secondary)
                         
                         Text("🎯 Prioritätsreihenfolge (Auto QSO Engine)")
                             .font(.subheadline)
                             .bold()
                             .padding(.top, 4)
-                        Text("• Priorität 1: Most Wanted Entitäten zuerst (Rang #1 = höchste Priorität)")
-                        Text("• Priorität 2: Weiteste Entfernung (km) zuerst")
-                        Text("• Priorität 3: Stärkstes Signal (SNR dB) als Fallback")
+                        bullet("Priorität 1: Most Wanted Entitäten zuerst (Rang #1 = höchste Priorität)", font: .subheadline, color: .secondary)
+                        bullet("Priorität 2: Weiteste Entfernung (km) zuerst", font: .subheadline, color: .secondary)
+                        bullet("Priorität 3: Stärkstes Signal (SNR dB) als Fallback", font: .subheadline, color: .secondary)
                         
                         Text("⚙️ Einstellungen (Most Wanted & Priorität)")
                             .font(.subheadline)
                             .bold()
                             .padding(.top, 4)
-                        Text("• Eigener Maidenhead Grid Locator (z.B. JO31 oder JO31AA)")
-                        Text("• Schalter: Most Wanted rot hervorheben")
-                        Text("• Schalter: Priorität nach Most Wanted & Entfernung")
-                        Text("• Schwelle: Top 10 / 20 / 50 / 100 Most Wanted")
+                        bullet("Eigener Maidenhead Grid Locator (z.B. JO31 oder JO31AA)", font: .subheadline, color: .secondary)
+                        bullet("Schalter: Most Wanted rot hervorheben", font: .subheadline, color: .secondary)
+                        bullet("Schalter: Priorität nach Most Wanted & Entfernung", font: .subheadline, color: .secondary)
+                        bullet("Schwelle: Top 10 / 20 / 50 / 100 Most Wanted", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -456,16 +570,16 @@ struct HelpView: View {
                         .font(.headline)
                         .bold()
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("• Auto QSO Trigger für CQ, 73, RR73 und RRR Decodes")
-                        Text("• Inkrementeller LoTW & QRZ Sync (2 Tage vor letztem QSO, UTC)")
-                        Text("• Duplicate Prevention via SQLite uniqueKey")
-                        Text("• Reset Sync-Startdatum auf 1900 & Logbuch-Neuinitialisierung")
-                        Text("• Zeilenweises & Mehrfach-Löschen (🗑️, Kontextmenü, Tastatur)")
-                        Text("• Freie Speicherort-Wahl & iCloud Drive Sync")
-                        Text("• Einstellungen mit linker Sidebar-Navigation")
-                        Text("• Hilfe-Fenster mit Seitenleiste")
-                        Text("• 3D Retina App Icon für macOS App-Bundle & DMG")
-                        Text("• Release-Skript: Versioniertes .dmg, Git-Tagging & GitHub Releases")
+                        bullet("Auto QSO Trigger für CQ, 73, RR73 und RRR Decodes", font: .subheadline, color: .secondary)
+                        bullet("Inkrementeller LoTW & QRZ Sync (2 Tage vor letztem QSO, UTC)", font: .subheadline, color: .secondary)
+                        bullet("Duplicate Prevention via SQLite uniqueKey", font: .subheadline, color: .secondary)
+                        bullet("Reset Sync-Startdatum auf 1900 & Logbuch-Neuinitialisierung", font: .subheadline, color: .secondary)
+                        bullet("Zeilenweises & Mehrfach-Löschen (🗑️, Kontextmenü, Tastatur)", font: .subheadline, color: .secondary)
+                        bullet("Freie Speicherort-Wahl & iCloud Drive Sync", font: .subheadline, color: .secondary)
+                        bullet("Einstellungen mit linker Sidebar-Navigation", font: .subheadline, color: .secondary)
+                        bullet("Hilfe-Fenster mit Seitenleiste", font: .subheadline, color: .secondary)
+                        bullet("3D Retina App Icon für macOS App-Bundle & DMG", font: .subheadline, color: .secondary)
+                        bullet("Release-Skript: Versioniertes .dmg, Git-Tagging & GitHub Releases", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -496,6 +610,43 @@ struct HelpView: View {
                 .background(Color.blue.opacity(0.08))
                 .cornerRadius(8)
             }
+        }
+    }
+
+    private func bullet(_ text: String, font: Font = .body, color: Color = .primary) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Text("•")
+                .font(font)
+                .foregroundColor(.secondary)
+            Text(LocalizedStringKey(text))
+                .font(font)
+                .foregroundColor(color)
+                .multilineTextAlignment(.leading)
+        }
+    }
+
+    private func numberedItem(_ number: String, _ text: String, font: Font = .body, color: Color = .primary) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Text(number)
+                .font(font)
+                .foregroundColor(.secondary)
+            Text(LocalizedStringKey(text))
+                .font(font)
+                .foregroundColor(color)
+                .multilineTextAlignment(.leading)
+        }
+    }
+
+    private func iconBullet(icon: String, text: String, font: Font = .body, color: Color = .primary) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: icon)
+                .font(font)
+                .foregroundColor(.accentColor)
+                .frame(width: 20, alignment: .center)
+            Text(LocalizedStringKey(text))
+                .font(font)
+                .foregroundColor(color)
+                .multilineTextAlignment(.leading)
         }
     }
 }

@@ -27,18 +27,77 @@ struct AutoQSOApp: App {
                 }
             }
             
+            // Clean up File menu
+            CommandGroup(replacing: .newItem) { }
+            CommandGroup(replacing: .saveItem) { }
+            CommandGroup(replacing: .printItem) { }
+            CommandGroup(replacing: .importExport) { }
+            
+            // Steuerung Menu
+            CommandMenu("Steuerung") {
+                Button(viewModel.isAutoModeEnabled ? "Auto-Senden deaktivieren" : "Auto-Senden aktivieren") {
+                    viewModel.isAutoModeEnabled.toggle()
+                }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
+                
+                Button(viewModel.isFiltersEnabled ? "DX-Filter ausschalten" : "DX-Filter einschalten") {
+                    viewModel.isFiltersEnabled.toggle()
+                    viewModel.saveFilters()
+                    viewModel.clearBlockedDecodes()
+                }
+                .keyboardShortcut("f", modifiers: [.command, .shift])
+            }
+            
+            // Ansicht Menu
+            CommandMenu("Ansicht") {
+                Button("Kompaktmodus umschalten") {
+                    NotificationCenter.default.post(name: NSNotification.Name("ToggleCompactMode"), object: nil)
+                }
+                .keyboardShortcut("k", modifiers: [.command, .option])
+                
+                Divider()
+                
+                Button("Verbindungs-Seitenleiste ein-/ausblenden") {
+                    NotificationCenter.default.post(name: NSNotification.Name("ToggleLeftSidebar"), object: nil)
+                }
+                .keyboardShortcut("1", modifiers: [.command, .option])
+                
+                Button("Filter-Seitenleiste ein-/ausblenden") {
+                    NotificationCenter.default.post(name: NSNotification.Name("ToggleRightSidebar"), object: nil)
+                }
+                .keyboardShortcut("2", modifiers: [.command, .option])
+            }
+            
+            // Custom additions to Window menu list
+            CommandGroup(after: .windowList) {
+                Divider()
+                Button("Einstellungen...") {
+                    NotificationCenter.default.post(name: NSNotification.Name("OpenSettingsWindow"), object: nil)
+                }
+                .keyboardShortcut(",", modifiers: .command)
+                
+                Button("LoTW Logbuch") {
+                    NotificationCenter.default.post(name: NSNotification.Name("OpenLogbookWindow"), object: nil)
+                }
+                .keyboardShortcut("l", modifiers: [.command, .shift])
+                
+                Button("Ausbreitungskarte") {
+                    NotificationCenter.default.post(name: NSNotification.Name("OpenPropagationMapWindow"), object: nil)
+                }
+                .keyboardShortcut("m", modifiers: [.command, .shift])
+                
+                Button("Logs & Rohdaten") {
+                    NotificationCenter.default.post(name: NSNotification.Name("OpenLogsRawWindow"), object: nil)
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+            }
+            
             // Hilfe-Menü: Standard-Help-Eintrag mit eigenem Hilfe-Fenster verbinden
             CommandGroup(replacing: .help) {
                 Button("AutoQSO Hilfe") {
                     NotificationCenter.default.post(name: NSNotification.Name("OpenHelpWindow"), object: nil)
                 }
                 .keyboardShortcut("?", modifiers: .command)
-                
-                Divider()
-                
-                Button("Changelog") {
-                    NotificationCenter.default.post(name: NSNotification.Name("OpenHelpWindow"), object: nil)
-                }
             }
         }
         
@@ -51,6 +110,7 @@ struct AutoQSOApp: App {
             HelpView()
                 .preferredColorScheme(preferredScheme)
         }
+        .windowResizability(.contentSize)
         
         Window("Einstellungen", id: "settings") {
             SettingsView(viewModel: viewModel)
@@ -60,6 +120,11 @@ struct AutoQSOApp: App {
         
         Window("Logs & Rohdaten", id: "logs_raw") {
             LogsConsoleView(viewModel: viewModel)
+                .preferredColorScheme(preferredScheme)
+        }
+        
+        Window("Ausbreitungskarte", id: "propagation_map") {
+            PropagationMapView(viewModel: viewModel)
                 .preferredColorScheme(preferredScheme)
         }
         

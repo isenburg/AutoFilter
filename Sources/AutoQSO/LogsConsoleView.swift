@@ -11,6 +11,7 @@ struct LogsConsoleView: View {
     @AppStorage("wsjtxShowOutgoing") private var wsjtxShowOutgoing = true
     @AppStorage("isNewestOnTop") private var isNewestOnTop = true
     @AppStorage("appColorScheme") private var appColorScheme = "system"
+    @AppStorage("fontSizeLog") private var fontSizeLog = 11.0
     
     private var preferredScheme: ColorScheme? {
         switch appColorScheme {
@@ -28,18 +29,22 @@ struct LogsConsoleView: View {
         } else if log.contains("Auswertung") {
             return .secondary
         } else {
-            return .primary
+            let hex = UserDefaults.standard.string(forKey: "colorLogSystem") ?? ""
+            return hex.isEmpty ? .primary : Color(hex: hex)
         }
     }
     
     private func wsjtxLogColor(for type: WSJTXRawLogType) -> Color {
         switch type {
         case .decode:
-            return .green
+            let hex = UserDefaults.standard.string(forKey: "colorLogWsjtxDecode") ?? ""
+            return hex.isEmpty ? .green : Color(hex: hex)
         case .incoming:
-            return .blue
+            let hex = UserDefaults.standard.string(forKey: "colorLogWsjtxIncoming") ?? ""
+            return hex.isEmpty ? .blue : Color(hex: hex)
         case .outgoing:
-            return .orange
+            let hex = UserDefaults.standard.string(forKey: "colorLogWsjtxOutgoing") ?? ""
+            return hex.isEmpty ? .orange : Color(hex: hex)
         }
     }
     
@@ -52,6 +57,24 @@ struct LogsConsoleView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
+                if consoleTab == 1 {
+                    HStack(spacing: 8) {
+                        Toggle("Decodes", isOn: $wsjtxShowDecodes)
+                            .toggleStyle(.checkbox)
+                            .controlSize(.small)
+                        Toggle("Eingang", isOn: $wsjtxShowIncoming)
+                            .toggleStyle(.checkbox)
+                            .controlSize(.small)
+                        Toggle("Ausgang", isOn: $wsjtxShowOutgoing)
+                            .toggleStyle(.checkbox)
+                            .controlSize(.small)
+                    }
+                } else {
+                    Spacer().frame(width: 1)
+                }
+                
+                Spacer()
+                
                 Picker("", selection: $consoleTab) {
                     Text("System-Logs").tag(0)
                     Text("WSJT-X Rohdaten").tag(1)
@@ -60,18 +83,6 @@ struct LogsConsoleView: View {
                 .pickerStyle(.segmented)
                 .controlSize(.small)
                 .frame(width: 320)
-                
-                if consoleTab == 1 {
-                    Toggle("Decodes", isOn: $wsjtxShowDecodes)
-                        .toggleStyle(.checkbox)
-                        .controlSize(.small)
-                    Toggle("Eingang", isOn: $wsjtxShowIncoming)
-                        .toggleStyle(.checkbox)
-                        .controlSize(.small)
-                    Toggle("Ausgang", isOn: $wsjtxShowOutgoing)
-                        .toggleStyle(.checkbox)
-                        .controlSize(.small)
-                }
                 
                 Spacer()
                 
@@ -99,11 +110,11 @@ struct LogsConsoleView: View {
                             Text("Keine System-Logs vorhanden.")
                                 .foregroundColor(.secondary)
                                 .italic()
-                                .font(.system(size: 11))
+                                .font(.system(size: CGFloat(fontSizeLog)))
                         } else {
                             ForEach(logs, id: \.self) { log in
                                 Text(log)
-                                    .font(.system(size: 11, design: .monospaced))
+                                    .font(.system(size: CGFloat(fontSizeLog), design: .monospaced))
                                     .foregroundColor(logColor(for: log))
                             }
                         }
@@ -120,12 +131,12 @@ struct LogsConsoleView: View {
                             Text("Keine WSJT-X Rohdaten für die gewählten Filter.")
                                 .foregroundColor(.secondary)
                                 .italic()
-                                .font(.system(size: 11))
+                                .font(.system(size: CGFloat(fontSizeLog)))
                         } else {
                             ForEach(filteredWSJTXLogs) { log in
                                 let ts = formatLogTime(log.timestamp)
                                 Text("[\(ts)] [\(log.type.rawValue)] \(log.message)")
-                                    .font(.system(size: 11, design: .monospaced))
+                                    .font(.system(size: CGFloat(fontSizeLog), design: .monospaced))
                                     .foregroundColor(wsjtxLogColor(for: log.type))
                             }
                         }
@@ -135,12 +146,12 @@ struct LogsConsoleView: View {
                             Text("Keine DX-Cluster Rohdaten vorhanden.")
                                 .foregroundColor(.secondary)
                                 .italic()
-                                .font(.system(size: 11))
+                                .font(.system(size: CGFloat(fontSizeLog)))
                         } else {
                             ForEach(clusterLogs) { log in
                                 Text(log.message)
-                                    .font(.system(size: 11, design: .monospaced))
-                                    .foregroundColor(.primary)
+                                    .font(.system(size: CGFloat(fontSizeLog), design: .monospaced))
+                                    .foregroundColor(Color(hex: UserDefaults.standard.string(forKey: "colorLogCluster") ?? "", defaultColor: .primary))
                             }
                         }
                     }
@@ -149,7 +160,7 @@ struct LogsConsoleView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(NSColor.textBackgroundColor))
+            .background(Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor)))
         }
         .frame(minWidth: 500, minHeight: 300)
         .preferredColorScheme(preferredScheme)

@@ -33,6 +33,7 @@ struct WSJTXDecode: Identifiable, Equatable {
     var offAir: Bool
     var isClusterSpot: Bool = false
     var spotter: String = "WSJTX"
+    var receivedAt: Date = Date()
     
     var grid: String? {
         return Maidenhead.extractGrid(from: message)

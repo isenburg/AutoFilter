@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import SwiftUI
 
 class DecodeViewModel: ObservableObject {
     @Published var server = WSJTXServer()
@@ -53,7 +54,13 @@ class DecodeViewModel: ObservableObject {
     }
     
     private var blacklistedCalls: [String: Date] = [:]
-    private var currentTargetCall: String = ""
+    private var currentTargetCall: String = "" {
+        didSet {
+            if !currentTargetCall.isEmpty {
+                selectedCallsign = ""
+            }
+        }
+    }
     private var qsoStartTime: Date?
     private var txTriggerAttempts: Int = 0
     private var lastTxTriggerTime: Date?
@@ -82,6 +89,10 @@ class DecodeViewModel: ObservableObject {
     @Published var telnetClientCount = 0
     @Published var telnetServerError: String? = nil
     @Published var clusterSpots: [WSJTXDecode] = []
+    @Published var propagationClusters: [CountryCluster] = []
+    @Published var totalReceived = 0
+    @Published var totalForwarded = 0
+    @Published var counterStartTime = Date()
     @Published var wsjtxRawLogs: [WSJTXRawLogEntry] = []
     @Published var clusterRawLogs: [ClusterRawLogEntry] = []
     
@@ -119,6 +130,10 @@ class DecodeViewModel: ObservableObject {
         let savedAddress = UserDefaults.standard.string(forKey: "udpAddress") ?? "224.0.0.1"
         server.start(port: actualPort, address: savedAddress)
         
+        Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+            self?.updatePropagationClusters()
+        }
+        
         server.onDecodeReceived = { [weak self] decode, rawData in
             guard let self = self else { return }
             let accepted = self.shouldAccept(decode: decode, recordDuplicates: true)
@@ -128,6 +143,11 @@ class DecodeViewModel: ObservableObject {
                     self.broadcastWSJTSpot(decode: decode)
                 }
             }
+            self.totalReceived += 1
+            if accepted {
+                self.totalForwarded += 1
+            }
+            self.updatePropagationClusters()
         }
         
         server.onRawLogReceived = { [weak self] type, message in
@@ -787,6 +807,12 @@ class DecodeViewModel: ObservableObject {
                 )
                 self.telnetServer.broadcast(spot: spot)
             }
+            
+            self.totalReceived += 1
+            if accepted {
+                self.totalForwarded += 1
+            }
+            self.updatePropagationClusters()
         }
     }
 
@@ -1271,4 +1297,122 @@ class DecodeViewModel: ObservableObject {
         let isTotal = (matchingCount == 0)
         return FilterConflict(callsign: firstConflict.callsign, callsignCountry: firstConflict.country, allowedCountriesText: countriesStr, isTotalConflict: isTotal)
     }
+
+    func updatePropagationClusters() {
+        let currentDecodes = self.server.decodes
+        let currentSpots = self.clusterSpots
+        
+        let window = UserDefaults.standard.integer(forKey: "mapTimeWindow") == 0 ? 30 : UserDefaults.standard.integer(forKey: "mapTimeWindow")
+        let countWorkedBefore = UserDefaults.standard.bool(forKey: "mapCountWorkedBefore")
+        
+        let now = Date()
+        let cutoff = now.addingTimeInterval(-Double(window) * 60)
+        
+        let allItems = currentDecodes + currentSpots
+        
+        let filteredItems = allItems.filter { decode in
+            guard decode.receivedAt > cutoff else { return false }
+            
+            // Check filters
+            guard shouldAccept(decode: decode, recordDuplicates: false) else { return false }
+            
+            // Check worked-before
+            if !countWorkedBefore {
+                let call = decode.callsign
+                if !call.isEmpty && lotwManager.hasWorked(callsign: call, band: decode.band) {
+                    return false
+                }
+            }
+            
+            return true
+        }
+        
+        let grouped = Dictionary(grouping: filteredItems) { decode in
+            matcher.country(for: decode.callsign)
+        }
+        
+        let clusters: [CountryCluster] = grouped.compactMap { (countryName, decodes) -> CountryCluster? in
+            guard countryName != "OTHER", !countryName.isEmpty else { return nil }
+            guard let coords = self.matcher.coordinates(forCountry: countryName) else { return nil }
+            let first = decodes.first!
+            let continent = self.matcher.continent(for: first.callsign)
+            
+            var bandCounts: [String: Int] = [:]
+            for d in decodes {
+                bandCounts[d.band, default: 0] += 1
+            }
+            
+            let bands = bandCounts.map { bandName, count in
+                CountryCluster.BandInfo(name: bandName, count: count)
+            }.sorted { self.bandOrder($0.name) < self.bandOrder($1.name) }
+            
+            return CountryCluster(
+                id: countryName,
+                country: countryName,
+                continent: continent,
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+                spotCount: decodes.count,
+                bands: bands
+            )
+        }
+        
+        DispatchQueue.main.async {
+            self.propagationClusters = clusters.sorted { $0.country < $1.country }
+        }
+    }
+
+    func colorForBand(_ band: String) -> Color {
+        switch band.uppercased() {
+        case "160M": return Color(red: 0.4, green: 0.4, blue: 0.4)
+        case "80M": return Color(red: 0.5, green: 0.0, blue: 0.5)
+        case "60M": return Color(red: 0.0, green: 0.3, blue: 0.6)
+        case "40M": return .blue
+        case "30M": return Color(red: 0.0, green: 0.6, blue: 0.6)
+        case "20M": return Color(red: 0.0, green: 0.7, blue: 0.0)
+        case "17M": return Color(red: 0.6, green: 0.8, blue: 0.0)
+        case "15M": return .orange
+        case "12M": return Color(red: 0.9, green: 0.4, blue: 0.0)
+        case "10M": return .red
+        case "6M": return Color(red: 0.3, green: 0.3, blue: 0.3)
+        default: return .gray
+        }
+    }
+
+    func bandOrder(_ name: String) -> Int {
+        switch name.uppercased() {
+        case "160M": return 0; case "80M": return 1; case "60M": return 2; case "40M": return 3; case "30M": return 4
+        case "20M": return 5; case "17M": return 6; case "15M": return 7; case "12M": return 8; case "10M": return 9; case "6M": return 10
+        default: return 99
+        }
+    }
+
+    func continentName(for code: String) -> String {
+        switch code.uppercased() {
+        case "EU": return "EUROPE"
+        case "NA": return "NORTH AMERICA"
+        case "AS": return "ASIA"
+        case "SA": return "SOUTH AMERICA"
+        case "AF": return "AFRICA"
+        case "OC": return "OCEANIA"
+        case "AN": return "ANTARCTICA"
+        default: return "OTHER"
+        }
+    }
 }
+
+struct CountryCluster: Identifiable, Equatable {
+    let id: String // Ländername
+    let country: String
+    let continent: String
+    let latitude: Double
+    let longitude: Double
+    let spotCount: Int
+    let bands: [BandInfo]
+
+    struct BandInfo: Hashable, Equatable {
+        let name: String
+        let count: Int
+    }
+}
+
