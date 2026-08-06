@@ -12,6 +12,7 @@ struct LogsConsoleView: View {
     @AppStorage("isNewestOnTop") private var isNewestOnTop = true
     @AppStorage("appColorScheme") private var appColorScheme = "system"
     @AppStorage("fontSizeLog") private var fontSizeLog = 11.0
+    @State private var isClusterSendSheetPresented = false
     
     private var preferredScheme: ColorScheme? {
         switch appColorScheme {
@@ -86,7 +87,64 @@ struct LogsConsoleView: View {
                 
                 Spacer()
                 
-                // Dock back button
+                Button(action: {
+                    viewModel.isLogScrollPaused.toggle()
+                }) {
+                    Image(systemName: viewModel.isLogScrollPaused ? "play.circle" : "pause.circle")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .foregroundColor(viewModel.isLogScrollPaused ? .orange : .primary)
+                .help(viewModel.isLogScrollPaused ? "Auto-Scroll fortsetzen" : "Auto-Scroll anhalten")
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
+                    TextField("Protokoll durchsuchen...", text: $viewModel.logConsoleSearchText)
+                        .font(.system(size: 11))
+                        .textFieldStyle(.plain)
+                        .frame(width: 150)
+                    if !viewModel.logConsoleSearchText.isEmpty {
+                        Button(action: { viewModel.logConsoleSearchText = "" }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color(NSColor.textBackgroundColor))
+                .cornerRadius(6)
+                
+                if consoleTab == 2 {
+                    Button(action: {
+                        isClusterSendSheetPresented = true
+                    }) {
+                        Image(systemName: "paperplane")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Befehl an DX-Cluster senden")
+                }
+                
+                Button(action: {
+                    if consoleTab == 0 {
+                        viewModel.logHistory.removeAll()
+                        viewModel.lotwManager.logHistory.removeAll()
+                        viewModel.qrzManager.logHistory.removeAll()
+                    } else if consoleTab == 1 {
+                        viewModel.wsjtxRawLogs.removeAll()
+                    } else {
+                        viewModel.clusterRawLogs.removeAll()
+                    }
+                }) {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("Protokoll löschen")
+                
                 Button("Andocken") {
                     isLogConsoleDetached = false
                     dismiss()
@@ -101,72 +159,131 @@ struct LogsConsoleView: View {
             
             Divider()
             
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 2) {
-                    if consoleTab == 0 {
-                        let rawLogs = (viewModel.logHistory + viewModel.lotwManager.logHistory + viewModel.qrzManager.logHistory).sorted()
-                        let logs = isNewestOnTop ? Array(rawLogs.reversed()) : rawLogs
-                        if logs.isEmpty {
-                            Text("Keine System-Logs vorhanden.")
-                                .foregroundColor(.secondary)
-                                .italic()
-                                .font(.system(size: CGFloat(fontSizeLog)))
-                        } else {
-                            ForEach(logs, id: \.self) { log in
-                                Text(log)
-                                    .font(.system(size: CGFloat(fontSizeLog), design: .monospaced))
-                                    .foregroundColor(logColor(for: log))
-                            }
-                        }
-                    } else if consoleTab == 1 {
-                        let rawWSJTXLogs = viewModel.wsjtxRawLogs.filter { log in
-                            switch log.type {
-                            case .decode: return wsjtxShowDecodes
-                            case .incoming: return wsjtxShowIncoming
-                            case .outgoing: return wsjtxShowOutgoing
-                            }
-                        }
-                        let filteredWSJTXLogs = isNewestOnTop ? Array(rawWSJTXLogs.reversed()) : rawWSJTXLogs
-                        if filteredWSJTXLogs.isEmpty {
-                            Text("Keine WSJT-X Rohdaten für die gewählten Filter.")
-                                .foregroundColor(.secondary)
-                                .italic()
-                                .font(.system(size: CGFloat(fontSizeLog)))
-                        } else {
-                            ForEach(filteredWSJTXLogs) { log in
-                                let ts = formatLogTime(log.timestamp)
-                                Text("[\(ts)] [\(log.type.rawValue)] \(log.message)")
-                                    .font(.system(size: CGFloat(fontSizeLog), design: .monospaced))
-                                    .foregroundColor(wsjtxLogColor(for: log.type))
-                            }
-                        }
-                    } else {
-                        let clusterLogs = isNewestOnTop ? Array(viewModel.clusterRawLogs.reversed()) : viewModel.clusterRawLogs
-                        if clusterLogs.isEmpty {
-                            Text("Keine DX-Cluster Rohdaten vorhanden.")
-                                .foregroundColor(.secondary)
-                                .italic()
-                                .font(.system(size: CGFloat(fontSizeLog)))
-                        } else {
-                            ForEach(clusterLogs) { log in
-                                Text(log.message)
-                                    .font(.system(size: CGFloat(fontSizeLog), design: .monospaced))
-                                    .foregroundColor(Color(hex: UserDefaults.standard.string(forKey: "colorLogCluster") ?? "", defaultColor: .primary))
-                            }
-                        }
-                    }
+            Group {
+                if consoleTab == 0 {
+                    LogConsoleTextView(
+                        lines: systemLogLines,
+                        isPaused: viewModel.isLogScrollPaused,
+                        fontSize: fontSizeLog,
+                        isNewestOnTop: isNewestOnTop,
+                        backgroundColor: Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor))
+                    )
+                } else if consoleTab == 1 {
+                    LogConsoleTextView(
+                        lines: wsjtxLogLines,
+                        isPaused: viewModel.isLogScrollPaused,
+                        fontSize: fontSizeLog,
+                        isNewestOnTop: isNewestOnTop,
+                        backgroundColor: Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor))
+                    )
+                } else {
+                    LogConsoleTextView(
+                        lines: clusterLogLines,
+                        isPaused: viewModel.isLogScrollPaused,
+                        fontSize: fontSizeLog,
+                        isNewestOnTop: isNewestOnTop,
+                        backgroundColor: Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor))
+                    )
                 }
-                .padding(8)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor)))
         }
         .frame(minWidth: 500, minHeight: 300)
         .preferredColorScheme(preferredScheme)
+        .sheet(isPresented: $isClusterSendSheetPresented) {
+            ClusterSendDialog(viewModel: viewModel)
+        }
         .onDisappear {
             // When window is closed, mark it as docked back
             isLogConsoleDetached = false
+        }
+    }
+
+    private var systemLogLines: [LogLine] {
+        let rawLogs: [String]
+        if viewModel.isLogScrollPaused, let frozen = viewModel.frozenSystemLogs {
+            rawLogs = frozen
+        } else {
+            rawLogs = (viewModel.logHistory + viewModel.lotwManager.logHistory + viewModel.qrzManager.logHistory).sorted()
+        }
+        
+        let query = viewModel.logConsoleSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let filteredLogs: [String]
+        if query.isEmpty {
+            filteredLogs = rawLogs
+        } else {
+            filteredLogs = rawLogs.filter { $0.lowercased().contains(query) }
+        }
+        
+        let logs = isNewestOnTop ? Array(filteredLogs.reversed()) : filteredLogs
+        return logs.map { LogLine(text: $0, color: logColor(for: $0)) }
+    }
+    
+    private var wsjtxLogLines: [LogLine] {
+        let rawWSJTXLogs: [WSJTXRawLogEntry]
+        if viewModel.isLogScrollPaused, let frozen = viewModel.frozenWSJTXLogs {
+            rawWSJTXLogs = frozen
+        } else {
+            rawWSJTXLogs = viewModel.wsjtxRawLogs
+        }
+        
+        let activeTypeLogs = rawWSJTXLogs.filter { log in
+            switch log.type {
+            case .decode: return wsjtxShowDecodes
+            case .incoming: return wsjtxShowIncoming
+            case .outgoing: return wsjtxShowOutgoing
+            }
+        }
+        
+        let query = viewModel.logConsoleSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let filteredLogs: [WSJTXRawLogEntry]
+        if query.isEmpty {
+            filteredLogs = activeTypeLogs
+        } else {
+            filteredLogs = activeTypeLogs.filter { $0.message.lowercased().contains(query) }
+        }
+        
+        let logs = isNewestOnTop ? Array(filteredLogs.reversed()) : filteredLogs
+        return logs.map { log in
+            let ts = formatLogTime(log.timestamp)
+            return LogLine(text: "[\(ts)] [\(log.type.rawValue)] \(log.message)", color: wsjtxLogColor(for: log.type))
+        }
+    }
+    
+    private var clusterLogLines: [LogLine] {
+        let rawClusterLogs: [ClusterRawLogEntry]
+        if viewModel.isLogScrollPaused, let frozen = viewModel.frozenClusterLogs {
+            rawClusterLogs = frozen
+        } else {
+            rawClusterLogs = viewModel.clusterRawLogs
+        }
+        
+        let query = viewModel.logConsoleSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let filteredLogs: [ClusterRawLogEntry]
+        if query.isEmpty {
+            filteredLogs = rawClusterLogs
+        } else {
+            filteredLogs = rawClusterLogs.filter { $0.message.lowercased().contains(query) }
+        }
+        
+        let logs = isNewestOnTop ? Array(filteredLogs.reversed()) : filteredLogs
+        let clusterColor = Color(hex: UserDefaults.standard.string(forKey: "colorLogCluster") ?? "", defaultColor: .primary)
+        return logs.map { LogLine(text: $0.message, color: clusterColor) }
+    }
+
+    private func scrollToActive<T: Hashable>(proxy: ScrollViewProxy, count: Int, first: T?, last: T?) {
+        guard count > 0 else { return }
+        DispatchQueue.main.async {
+            if self.isNewestOnTop {
+                if let first = first {
+                    proxy.scrollTo(first, anchor: .top)
+                }
+            } else {
+                if let last = last {
+                    proxy.scrollTo(last, anchor: .bottom)
+                }
+            }
         }
     }
 }

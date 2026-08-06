@@ -2,6 +2,7 @@ import SwiftUI
 
 enum HelpSection: String, CaseIterable, Identifiable {
     case overview = "Übersicht"
+    case toolbar = "Toolbar & Bedienung"
     case wsjtx = "WSJT-X Setup"
     case triggers = "Auto QSO Triggers"
     case cluster = "DX Cluster"
@@ -19,6 +20,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .overview: return "info.circle"
+        case .toolbar: return "command"
         case .wsjtx: return "antenna.radiowaves.left.and.right"
         case .triggers: return "bolt.horizontal"
         case .cluster: return "list.bullet.rectangle.portrait"
@@ -118,9 +120,15 @@ struct HelpView: View {
                     bullet("Chronologische Sortierung wählbar (Neueste oben oder unten)")
                     bullet("Unterstützung von Hell-, Dunkel- und System-Farbschemata")
                 }
-                
-                Divider()
-                    .padding(.vertical, 4)
+            }
+            
+        case .toolbar:
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Toolbar & Bedienung")
+                    .font(.title2)
+                    .bold()
+                Text("Hier finden Sie eine Übersicht über alle Steuerungselemente und Interaktionen in AutoQSO.")
+                    .font(.body)
                 
                 Text("Bedienelemente der Toolbar:")
                     .font(.headline)
@@ -129,11 +137,22 @@ struct HelpView: View {
                     iconBullet(icon: "play.circle", text: "**Auto Transmit Toggle (Auto ON/OFF)**: Aktiviert oder deaktiviert die automatische Sende-Engine.")
                     iconBullet(icon: "book", text: "**Logbuch**: Öffnet das LoTW/QRZ-Logbuchfenster zur Ansicht der getätigten QSOs.")
                     iconBullet(icon: "arrow.up", text: "**Sortierung**: Schaltet die chronologische Sortierung der Tabelleneinträge und Logs um (Neueste oben oder unten).")
+                    iconBullet(icon: "trash", text: "**Tabelle löschen**: Leert die Liste der empfangenen Dekodierungen und Spots.")
                     iconBullet(icon: "map", text: "**Ausbreitungskarte**: Öffnet die Live-Karte zur Visualisierung empfangener Spots.")
                     iconBullet(icon: "rectangle.compress.vertical", text: "**Kompaktmodus**: Reduziert das Layout auf eine minimale Steuerleiste und Spot-Tabelle.")
                     iconBullet(icon: "gearshape", text: "**Einstellungen**: Öffnet den Einstellungsdialog zur Konfiguration der Syncs, Cluster und Farben.")
                     iconBullet(icon: "questionmark.circle", text: "**Hilfe**: Öffnet dieses Hilfe- und Changelog-Fenster.")
                     iconBullet(icon: "sidebar.right", text: "**Filter-Sidebar**: Blendet das rechte Panel zur Konfiguration von Rufzeichen- und Spotter-Filtern ein oder aus.")
+                }
+                
+                Divider()
+                    .padding(.vertical, 4)
+                
+                Text("Tastatur- & Maus-Bedienung (Spot-Tabelle):")
+                    .font(.headline)
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet("**Einfacher Klick**: Wählt eine Station in der Tabelle aus. Dies lädt ihre Details in den Detail-Banner, aktualisiert die QRZ/LoTW-Daten und hebt das Rufzeichen hervor.")
+                    bullet("**Doppelklick**: Löst die manuelle Antwort (**Manual Reply**) aus. AutoQSO sendet ein UDP-Reply-Kommando an WSJT-X, wodurch WSJT-X sofort auf die entsprechende Frequenz springt und den Sendezyklus startet.")
                 }
             }
             
@@ -347,10 +366,10 @@ struct HelpView: View {
                     .font(.title)
                     .bold()
                 
-                // Version 3.2.0
+                // Version 3.2.1
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 3.2.0")
+                        Text("Version 3.2.1")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -365,6 +384,35 @@ struct HelpView: View {
                             .cornerRadius(4)
                     }
                     VStack(alignment: .leading, spacing: 5) {
+                        Text("🐞 Fehlerbehebungen (Bugfixes)")
+                            .font(.subheadline)
+                            .bold()
+                        bullet("Eingabefelder: Behebung eines SwiftUI-Bugs unter macOS, bei dem die Eingabe von Portnummern und cooldowns während des Tippens zurückgesetzt oder gelöscht wurde.", font: .subheadline, color: .secondary)
+                        bullet("Auto-Scroll: Behebung des Scrollverhaltens im Hauptfenster. Die Dekodierungstabelle scrollt nun zuverlässig automatisch mit, um neu eintreffende Stationen (oben oder unten) direkt im Sichtfeld anzuzeigen.", font: .subheadline, color: .secondary)
+                        bullet("Cluster-Filter: Behebung eines Fehlers, durch den Cluster-Spots auch bei ausgeschalteten Filtern fälschlicherweise als Duplikate gefiltert wurden.", font: .subheadline, color: .secondary)
+                        bullet("Log-Löschen: Schaltfläche (Papierkorb) in der Toolbar des Hauptfensters sowie in der abgekoppelten Log-Konsole hinzugefügt, um Tabelleneinträge oder Logs mit einem Klick zu leeren.", font: .subheadline, color: .secondary)
+                        bullet("Hilfe & Bedienung: Neuer Hilfebereich für Toolbar-Elemente sowie Erläuterungen zu nicht-offensichtlichen Interaktionen (Einfacher Klick für Detail-Ansicht, Doppelklick für Sende-Antwort).", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+                
+                Divider()
+                
+                // Version 3.2.0
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 3.2.0")
+                            .font(.headline)
+                            .bold()
+                        Text("(Build 190)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    VStack(alignment: .leading, spacing: 5) {
                         Text("⚡ Performance & UI/UX Optimierungen")
                             .font(.subheadline)
                             .bold()
@@ -376,9 +424,6 @@ struct HelpView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 }
-                .padding()
-                .background(Color.green.opacity(0.08))
-                .cornerRadius(8)
                 
                 Divider()
                 

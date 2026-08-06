@@ -87,6 +87,7 @@ struct ContentView: View {
     
     @State private var hostingWindow: NSWindow? = nil
     @State private var isTransitioningMode = true
+    @State private var isClusterSendSheetPresented = false
     
     private var isMulticastAddress: Bool {
         if let firstOctetStr = udpAddress.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: ".").first,
@@ -97,7 +98,28 @@ struct ContentView: View {
     }
     
     private var displayDecodes: [WSJTXDecode] {
-        isNewestOnTop ? viewModel.server.decodes : Array(viewModel.server.decodes.reversed())
+        let baseList: [WSJTXDecode]
+        if viewModel.isMainTableScrollPaused, let frozen = viewModel.frozenMainDecodes {
+            baseList = frozen
+        } else {
+            baseList = viewModel.server.decodes
+        }
+        
+        let query = viewModel.mainTableSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let filtered: [WSJTXDecode]
+        if query.isEmpty {
+            filtered = baseList
+        } else {
+            filtered = baseList.filter { decode in
+                decode.callsign.lowercased().contains(query) ||
+                decode.country.lowercased().contains(query) ||
+                decode.spotter.lowercased().contains(query) ||
+                (decode.grid?.lowercased().contains(query) ?? false) ||
+                decode.message.lowercased().contains(query)
+            }
+        }
+        
+        return isNewestOnTop ? filtered : filtered.reversed()
     }
     
     private var preferredScheme: ColorScheme? {
@@ -152,7 +174,7 @@ struct ContentView: View {
                     .buttonStyle(.borderedProminent)
                     .tint(viewModel.isAutoModeEnabled ? .green : .gray)
                     
-                    TextField("10", value: $retryCooldownMinutes, format: .number.grouping(.never))
+                    NumericTextField("10", value: $retryCooldownMinutes)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 45)
                     
@@ -184,6 +206,43 @@ struct ContentView: View {
                 }
                 .buttonStyle(.bordered)
                 .help(isNewestOnTop ? "Sortierung: Neueste unten" : "Sortierung: Neueste oben")
+                
+                Button(action: {
+                    viewModel.isMainTableScrollPaused.toggle()
+                }) {
+                    Image(systemName: viewModel.isMainTableScrollPaused ? "play.circle" : "pause.circle")
+                }
+                .buttonStyle(.bordered)
+                .foregroundColor(viewModel.isMainTableScrollPaused ? .orange : .primary)
+                .help(viewModel.isMainTableScrollPaused ? "Auto-Scroll fortsetzen" : "Auto-Scroll anhalten")
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
+                    TextField("Tabelle durchsuchen...", text: $viewModel.mainTableSearchText)
+                        .font(.system(size: 11))
+                        .textFieldStyle(.plain)
+                        .frame(width: 150)
+                    if !viewModel.mainTableSearchText.isEmpty {
+                        Button(action: { viewModel.mainTableSearchText = "" }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(6)
+                
+                Button(action: {
+                    viewModel.clearTable()
+                }) {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.bordered)
+                .help("Dekodierte Stationen aus der Tabelle löschen")
                 
                 Divider()
                     .frame(height: 20)
@@ -368,6 +427,29 @@ struct ContentView: View {
                 compactMainView
             } else {
                 normalMainView
+            }
+        }
+        .onChange(of: viewModel.totalReceived) { _, _ in
+            guard !viewModel.isMainTableScrollPaused else { return }
+            self.scrollToNewestRow()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.scrollToNewestRow()
+            }
+        }
+        .onChange(of: viewModel.isMainTableScrollPaused) { _, isPaused in
+            if !isPaused {
+                self.scrollToNewestRow()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.scrollToNewestRow()
+                }
+            }
+        }
+        .onChange(of: isNewestOnTop) { _, _ in
+            if !viewModel.isMainTableScrollPaused {
+                self.scrollToNewestRow()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.scrollToNewestRow()
+                }
             }
         }
         .alert("Fehler beim LoTW Sync", isPresented: Binding(
@@ -1835,7 +1917,7 @@ struct ContentView: View {
                         
                         VStack(alignment: .leading, spacing: 4) {
                             Text("UDP Port").font(.caption).foregroundColor(.secondary)
-                            TextField("2237", value: $udpPort, format: .number.grouping(.never))
+                            NumericTextField("2237", value: $udpPort)
                                 .textFieldStyle(UnifiedTextFieldStyle())
                                 .controlSize(.small)
                         }
@@ -1876,7 +1958,7 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Weiterleitungs-Port (Bridge)").font(.caption).foregroundColor(.secondary)
-                            TextField("z.B. 2238 (0 = Aus)", value: $udpBridgePort, format: .number.grouping(.never))
+                            NumericTextField("z.B. 2238 (0 = Aus)", value: $udpBridgePort)
                                 .textFieldStyle(UnifiedTextFieldStyle())
                                 .controlSize(.small)
                         }
@@ -2094,6 +2176,50 @@ struct ContentView: View {
                 
                 Spacer()
                 
+                // Auto-scroll pause button
+                Button(action: {
+                    viewModel.isLogScrollPaused.toggle()
+                }) {
+                    Image(systemName: viewModel.isLogScrollPaused ? "play.circle" : "pause.circle")
+                        .foregroundColor(viewModel.isLogScrollPaused ? .orange : .primary)
+                }
+                .buttonStyle(.plain)
+                .help(viewModel.isLogScrollPaused ? "Auto-Scroll fortsetzen" : "Auto-Scroll anhalten")
+                .padding(.trailing, 4)
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
+                    TextField("Protokoll durchsuchen...", text: $viewModel.logConsoleSearchText)
+                        .font(.system(size: 11))
+                        .textFieldStyle(.plain)
+                        .frame(width: 150)
+                    if !viewModel.logConsoleSearchText.isEmpty {
+                        Button(action: { viewModel.logConsoleSearchText = "" }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color(NSColor.textBackgroundColor))
+                .cornerRadius(6)
+                .padding(.trailing, 4)
+                
+                if consoleTab == 2 {
+                    Button(action: {
+                        isClusterSendSheetPresented = true
+                    }) {
+                        Image(systemName: "paperplane")
+                            .foregroundColor(.primary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Befehl an DX-Cluster senden")
+                    .padding(.trailing, 4)
+                }
+                
                 // Detach button
                 Button(action: {
                     isLogConsoleDetached = true
@@ -2110,68 +2236,37 @@ struct ContentView: View {
             .padding(.vertical, 4)
             .background(Color(NSColor.controlBackgroundColor))
             
-            Divider()
-            
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 2) {
-                    if consoleTab == 0 {
-                        let rawLogs = (viewModel.logHistory + viewModel.lotwManager.logHistory + viewModel.qrzManager.logHistory).sorted()
-                        let logs = isNewestOnTop ? Array(rawLogs.reversed()) : rawLogs
-                        if logs.isEmpty {
-                            Text("Keine System-Logs vorhanden.")
-                                .foregroundColor(.secondary)
-                                .italic()
-                                .font(.system(size: CGFloat(fontSizeLog)))
-                        } else {
-                            ForEach(logs, id: \.self) { log in
-                                Text(log)
-                                    .font(.system(size: CGFloat(fontSizeLog), design: .monospaced))
-                                    .foregroundColor(logColor(for: log))
-                            }
-                        }
-                    } else if consoleTab == 1 {
-                        let rawWSJTXLogs = viewModel.wsjtxRawLogs.filter { log in
-                            switch log.type {
-                            case .decode: return wsjtxShowDecodes
-                            case .incoming: return wsjtxShowIncoming
-                            case .outgoing: return wsjtxShowOutgoing
-                            }
-                        }
-                        let filteredWSJTXLogs = isNewestOnTop ? Array(rawWSJTXLogs.reversed()) : rawWSJTXLogs
-                        if filteredWSJTXLogs.isEmpty {
-                            Text("Keine WSJT-X Rohdaten für die gewählten Filter.")
-                                .foregroundColor(.secondary)
-                                .italic()
-                                .font(.system(size: CGFloat(fontSizeLog)))
-                        } else {
-                            ForEach(filteredWSJTXLogs) { log in
-                                let ts = formatLogTime(log.timestamp)
-                                Text("[\(ts)] [\(log.type.rawValue)] \(log.message)")
-                                    .font(.system(size: CGFloat(fontSizeLog), design: .monospaced))
-                                    .foregroundColor(wsjtxLogColor(for: log.type))
-                            }
-                        }
-                    } else {
-                        let clusterLogs = isNewestOnTop ? Array(viewModel.clusterRawLogs.reversed()) : viewModel.clusterRawLogs
-                        if clusterLogs.isEmpty {
-                            Text("Keine DX-Cluster Rohdaten vorhanden.")
-                                .foregroundColor(.secondary)
-                                .italic()
-                                .font(.system(size: CGFloat(fontSizeLog)))
-                        } else {
-                            ForEach(clusterLogs) { log in
-                                Text(log.message)
-                                    .font(.system(size: CGFloat(fontSizeLog), design: .monospaced))
-                                    .foregroundColor(Color(hex: UserDefaults.standard.string(forKey: "colorLogCluster") ?? "", defaultColor: .primary))
-                            }
-                        }
-                    }
+            Group {
+                if consoleTab == 0 {
+                    LogConsoleTextView(
+                        lines: systemLogLines,
+                        isPaused: viewModel.isLogScrollPaused,
+                        fontSize: fontSizeLog,
+                        isNewestOnTop: isNewestOnTop,
+                        backgroundColor: Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor))
+                    )
+                } else if consoleTab == 1 {
+                    LogConsoleTextView(
+                        lines: wsjtxLogLines,
+                        isPaused: viewModel.isLogScrollPaused,
+                        fontSize: fontSizeLog,
+                        isNewestOnTop: isNewestOnTop,
+                        backgroundColor: Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor))
+                    )
+                } else {
+                    LogConsoleTextView(
+                        lines: clusterLogLines,
+                        isPaused: viewModel.isLogScrollPaused,
+                        fontSize: fontSizeLog,
+                        isNewestOnTop: isNewestOnTop,
+                        backgroundColor: Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor))
+                    )
                 }
-                .padding(8)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor)))
+        }
+        .sheet(isPresented: $isClusterSendSheetPresented) {
+            ClusterSendDialog(viewModel: viewModel)
         }
     }
 
@@ -2203,6 +2298,122 @@ struct ContentView: View {
                 self.isTransitioningMode = false
             }
         }
+    }
+
+    private func scrollToActive<T: Hashable>(proxy: ScrollViewProxy, count: Int, first: T?, last: T?) {
+        guard count > 0 else { return }
+        DispatchQueue.main.async {
+            if self.isNewestOnTop {
+                if let first = first {
+                    proxy.scrollTo(first, anchor: .top)
+                }
+            } else {
+                if let last = last {
+                    proxy.scrollTo(last, anchor: .bottom)
+                }
+            }
+        }
+    }
+
+    private func scrollToNewestRow() {
+        if let tableView = findTableView() {
+            let targetRow = isNewestOnTop ? 0 : tableView.numberOfRows - 1
+            if targetRow >= 0 && targetRow < tableView.numberOfRows {
+                tableView.scrollRowToVisible(targetRow)
+            }
+        }
+    }
+
+    private var systemLogLines: [LogLine] {
+        let rawLogs: [String]
+        if viewModel.isLogScrollPaused, let frozen = viewModel.frozenSystemLogs {
+            rawLogs = frozen
+        } else {
+            rawLogs = (viewModel.logHistory + viewModel.lotwManager.logHistory + viewModel.qrzManager.logHistory).sorted()
+        }
+        
+        let query = viewModel.logConsoleSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let filteredLogs: [String]
+        if query.isEmpty {
+            filteredLogs = rawLogs
+        } else {
+            filteredLogs = rawLogs.filter { $0.lowercased().contains(query) }
+        }
+        
+        let logs = isNewestOnTop ? Array(filteredLogs.reversed()) : filteredLogs
+        return logs.map { LogLine(text: $0, color: logColor(for: $0)) }
+    }
+    
+    private var wsjtxLogLines: [LogLine] {
+        let rawWSJTXLogs: [WSJTXRawLogEntry]
+        if viewModel.isLogScrollPaused, let frozen = viewModel.frozenWSJTXLogs {
+            rawWSJTXLogs = frozen
+        } else {
+            rawWSJTXLogs = viewModel.wsjtxRawLogs
+        }
+        
+        let activeTypeLogs = rawWSJTXLogs.filter { log in
+            switch log.type {
+            case .decode: return wsjtxShowDecodes
+            case .incoming: return wsjtxShowIncoming
+            case .outgoing: return wsjtxShowOutgoing
+            }
+        }
+        
+        let query = viewModel.logConsoleSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let filteredLogs: [WSJTXRawLogEntry]
+        if query.isEmpty {
+            filteredLogs = activeTypeLogs
+        } else {
+            filteredLogs = activeTypeLogs.filter { $0.message.lowercased().contains(query) }
+        }
+        
+        let logs = isNewestOnTop ? Array(filteredLogs.reversed()) : filteredLogs
+        return logs.map { log in
+            let ts = formatLogTime(log.timestamp)
+            return LogLine(text: "[\(ts)] [\(log.type.rawValue)] \(log.message)", color: wsjtxLogColor(for: log.type))
+        }
+    }
+    
+    private var clusterLogLines: [LogLine] {
+        let rawClusterLogs: [ClusterRawLogEntry]
+        if viewModel.isLogScrollPaused, let frozen = viewModel.frozenClusterLogs {
+            rawClusterLogs = frozen
+        } else {
+            rawClusterLogs = viewModel.clusterRawLogs
+        }
+        
+        let query = viewModel.logConsoleSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let filteredLogs: [ClusterRawLogEntry]
+        if query.isEmpty {
+            filteredLogs = rawClusterLogs
+        } else {
+            filteredLogs = rawClusterLogs.filter { $0.message.lowercased().contains(query) }
+        }
+        
+        let logs = isNewestOnTop ? Array(filteredLogs.reversed()) : filteredLogs
+        let clusterColor = Color(hex: UserDefaults.standard.string(forKey: "colorLogCluster") ?? "", defaultColor: .primary)
+        return logs.map { LogLine(text: $0.message, color: clusterColor) }
+    }
+
+    private func findTableView() -> NSTableView? {
+        guard let window = self.hostingWindow ?? NSApp.mainWindow ?? NSApp.keyWindow else { return nil }
+        if let contentView = window.contentView {
+            return findTableView(in: contentView)
+        }
+        return nil
+    }
+
+    private func findTableView(in view: NSView) -> NSTableView? {
+        if let tableView = view as? NSTableView, tableView.tableColumns.count > 1 {
+            return tableView
+        }
+        for subview in view.subviews {
+            if let found = findTableView(in: subview) {
+                return found
+            }
+        }
+        return nil
     }
 }
 
@@ -2316,3 +2527,5 @@ struct WindowAccessor: NSViewRepresentable {
         }
     }
 }
+
+

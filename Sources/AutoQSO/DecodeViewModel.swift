@@ -91,6 +91,34 @@ class DecodeViewModel: ObservableObject {
     @Published var clusterSpots: [WSJTXDecode] = []
     @Published var propagationClusters: [CountryCluster] = []
     @Published var mostWantedDecodes: [WSJTXDecode] = []
+    @Published var isMainTableScrollPaused: Bool = false {
+        didSet {
+            if isMainTableScrollPaused {
+                frozenMainDecodes = server.decodes
+            } else {
+                frozenMainDecodes = nil
+            }
+        }
+    }
+    @Published var isLogScrollPaused: Bool = false {
+        didSet {
+            if isLogScrollPaused {
+                frozenSystemLogs = (logHistory + lotwManager.logHistory + qrzManager.logHistory).sorted()
+                frozenWSJTXLogs = wsjtxRawLogs
+                frozenClusterLogs = clusterRawLogs
+            } else {
+                frozenSystemLogs = nil
+                frozenWSJTXLogs = nil
+                frozenClusterLogs = nil
+            }
+        }
+    }
+    @Published var mainTableSearchText: String = ""
+    @Published var logConsoleSearchText: String = ""
+    @Published var frozenMainDecodes: [WSJTXDecode]? = nil
+    @Published var frozenSystemLogs: [String]? = nil
+    @Published var frozenWSJTXLogs: [WSJTXRawLogEntry]? = nil
+    @Published var frozenClusterLogs: [ClusterRawLogEntry]? = nil
     private var pendingRecalculationWorkItem: DispatchWorkItem?
     @Published var totalReceived = 0
     @Published var totalForwarded = 0
@@ -678,7 +706,7 @@ class DecodeViewModel: ObservableObject {
             return
         }
         
-        if line.contains("DX de") {
+        if line.range(of: "DX de", options: .caseInsensitive) != nil {
             parseLiveSpot(line)
         } else {
             parseTableSpot(line)
@@ -686,54 +714,92 @@ class DecodeViewModel: ObservableObject {
     }
     
     private func parseLiveSpot(_ line: String) {
-        guard let deRange = line.range(of: "DX de ", options: .caseInsensitive),
-              let colonIndex = line[deRange.upperBound...].firstIndex(of: ":") else { return }
+        guard let deRange = line.range(of: "DX de ", options: .caseInsensitive) else {
+            parseGenericSpot(line)
+            return
+        }
         
-        let spotter = String(line[deRange.upperBound..<colonIndex]).trimmingCharacters(in: .whitespaces)
-        let afterColon = String(line[line.index(after: colonIndex)...])
+        let afterDe = String(line[deRange.upperBound...])
+        guard let colonIndex = afterDe.firstIndex(of: ":") else {
+            parseGenericSpot(line)
+            return
+        }
+        
+        let spotter = String(afterDe[..<colonIndex]).trimmingCharacters(in: .whitespaces)
+        let afterColon = String(afterDe[afterDe.index(after: colonIndex)...])
         let components = afterColon.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
         
-        guard components.count >= 3 else { return }
-        let freqStr = components[0]
+        guard components.count >= 2 else { return }
+        let freqStr = components[0].replacingOccurrences(of: ":", with: "")
         let dxCall = components[1]
+        let freq = Double(freqStr) ?? 0.0
+        
+        guard freq > 0.0, !dxCall.isEmpty else { return }
         
         var comment = ""
-        if components.count > 3 {
-            if let callRange = afterColon.range(of: dxCall) {
-                let startOfComment = callRange.upperBound
-                let lastWord = components.last!
-                if let endOfComment = afterColon.range(of: lastWord, options: .backwards) {
-                    comment = String(afterColon[startOfComment..<endOfComment.lowerBound]).trimmingCharacters(in: .whitespaces)
-                }
-            }
+        if components.count > 2 {
+            comment = components[2...].joined(separator: " ")
         }
-        createAndAddClusterSpot(call: dxCall, freq: Double(freqStr) ?? 0.0, spotter: spotter, comment: comment, raw: line)
+        
+        createAndAddClusterSpot(call: dxCall, freq: freq, spotter: spotter, comment: comment, raw: line)
     }
     
     private func parseTableSpot(_ line: String) {
         let components = line.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
-        guard components.count >= 4, let firstVal = Double(components[0].replacingOccurrences(of: ":", with: "")), firstVal > 10.0 else { return }
-        
-        let freq = firstVal
-        let dxCall = components[1]
-        
-        var spotter = "Table"
-        if let startBracket = line.lastIndex(of: "<"), let endBracket = line.lastIndex(of: ">"), startBracket < endBracket {
-            let range = line.index(after: startBracket)..<endBracket
-            spotter = String(line[range]).trimmingCharacters(in: .whitespaces)
+        if components.count >= 2, let firstVal = Double(components[0].replacingOccurrences(of: ":", with: "")), firstVal > 10.0 {
+            let freq = firstVal
+            let dxCall = components[1]
+            
+            var spotter = "Cluster"
+            if let startBracket = line.lastIndex(of: "<"), let endBracket = line.lastIndex(of: ">"), startBracket < endBracket {
+                let range = line.index(after: startBracket)..<endBracket
+                spotter = String(line[range]).trimmingCharacters(in: .whitespaces)
+            }
+            
+            var comment = ""
+            if let callIndex = components.firstIndex(of: dxCall), components.count > callIndex + 1 {
+                let remaining = components[(callIndex + 1)..<components.count].joined(separator: " ")
+                let datePattern = "\\d{1,2}-[A-Za-z]{3}-\\d{4}"
+                comment = remaining.replacingOccurrences(of: datePattern, with: "", options: .regularExpression)
+                comment = comment.replacingOccurrences(of: "\\d{4}Z", with: "", options: .regularExpression)
+                if let bIndex = comment.firstIndex(of: "<") { comment = String(comment[..<bIndex]) }
+                comment = comment.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            
+            createAndAddClusterSpot(call: dxCall, freq: freq, spotter: spotter, comment: comment, raw: line)
+        } else {
+            parseGenericSpot(line)
         }
+    }
+
+    private func parseGenericSpot(_ line: String) {
+        let components = line.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+        guard components.count >= 2 else { return }
+        
+        var freq: Double? = nil
+        var callIndex: Int? = nil
+        
+        for (idx, comp) in components.enumerated() {
+            let clean = comp.replacingOccurrences(of: ":", with: "")
+            if let f = Double(clean), f > 1.0 && f < 60000.0 {
+                freq = f
+                if idx + 1 < components.count {
+                    callIndex = idx + 1
+                }
+                break
+            }
+        }
+        
+        guard let f = freq, let cIdx = callIndex else { return }
+        let dxCall = components[cIdx].trimmingCharacters(in: CharacterSet.alphanumerics.inverted.subtracting(.init(charactersIn: "/")))
+        guard !dxCall.isEmpty, dxCall.count >= 3 else { return }
         
         var comment = ""
-        if let callIndex = components.firstIndex(of: dxCall), components.count > callIndex + 1 {
-            let remaining = components[(callIndex + 1)..<components.count].joined(separator: " ")
-            let datePattern = "\\d{1,2}-[A-Za-z]{3}-\\d{4}"
-            comment = remaining.replacingOccurrences(of: datePattern, with: "", options: .regularExpression)
-            comment = comment.replacingOccurrences(of: "\\d{4}Z", with: "", options: .regularExpression)
-            if let bIndex = comment.firstIndex(of: "<") { comment = String(comment[..<bIndex]) }
-            comment = comment.trimmingCharacters(in: .whitespacesAndNewlines)
+        if cIdx + 1 < components.count {
+            comment = components[(cIdx + 1)...].joined(separator: " ")
         }
         
-        createAndAddClusterSpot(call: dxCall, freq: freq, spotter: spotter, comment: comment, raw: line)
+        createAndAddClusterSpot(call: dxCall, freq: f, spotter: "Cluster", comment: comment, raw: line)
     }
     
     private func millisecondsSinceMidnightUTC() -> UInt32 {
@@ -767,12 +833,7 @@ class DecodeViewModel: ObservableObject {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             
-            let isDuplicate = self.clusterSpots.contains { existing in
-                existing.callsign == decode.callsign &&
-                abs(Double(existing.dialFrequency) / 1000.0 - freq) < 0.5
-            }
-            guard !isDuplicate else { return }
-            
+            // Unconditional insertion: All received spots appear in table list
             self.clusterSpots.insert(decode, at: 0)
             if self.clusterSpots.count > 500 {
                 self.clusterSpots.removeSubrange(500...)
@@ -783,8 +844,11 @@ class DecodeViewModel: ObservableObject {
                 self.server.decodes.removeSubrange(500...)
             }
             
+            self.totalReceived += 1
+            
             let accepted = self.shouldAccept(decode: decode, recordDuplicates: false)
             if !self.isFiltersEnabled || accepted {
+                self.totalForwarded += 1
                 let resolvedCountry = self.matcher.country(for: call)
                 let resolvedContinent = self.matcher.continent(for: call)
                 let resolvedCq = self.matcher.cqZone(for: call)
@@ -1439,6 +1503,32 @@ class DecodeViewModel: ObservableObject {
         case "OC": return "OCEANIA"
         case "AN": return "ANTARCTICA"
         default: return "OTHER"
+        }
+    }
+
+    func clearTable() {
+        DispatchQueue.main.async {
+            self.server.decodes.removeAll()
+            self.clusterSpots.removeAll()
+            self.mostWantedDecodes.removeAll()
+            self.propagationClusters.removeAll()
+        }
+    }
+
+    func sendToCluster(index: Int, text: String) {
+        guard !text.isEmpty else { return }
+        switch index {
+        case 1:
+            client1.send(text: text)
+            addLog("Gesendet an Cluster 1: \(text)")
+        case 2:
+            client2.send(text: text)
+            addLog("Gesendet an Cluster 2: \(text)")
+        case 3:
+            client3.send(text: text)
+            addLog("Gesendet an Cluster 3: \(text)")
+        default:
+            break
         }
     }
 }

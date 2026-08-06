@@ -141,7 +141,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("UDP Port:")
                         .font(.headline)
-                    TextField("2237", value: $udpPort, format: .number.grouping(.never))
+                    NumericTextField("2237", value: $udpPort)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 100)
                 }
@@ -149,7 +149,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("UDP Bridge Weiterleitungs-Port (0 = Aus):")
                         .font(.headline)
-                    TextField("z.B. 2238", value: $udpBridgePort, format: .number.grouping(.never))
+                    NumericTextField("z.B. 2238", value: $udpBridgePort)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 100)
                 }
@@ -290,7 +290,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Telnet Server Port (Default 8000):")
                             .font(.headline)
-                        TextField("8000", value: $telnetServerPort, format: .number.grouping(.never))
+                        NumericTextField("8000", value: $telnetServerPort)
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 100)
                             .onChange(of: telnetServerPort) { _, _ in
@@ -582,7 +582,7 @@ struct SettingsView: View {
                 HStack(spacing: 8) {
                     Text("Sperrdauer für abgebrochene QSOs:")
                         .font(.headline)
-                    TextField("10", value: $retryCooldownMinutes, format: .number.grouping(.never))
+                    NumericTextField("10", value: $retryCooldownMinutes)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 60)
                     Text("Minuten")
