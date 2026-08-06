@@ -1127,8 +1127,12 @@ class DecodeViewModel: ObservableObject {
         let cleanCountry = country.trimmingCharacters(in: .whitespaces).lowercased()
         return filters.contains(where: { filter in
             let cleanFilter = filter.trimmingCharacters(in: .whitespaces).lowercased()
+            if cleanFilter.isEmpty { return false }
             if cleanCountry.contains(cleanFilter) || cleanFilter.contains(cleanCountry) { return true }
             if cleanFilter == "deutschland" && cleanCountry.contains("germany") { return true }
+            if cleanFilter == "russia" || cleanFilter == "russland" {
+                if cleanCountry.contains("russia") { return true }
+            }
             if usSynonyms.contains(cleanFilter) {
                 if cleanCountry.contains("united states") || usRegions.contains(where: { cleanCountry.contains($0) }) { return true }
             }
@@ -1305,10 +1309,14 @@ class DecodeViewModel: ObservableObject {
         saveFilters()
     }
 
+    func allCountries() -> [String] {
+        return matcher.allCountries().sorted()
+    }
+
     func countrySuggestions(for query: String) -> [String] {
         let clean = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !clean.isEmpty else { return [] }
-        return matcher.allCountries().filter { $0.lowercased().hasPrefix(clean) }.prefix(5).map { $0 }
+        return matcher.allCountries().filter { $0.lowercased().contains(clean) }.prefix(10).map { $0 }
     }
 
     func clearBlockedDecodes() {

@@ -10,11 +10,13 @@ AutoQSO ist eine macOS-Anwendung zur Automatisierung von FT8- und FT4-Kontakten 
 
 ---
 
-## 2. WSJTX Auto Transmit (Zuvor Auto Mode)
+## 2. WSJTX Auto Transmit & Tabellen-Steuerung
 
 Der Hauptschalter in der oberen Menüleiste wurde in **WSJTX Auto Transmit** umbenannt. Er steuert die automatische Steuerung der Sende-Engine:
 - **Aktivieren/Deaktivieren**: Ein Klick auf den prominenten Button schaltet die Automatik ein ("WSJTX AUTO TRANSMIT AKTIV", grün) oder aus ("WSJTX AUTO TRANSMIT AUS", grau).
-- **Min. Sperre / Cooldown**: Daneben befindet sich das Feld für die Cooldown-Dauer (Standard: 10 Minuten). Wenn ein automatischer Anruf getätigt wird, wird das Rufzeichen für diesen Zeitraum für weitere automatische Sendeversuche blockiert. Dies verhindert Endlosschleifen bei nicht antwortenden Stationen.
+- **Freeze / Pause (Snapshot-Modus)**: Der Pause-Button friert die Dekodiertabelle und Protokolle mit einem statischen Snapshot ein. Auto-Scroll wird deaktiviert und Hintergrunddaten werden weiter empfangen. Sie können völlig frei durch historische Daten scrollen, ohne dass neu ankommende Dekodierungen die Ansicht zurückspringen lassen. Ein erneuter Klick hebt die Pause auf.
+- **Echtzeit-Suchfeld**: Über das integrierte Suchfeld in der Toolbar (sowie in den Logs) filtern Sie die Tabelle oder Protokolle in Echtzeit nach Rufzeichen, Land, Spotter, Grid-Locator oder Nachrichten-Text – sowohl im Live- als auch im Freeze-Modus.
+- **Min. Sperre / Cooldown**: Das Feld für die Cooldown-Dauer (Standard: 10 Minuten) blockiert Rufzeichen nach einem automatischen Anruf temporär vor weiteren Sendeversuchen.
 
 ---
 
@@ -28,11 +30,14 @@ Der Hauptschalter in der oberen Menüleiste wurde in **WSJTX Auto Transmit** umb
 
 ---
 
-## 4. DX Cluster Manager
+## 4. DX Cluster Manager & Spot-Verarbeitung
 
-Die Steuerung der DX-Cluster-Verbindung wurde komplett modernisiert. Anstatt Host und Port manuell einzutippen, wählen Sie diese komfortabel aus einer zentralen Liste:
+Die Steuerung der DX-Cluster-Verbindung wurde komplett modernisiert:
 - **Sende-Slots**: In der Sidebar oder in den Einstellungen können Sie bis zu drei parallele DX-Cluster-Verbindungen (C1, C2, C3) per Dropdown-Picker auswählen.
 - **Verbindungsstatus**: Farbige Kreise zeigen den Live-Status an (Grau = Deaktiviert, Orange = Verbindungsaufbau, Grün = Verbunden, Rot = Fehler).
+- **Universelles Spot-Parsing**: Alle eintreffenden Spots gängiger Knoten-Formate (VE7CC, K3LR, RBNet, AR-Cluster, CC-Cluster, DXSpider) werden automatisch erfasst.
+- **Vollständige Listenanzeige & Farbkodierung**: Alle empfangenen Spots und Dekodierungen werden ohne Vorab-Löschung in der Haupttabelle dargestellt. Filter-Regeln löschen keine Einträge mehr, sondern steuern die farbliche Hervorhebung (z.B. Grau für blockiert) und automatische Aktionen.
+- **Länder- & Spotter-Filterung**: Autovervollständigung beim Tippen sowie Teilstring- & Regionenerkennung (Eingaben wie `Russia` oder `Russland` stimmen automatisch mit `European Russia` und `Asiatic Russia` überein).
 - **Listen-Verwaltung (Einstellungen -> DX Cluster)**:
   - **Hinzufügen**: Neuen Cluster mit Name, Host und Port registrieren.
   - **Löschen**: Über das Mülleimer-Icon 🗑️ Einträge entfernen.
@@ -68,6 +73,8 @@ Zur Diagnose und Rohdaten-Überwachung verfügt die App über drei umschaltbare 
 - **System-Logs**: Interne Status- und Fehlermeldungen (z.B. Socket-Bindungsfehler oder Verbindungsabbrüche).
 - **WSJT-X Rohdaten**: Zeigt empfangene UDP-Pakete an. Kann über Checkboxen nach *Decodes* (Dekodierungen), *Eingang* (Steuerdaten von WSJT-X) und *Ausgang* (gesendete Befehle) gefiltert werden.
 - **Cluster-Spots**: Listet alle rohen DX-Spots auf, die von den verbundenen Upstream-Clustern empfangen wurden.
+- **Log-Suchfeld**: Eigenes Echtzeit-Suchfeld in der Log-Konsole zum Filtern der Protokollmeldungen.
+- **Log-Löschen (🗑️)**: Ein Klick auf das Mülleimer-Symbol leert die aktiven Log-Einträge.
 - **Konsole abkoppeln (Eigenes Fenster)**: Über das Abkopplungs-Icon oben rechts in der Konsole lässt sich die Log-Ansicht in ein eigenes, frei positionierbares macOS-Fenster auslagern. Beim Schließen des Fensters dockt die Konsole automatisch wieder im Hauptfenster an. Die Konsolenhöhe im Hauptfenster wird beim Ziehen der Trennlinie automatisch gespeichert.
 
 ---

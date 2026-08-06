@@ -135,6 +135,8 @@ struct HelpView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     iconBullet(icon: "sidebar.left", text: "**Verbindungs-Sidebar**: Blendet die linke Status- und Konfigurations-Seitenleiste ein oder aus.")
                     iconBullet(icon: "play.circle", text: "**Auto Transmit Toggle (Auto ON/OFF)**: Aktiviert oder deaktiviert die automatische Sende-Engine.")
+                    iconBullet(icon: "pause.circle", text: "**Freeze / Pause Toggle**: Friert die Ansicht der Dekodiertabelle & Logs mit einem statischen Snapshot ein (Auto-Scroll aus). Hintergrunddaten werden weiter empfangen. Erneuter Klick schaltet zurück auf Live-Scrollen.")
+                    iconBullet(icon: "magnifyingglass", text: "**Echtzeit-Suchfeld**: Ermöglicht das sofortige Durchsuchen der Tabelle oder Logs nach Rufzeichen, Land, Spotter, Grid-Locator oder Nachrichten-Text – sowohl im Live- als auch im Freeze-Modus.")
                     iconBullet(icon: "book", text: "**Logbuch**: Öffnet das LoTW/QRZ-Logbuchfenster zur Ansicht der getätigten QSOs.")
                     iconBullet(icon: "arrow.up", text: "**Sortierung**: Schaltet die chronologische Sortierung der Tabelleneinträge und Logs um (Neueste oben oder unten).")
                     iconBullet(icon: "trash", text: "**Tabelle löschen**: Leert die Liste der empfangenen Dekodierungen und Spots.")
@@ -142,7 +144,7 @@ struct HelpView: View {
                     iconBullet(icon: "rectangle.compress.vertical", text: "**Kompaktmodus**: Reduziert das Layout auf eine minimale Steuerleiste und Spot-Tabelle.")
                     iconBullet(icon: "gearshape", text: "**Einstellungen**: Öffnet den Einstellungsdialog zur Konfiguration der Syncs, Cluster und Farben.")
                     iconBullet(icon: "questionmark.circle", text: "**Hilfe**: Öffnet dieses Hilfe- und Changelog-Fenster.")
-                    iconBullet(icon: "sidebar.right", text: "**Filter-Sidebar**: Blendet das rechte Panel zur Konfiguration von Rufzeichen- und Spotter-Filtern ein oder aus.")
+                    iconBullet(icon: "sidebar.right", text: "**Filter-Sidebar**: Blendet das rechte Panel zur Konfiguration von Rufzeichen-, DX- und Spotter-Filtern ein oder aus.")
                 }
                 
                 Divider()
@@ -201,17 +203,36 @@ struct HelpView: View {
             
         case .cluster:
             VStack(alignment: .leading, spacing: 12) {
-                Text("DX Cluster Verbindung & Verwaltung")
+                Text("DX Cluster & Spot-Verarbeitung")
                     .font(.title2)
                     .bold()
-                Text("AutoQSO ermöglicht den Anschluss an bis zu drei parallele DX-Cluster-Verbindungen (C1, C2, C3).")
+                Text("AutoQSO ermöglicht den parallelen Empfang von bis zu drei DX-Cluster-Verbindungen (C1, C2, C3) sowie den WSJT-X Dekodierungen.")
                     .font(.body)
                 
-                Text("Zuweisung und Status:")
+                Text("Zuweisung & Status:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
                     bullet("In der linken Sidebar oder den Einstellungen wählen Sie die gewünschten Cluster aus einem Dropdown-Menü.")
                     bullet("**Status-Indikatoren** zeigen an, ob die Verbindung aktiv ist (Grau = Aus, Orange = Verbindungsaufbau, Grün = Verbunden, Rot = Verbindungsfehler).")
+                    bullet("**Universelles Spot-Parsing**: Alle eintreffenden Spots gängiger Knoten-Formate (VE7CC, K3LR, RBNet, AR-Cluster, CC-Cluster, DXSpider) werden automatisch erfasst.")
+                }
+                
+                Text("Vollständige Listenanzeige & Farbkodierung:")
+                    .font(.headline)
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet("**Vollständige Anzeige**: Alle empfangenen Spots und Dekodierungen werden ohne Vorab-Löschung in der Haupttabelle dargestellt.")
+                    bullet("**Grün**: CQ-Anrufe und potenzielle AutoQSO-Kandidaten.")
+                    bullet("**Rot / Fett**: Ungearbeitete seltene Most Wanted Entitäten.")
+                    bullet("**Blasses Rot**: Stationen, die auf dem aktuellen Band bereits im Logbuch stehen.")
+                    bullet("**Grau / Muted**: Von den aktiven DX- oder Spotter-Filtern blockierte Stationen.")
+                    bullet("**Standard**: Normale empfangene Dekodierungen und Spots.")
+                }
+                
+                Text("Länder- & Spotter-Filterung:")
+                    .font(.headline)
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet("**Intelligente Autovervollständigung**: Beim Tippen in den Länderfeldern (Gesperrte Länder, Erlaubte DX-Länder, Erlaubte Spotter-Länder) werden passende Länder sofort vorgeschlagen.")
+                    bullet("**Teilstring- & Regionenerkennung**: Eingaben wie `Russia` oder `Russland` stimmen automatisch sowohl mit `European Russia` als auch `Asiatic Russia` überein. Genauso lassen sich Teilbegriffe gezielt filtern.")
                 }
                 
                 Text("Listen-Manager (Einstellungen -> DX Cluster):")
@@ -384,14 +405,22 @@ struct HelpView: View {
                             .cornerRadius(4)
                     }
                     VStack(alignment: .leading, spacing: 5) {
+                        Text("✨ Neue Funktionen & Verbesserungen")
+                            .font(.subheadline)
+                            .bold()
+                        bullet("Freeze-Snapshot-Modus: Pause-Button friert die Dekodierliste & Protokolle mit einem statischen Snapshot ein. Hintergrunddaten werden weiter empfangen; das freie Scrollen in historischen Daten ist ohne automatisches Zurückspringen möglich.", font: .subheadline, color: .secondary)
+                        bullet("Echtzeit-Suchfeld: Neue Suchfelder in der Hauptleiste und Log-Konsole filtern Einträge in Echtzeit nach Rufzeichen, Land, Spotter, Grid-Locator oder Nachrichten-Text.", font: .subheadline, color: .secondary)
+                        bullet("Vollständige Tabellenanzeige & Farbkodierung: Alle empfangenen Decodes und DX-Spots erscheinen in der Haupttabelle. Filter-Regeln löschen keine Einträge mehr, sondern steuern die farbliche Hervorhebung (z.B. Grau für blockiert) und automatische Aktionen.", font: .subheadline, color: .secondary)
+                        bullet("Universelles Spot-Parsing: Unterstützung für DX-Spots aller gängigen Cluster-Knotentypen (VE7CC, K3LR, RBNet, AR-Cluster, CC-Cluster, DXSpider).", font: .subheadline, color: .secondary)
+                        bullet("Erweiterte Länderfilterung: Teilstring- und Regionen-Matching (z.B. `Russia` / `Russland` erkennt sowohl `European Russia` als auch `Asiatic Russia`) inklusive verbesserter Autovervollständigung.", font: .subheadline, color: .secondary)
+                        
                         Text("🐞 Fehlerbehebungen (Bugfixes)")
                             .font(.subheadline)
                             .bold()
-                        bullet("Eingabefelder: Behebung eines SwiftUI-Bugs unter macOS, bei dem die Eingabe von Portnummern und cooldowns während des Tippens zurückgesetzt oder gelöscht wurde.", font: .subheadline, color: .secondary)
-                        bullet("Auto-Scroll: Behebung des Scrollverhaltens im Hauptfenster. Die Dekodierungstabelle scrollt nun zuverlässig automatisch mit, um neu eintreffende Stationen (oben oder unten) direkt im Sichtfeld anzuzeigen.", font: .subheadline, color: .secondary)
-                        bullet("Cluster-Filter: Behebung eines Fehlers, durch den Cluster-Spots auch bei ausgeschalteten Filtern fälschlicherweise als Duplikate gefiltert wurden.", font: .subheadline, color: .secondary)
-                        bullet("Log-Löschen: Schaltfläche (Papierkorb) in der Toolbar des Hauptfensters sowie in der abgekoppelten Log-Konsole hinzugefügt, um Tabelleneinträge oder Logs mit einem Klick zu leeren.", font: .subheadline, color: .secondary)
-                        bullet("Hilfe & Bedienung: Neuer Hilfebereich für Toolbar-Elemente sowie Erläuterungen zu nicht-offensichtlichen Interaktionen (Einfacher Klick für Detail-Ansicht, Doppelklick für Sende-Antwort).", font: .subheadline, color: .secondary)
+                            .padding(.top, 4)
+                        bullet("Eingabefelder: Behebung eines SwiftUI-Bugs unter macOS, bei dem die Eingabe von Portnummern und Cooldowns während des Tippens zurückgesetzt wurde.", font: .subheadline, color: .secondary)
+                        bullet("Auto-Scroll: Korrektur der Sortier- und Scrollrichtung bei Umschaltung zwischen \"Neueste oben\" und \"Neueste unten\".", font: .subheadline, color: .secondary)
+                        bullet("Log-Löschen: Schaltfläche (Papierkorb) in der Toolbar des Hauptfensters sowie in der abgekoppelten Log-Konsole hinzugefügt.", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)

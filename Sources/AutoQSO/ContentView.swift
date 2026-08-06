@@ -14,8 +14,8 @@ struct ContentView: View {
     
     @State private var tableSelection: WSJTXDecode.ID? = nil
     
-    @AppStorage("isSidebarVisible") private var isSidebarVisible = false
-    @AppStorage("isLeftSidebarVisible") private var isLeftSidebarVisible = false
+    @AppStorage("isSidebarVisible") private var isSidebarVisible = true
+    @AppStorage("isLeftSidebarVisible") private var isLeftSidebarVisible = true
     @AppStorage("leftSidebarWidth") private var leftSidebarWidth: Double = 240.0
     @AppStorage("rightSidebarWidth") private var rightSidebarWidth: Double = 280.0
     @AppStorage("udpBridgePort") private var udpBridgePort = 0
@@ -554,8 +554,10 @@ struct ContentView: View {
             }
         })
         .frame(
-            minWidth: isCompactMode ? 480 : (550 + (isLeftSidebarVisible ? 220 : 0) + (isSidebarVisible ? 250 : 0)),
-            minHeight: isCompactMode ? 320 : 500
+            minWidth: isCompactMode ? 480 : (800 + (isLeftSidebarVisible ? 220 : 0) + (isSidebarVisible ? 250 : 0)),
+            idealWidth: isCompactMode ? 520 : 1380,
+            minHeight: isCompactMode ? 320 : 650,
+            idealHeight: isCompactMode ? 380 : 750
         )
     }
 
@@ -2421,10 +2423,11 @@ struct CountryInputField: View {
     @Binding var text: String
     let suggestions: [String]
     let onAdd: () -> Void
+    
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack {
-                TextField("z.B. Germany", text: $text)
+                TextField("z.B. Russia, Germany...", text: $text)
                     .textFieldStyle(UnifiedTextFieldStyle())
                     .controlSize(.small)
                 Button(action: onAdd) {
@@ -2432,7 +2435,7 @@ struct CountryInputField: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundColor(.blue)
-                .disabled(text.isEmpty)
+                .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             if !suggestions.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
