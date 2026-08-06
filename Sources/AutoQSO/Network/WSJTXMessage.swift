@@ -21,7 +21,7 @@ enum WSJTXMessageType: UInt32 {
 }
 
 struct WSJTXDecode: Identifiable, Equatable {
-    let id = UUID() // local id for SwiftUI
+    let id: UUID
     var time: UInt32
     var snr: Int32
     var deltaTime: Double
@@ -31,12 +31,63 @@ struct WSJTXDecode: Identifiable, Equatable {
     var message: String
     var lowConfidence: Bool
     var offAir: Bool
-    var isClusterSpot: Bool = false
-    var spotter: String = "WSJTX"
-    var receivedAt: Date = Date()
+    var isClusterSpot: Bool
+    var spotter: String
+    var receivedAt: Date
+    var customCallsign: String
     
-    var grid: String? {
-        return Maidenhead.extractGrid(from: message)
+    // Stored precalculated fields
+    let callsign: String
+    let country: String
+    let continent: String
+    let cqZone: Int?
+    let ituZone: Int?
+    let mostWantedRank: Int?
+    let isMostWanted: Bool
+    let grid: String?
+    
+    init(
+        id: UUID = UUID(),
+        time: UInt32,
+        snr: Int32,
+        deltaTime: Double,
+        deltaFrequency: UInt32,
+        dialFrequency: UInt64,
+        mode: String,
+        message: String,
+        lowConfidence: Bool,
+        offAir: Bool,
+        isClusterSpot: Bool = false,
+        spotter: String = "WSJTX",
+        receivedAt: Date = Date(),
+        customCallsign: String = ""
+    ) {
+        self.id = id
+        self.time = time
+        self.snr = snr
+        self.deltaTime = deltaTime
+        self.deltaFrequency = deltaFrequency
+        self.dialFrequency = dialFrequency
+        self.mode = mode
+        self.message = message
+        self.lowConfidence = lowConfidence
+        self.offAir = offAir
+        self.isClusterSpot = isClusterSpot
+        self.spotter = spotter
+        self.receivedAt = receivedAt
+        self.customCallsign = customCallsign
+        
+        let call = !customCallsign.isEmpty ? customCallsign : WSJTXDecode.parseWSJTDecodeMessage(message)
+        self.callsign = call
+        
+        let matcher = PrefixMatcher.shared
+        self.country = matcher.country(for: call)
+        self.continent = matcher.continent(for: call)
+        self.cqZone = matcher.cqZone(for: call)
+        self.ituZone = matcher.ituZone(for: call)
+        self.mostWantedRank = MostWantedManager.shared.rankForCallsign(call)
+        self.isMostWanted = self.mostWantedRank != nil
+        self.grid = Maidenhead.extractGrid(from: message)
     }
     
     func distanceKm(myGrid: String) -> Double? {
@@ -79,16 +130,7 @@ struct WSJTXDecode: Identifiable, Equatable {
         }
     }
     
-    var customCallsign: String = ""
-    
-    var callsign: String {
-        if !customCallsign.isEmpty {
-            return customCallsign
-        }
-        return parseWSJTDecodeMessage(message)
-    }
-    
-    private func parseWSJTDecodeMessage(_ message: String) -> String {
+    private static func parseWSJTDecodeMessage(_ message: String) -> String {
         let cleanMsg = message.replacingOccurrences(of: "<", with: " ").replacingOccurrences(of: ">", with: " ")
         let tokens = cleanMsg.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
         guard !tokens.isEmpty else { return "" }
@@ -114,7 +156,7 @@ struct WSJTXDecode: Identifiable, Equatable {
         return validCalls.last ?? ""
     }
 
-    private func isValidCallsign(_ word: String) -> Bool {
+    private static func isValidCallsign(_ word: String) -> Bool {
         let clean = word.uppercased().trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         guard clean.count >= 3 && clean.count <= 10 else { return false }
         

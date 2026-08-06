@@ -102,7 +102,7 @@ struct LogsConsoleView: View {
             Divider()
             
             ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
+                LazyVStack(alignment: .leading, spacing: 2) {
                     if consoleTab == 0 {
                         let rawLogs = (viewModel.logHistory + viewModel.lotwManager.logHistory + viewModel.qrzManager.logHistory).sorted()
                         let logs = isNewestOnTop ? Array(rawLogs.reversed()) : rawLogs

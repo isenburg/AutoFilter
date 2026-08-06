@@ -39,7 +39,7 @@ class DecodeViewModel: ObservableObject {
     @Published var duplicateSpotWindowMinutes: Int = 1
     @Published var duplicateSpotFrequencyTolerance: Double = 0.5
     
-    let matcher = PrefixMatcher()
+    let matcher = PrefixMatcher.shared
     
     func addLog(_ message: String) {
         let formatter = DateFormatter()
@@ -90,6 +90,8 @@ class DecodeViewModel: ObservableObject {
     @Published var telnetServerError: String? = nil
     @Published var clusterSpots: [WSJTXDecode] = []
     @Published var propagationClusters: [CountryCluster] = []
+    @Published var mostWantedDecodes: [WSJTXDecode] = []
+    private var pendingRecalculationWorkItem: DispatchWorkItem?
     @Published var totalReceived = 0
     @Published var totalForwarded = 0
     @Published var counterStartTime = Date()
@@ -486,20 +488,20 @@ class DecodeViewModel: ObservableObject {
     }
 
     func loadCtyDatabase() {
-        if let savedDate = UserDefaults.standard.object(forKey: "cty_cache_date") as? Date {
-            if let content = try? String(contentsOf: ctyCacheURL, encoding: .utf8) {
-                matcher.parseCtyDat(content)
-                matcher.lastUpdate = savedDate
-                
-                // Auto-refresh check (14 Tage = 1209600 s)
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            let cacheURL = self.ctyCacheURL
+            if let savedDate = UserDefaults.standard.object(forKey: "cty_cache_date") as? Date,
+               let content = try? String(contentsOf: cacheURL, encoding: .utf8) {
+                self.matcher.parseCtyDat(content)
+                self.matcher.lastUpdate = savedDate
+                self.addLog("CTY.DAT erfolgreich im Hintergrund geladen.")
                 if abs(savedDate.timeIntervalSinceNow) > 1209600 {
-                    updateCtyData()
+                    self.updateCtyData()
                 }
             } else {
-                updateCtyData()
+                self.updateCtyData()
             }
-        } else {
-            updateCtyData()
         }
     }
 
@@ -747,7 +749,7 @@ class DecodeViewModel: ObservableObject {
         let hfFreqHz = UInt64(freq * 1000)
         let cleanComment = comment.isEmpty ? "DX spot" : comment
         
-        var decode = WSJTXDecode(
+        let decode = WSJTXDecode(
             time: millisecondsSinceMidnightUTC(),
             snr: 0,
             deltaTime: 0.0,
@@ -758,9 +760,9 @@ class DecodeViewModel: ObservableObject {
             lowConfidence: false,
             offAir: false,
             isClusterSpot: true,
-            spotter: spotter
+            spotter: spotter,
+            customCallsign: call
         )
-        decode.customCallsign = call
         
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -873,11 +875,9 @@ class DecodeViewModel: ObservableObject {
                 let now = Date()
                 try? content.write(to: self.ctyCacheURL, atomically: true, encoding: .utf8)
                 UserDefaults.standard.set(now, forKey: "cty_cache_date")
-                DispatchQueue.main.async {
-                    self.matcher.parseCtyDat(content)
-                    self.matcher.lastUpdate = now
-                    self.addLog("CTY.DAT erfolgreich im Hintergrund aktualisiert.")
-                }
+                self.matcher.parseCtyDat(content)
+                self.matcher.lastUpdate = now
+                self.addLog("CTY.DAT erfolgreich im Hintergrund aktualisiert.")
             }
         }.resume()
     }
@@ -918,6 +918,7 @@ class DecodeViewModel: ObservableObject {
         defaults.set(isDuplicateFilterEnabled, forKey: "isDuplicateFilterEnabled")
         defaults.set(duplicateSpotWindowMinutes, forKey: "duplicateSpotWindowMinutes")
         defaults.set(duplicateSpotFrequencyTolerance, forKey: "duplicateSpotFrequencyTolerance")
+        scheduleRecalculations()
     }
 
     func shouldAccept(decode: WSJTXDecode, recordDuplicates: Bool = false) -> Bool {
@@ -1299,6 +1300,25 @@ class DecodeViewModel: ObservableObject {
     }
 
     func updatePropagationClusters() {
+        scheduleRecalculations()
+    }
+    
+    private func scheduleRecalculations() {
+        pendingRecalculationWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            self.performRecalculations()
+        }
+        pendingRecalculationWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: workItem)
+    }
+    
+    private func performRecalculations() {
+        recalculatePropagationClusters()
+        recalculateMostWantedDecodes()
+    }
+    
+    private func recalculatePropagationClusters() {
         let currentDecodes = self.server.decodes
         let currentSpots = self.clusterSpots
         
@@ -1312,30 +1332,25 @@ class DecodeViewModel: ObservableObject {
         
         let filteredItems = allItems.filter { decode in
             guard decode.receivedAt > cutoff else { return false }
-            
-            // Check filters
             guard shouldAccept(decode: decode, recordDuplicates: false) else { return false }
-            
-            // Check worked-before
             if !countWorkedBefore {
                 let call = decode.callsign
                 if !call.isEmpty && lotwManager.hasWorked(callsign: call, band: decode.band) {
                     return false
                 }
             }
-            
             return true
         }
         
         let grouped = Dictionary(grouping: filteredItems) { decode in
-            matcher.country(for: decode.callsign)
+            decode.country
         }
         
         let clusters: [CountryCluster] = grouped.compactMap { (countryName, decodes) -> CountryCluster? in
             guard countryName != "OTHER", !countryName.isEmpty else { return nil }
             guard let coords = self.matcher.coordinates(forCountry: countryName) else { return nil }
             let first = decodes.first!
-            let continent = self.matcher.continent(for: first.callsign)
+            let continent = first.continent
             
             var bandCounts: [String: Int] = [:]
             for d in decodes {
@@ -1357,8 +1372,35 @@ class DecodeViewModel: ObservableObject {
             )
         }
         
-        DispatchQueue.main.async {
-            self.propagationClusters = clusters.sorted { $0.country < $1.country }
+        self.propagationClusters = clusters.sorted { $0.country < $1.country }
+    }
+    
+    private func recalculateMostWantedDecodes() {
+        var seen = Set<String>()
+        var result: [WSJTXDecode] = []
+        let combined = self.server.decodes + self.clusterSpots
+        let filtered = combined
+            .filter { decode in
+                let call = decode.callsign
+                guard !call.isEmpty else { return false }
+                let isMW = decode.isMostWanted
+                let hasWorkedOnBand = lotwManager.hasWorked(callsign: call, band: decode.band)
+                return isMW && !hasWorkedOnBand && shouldAccept(decode: decode)
+            }
+            .sorted { a, b in
+                a.snr > b.snr
+            }
+        for decode in filtered {
+            let call = decode.callsign.uppercased()
+            if !seen.contains(call) {
+                seen.insert(call)
+                result.append(decode)
+            }
+        }
+        self.mostWantedDecodes = result.sorted { a, b in
+            let rankA = a.mostWantedRank ?? 999
+            let rankB = b.mostWantedRank ?? 999
+            return rankA < rankB
         }
     }
 

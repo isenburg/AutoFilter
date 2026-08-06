@@ -347,10 +347,10 @@ struct HelpView: View {
                     .font(.title)
                     .bold()
                 
-                // Version 3.1.0
+                // Version 3.2.0
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 3.1.0")
+                        Text("Version 3.2.0")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -365,6 +365,34 @@ struct HelpView: View {
                             .cornerRadius(4)
                     }
                     VStack(alignment: .leading, spacing: 5) {
+                        Text("⚡ Performance & UI/UX Optimierungen")
+                            .font(.subheadline)
+                            .bold()
+                        bullet("Flüssige UI-Updates: Debouncing von Decodes und Cluster-Spots um 300ms verhindert UI-Ruckler während dichter FT8-Decode-Bursts.", font: .subheadline, color: .secondary)
+                        bullet("Schneller App-Start: Das Parsen der CTY.DAT-Länderdatenbank wurde in den Hintergrund verlagert und blockiert nicht mehr den Start der Anwendung.", font: .subheadline, color: .secondary)
+                        bullet("Reduzierte CPU-Last: Durch Vorab-Berechnung statischer Spot-Metadaten und Caching des Most-Wanted-Rankings wird die CPU-Auslastung bei Listendarstellung drastisch minimiert.", font: .subheadline, color: .secondary)
+                        bullet("Optimierte Log-Anzeige: Umstellung der System- und WSJT-X-Konsolen auf LazyVStack spart signifikant Rendering-Zeit für Offscreen-Texte.", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+                
+                Divider()
+                
+                // Version 3.1.0
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 3.1.0")
+                            .font(.headline)
+                            .bold()
+                        Text("(Build 174)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    VStack(alignment: .leading, spacing: 5) {
                         Text("🗺️ Ausbreitungskarte, persistente Spot-Auswahl & zentriertes Layout")
                             .font(.subheadline)
                             .bold()
@@ -377,9 +405,6 @@ struct HelpView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 }
-                .padding()
-                .background(Color.green.opacity(0.08))
-                .cornerRadius(8)
                 
                 Divider()
                 

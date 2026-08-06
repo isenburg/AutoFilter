@@ -610,36 +610,7 @@ struct ContentView: View {
                     .layoutPriority(1)
                     
                     // Dedicated Most Wanted Section under the Main Table — dedupliziert nach Rufzeichen (bestes SNR pro Call)
-                    let mostWantedDecodes: [WSJTXDecode] = {
-                        var seen = Set<String>()
-                        var result: [WSJTXDecode] = []
-                        let combined = viewModel.server.decodes + viewModel.clusterSpots
-                        let filtered = combined
-                            .filter { decode in
-                                let call = decode.callsign
-                                guard !call.isEmpty else { return false }
-                                let isMW = MostWantedManager.shared.isMostWanted(callsign: call)
-                                let hasWorkedOnBand = viewModel.lotwManager.hasWorked(callsign: call, band: decode.band)
-                                return isMW && !hasWorkedOnBand && viewModel.shouldAccept(decode: decode)
-                            }
-                            .sorted { a, b in
-                                // Bestes SNR pro Callsign bevorzugen
-                                a.snr > b.snr
-                            }
-                        for decode in filtered {
-                            let call = decode.callsign.uppercased()
-                            if !seen.contains(call) {
-                                seen.insert(call)
-                                result.append(decode)
-                            }
-                        }
-                        // Danach nach Most Wanted Rang sortieren
-                        return result.sorted { a, b in
-                            let rankA = MostWantedManager.shared.rankForCallsign(a.callsign) ?? 999
-                            let rankB = MostWantedManager.shared.rankForCallsign(b.callsign) ?? 999
-                            return rankA < rankB
-                        }
-                    }()
+                    let mostWantedDecodes = viewModel.mostWantedDecodes
                     
                     VStack(alignment: .leading, spacing: 4) {
                         // Header
@@ -979,34 +950,7 @@ struct ContentView: View {
 
     @ViewBuilder
     private var compactMostWantedView: some View {
-        let mostWantedDecodes: [WSJTXDecode] = {
-            var seen = Set<String>()
-            var result: [WSJTXDecode] = []
-            let combined = viewModel.server.decodes + viewModel.clusterSpots
-            let filtered = combined
-                .filter { decode in
-                    let call = decode.callsign
-                    guard !call.isEmpty else { return false }
-                    let isMW = MostWantedManager.shared.isMostWanted(callsign: call)
-                    let hasWorkedOnBand = viewModel.lotwManager.hasWorked(callsign: call, band: decode.band)
-                    return isMW && !hasWorkedOnBand && viewModel.shouldAccept(decode: decode)
-                }
-                .sorted { a, b in
-                    a.snr > b.snr
-                }
-            for decode in filtered {
-                let call = decode.callsign.uppercased()
-                if !seen.contains(call) {
-                    seen.insert(call)
-                    result.append(decode)
-                }
-            }
-            return result.sorted { a, b in
-                let rankA = MostWantedManager.shared.rankForCallsign(a.callsign) ?? 999
-                let rankB = MostWantedManager.shared.rankForCallsign(b.callsign) ?? 999
-                return rankA < rankB
-            }
-        }()
+        let mostWantedDecodes = viewModel.mostWantedDecodes
         
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
@@ -1176,7 +1120,7 @@ struct ContentView: View {
     private func dxCallCell(for decode: WSJTXDecode) -> some View {
         HStack(spacing: 4) {
             cellText(decode.callsign, decode: decode)
-            if MostWantedManager.shared.isMostWanted(callsign: decode.callsign) {
+            if decode.isMostWanted {
                 Text("🔥")
                     .font(.caption2)
             }
@@ -1185,13 +1129,12 @@ struct ContentView: View {
     
     @ViewBuilder
     private func landCell(for decode: WSJTXDecode) -> some View {
-        let country = viewModel.matcher.country(for: decode.callsign)
-        cellText(country.isEmpty ? "Unbekannt" : country, decode: decode)
+        cellText(decode.country.isEmpty ? "Unbekannt" : decode.country, decode: decode)
     }
     
     @ViewBuilder
     private func mostWantedCell(for decode: WSJTXDecode) -> some View {
-        if let rank = MostWantedManager.shared.rankForCallsign(decode.callsign) {
+        if let rank = decode.mostWantedRank {
             HStack(spacing: 4) {
                 Text("🔥 #\(rank)")
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
@@ -2170,7 +2113,7 @@ struct ContentView: View {
             Divider()
             
             ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
+                LazyVStack(alignment: .leading, spacing: 2) {
                     if consoleTab == 0 {
                         let rawLogs = (viewModel.logHistory + viewModel.lotwManager.logHistory + viewModel.qrzManager.logHistory).sorted()
                         let logs = isNewestOnTop ? Array(rawLogs.reversed()) : rawLogs

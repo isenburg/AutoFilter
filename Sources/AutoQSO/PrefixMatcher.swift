@@ -1,6 +1,9 @@
 import Foundation
 
 class PrefixMatcher {
+    static let shared = PrefixMatcher()
+    
+    private let lock = NSLock()
     private var database: [String: String] = [:]
     private var continentDatabase: [String: String] = [:]
     private var cqZoneDatabase: [String: Int] = [:]
@@ -12,22 +15,42 @@ class PrefixMatcher {
         loadBasicData()
     }
     
+    func copyData(from other: PrefixMatcher) {
+        lock.lock()
+        defer { lock.unlock() }
+        other.lock.lock()
+        defer { other.lock.unlock() }
+        self.database = other.database
+        self.continentDatabase = other.continentDatabase
+        self.cqZoneDatabase = other.cqZoneDatabase
+        self.ituZoneDatabase = other.ituZoneDatabase
+        self.countryCoordinates = other.countryCoordinates
+    }
+    
     func country(for callsign: String) -> String {
+        lock.lock()
+        defer { lock.unlock() }
         let prefix = findPrefix(for: callsign)
         return database[prefix] ?? "OTHER"
     }
     
     func continent(for callsign: String) -> String {
+        lock.lock()
+        defer { lock.unlock() }
         let prefix = findPrefix(for: callsign)
         return continentDatabase[prefix] ?? "OTHER"
     }
     
     func cqZone(for callsign: String) -> Int? {
+        lock.lock()
+        defer { lock.unlock() }
         let prefix = findPrefix(for: callsign)
         return cqZoneDatabase[prefix]
     }
     
     func ituZone(for callsign: String) -> Int? {
+        lock.lock()
+        defer { lock.unlock() }
         let prefix = findPrefix(for: callsign)
         return ituZoneDatabase[prefix]
     }
@@ -67,7 +90,6 @@ class PrefixMatcher {
                     for p in prefixes {
                         let cleanPrefix = p.trimmingCharacters(in: .whitespaces)
                         if !cleanPrefix.isEmpty {
-                            // Kontinent-Überschreibung im Präfix, z.B. CT[EU]
                             var prefixContinent = currentContinent
                             if let startBracket = cleanPrefix.firstIndex(of: "["), 
                                let endBracket = cleanPrefix.firstIndex(of: "]") {
@@ -75,7 +97,6 @@ class PrefixMatcher {
                                 if override.count == 2 { prefixContinent = override }
                             }
 
-                            // CQ Zone Überschreibung im Präfix, z.B. K(05)
                             var prefixCQZone = currentCQZone
                             if let startParen = cleanPrefix.firstIndex(of: "("), 
                                let endParen = cleanPrefix.firstIndex(of: ")") {
@@ -83,7 +104,6 @@ class PrefixMatcher {
                                 if let z = Int(override) { prefixCQZone = z }
                             }
 
-                            // ITU Zone Überschreibung im Präfix, z.B. K{08}
                             var prefixITUZone = currentITUZone
                             if let startBrace = cleanPrefix.firstIndex(of: "{"), 
                                let endBrace = cleanPrefix.firstIndex(of: "}") {
@@ -124,12 +144,14 @@ class PrefixMatcher {
         }
         
         if !newDatabase.isEmpty {
+            lock.lock()
             self.database = newDatabase
             self.continentDatabase = newContinents
             self.cqZoneDatabase = newCQZones
             self.ituZoneDatabase = newITUZones
             self.countryCoordinates = newCoordinates
-            print("CTY.dat erfolgreich verarbeitet: \(database.count) Präfixe.")
+            lock.unlock()
+            print("CTY.dat erfolgreich verarbeitet: \(newDatabase.count) Präfixe.")
         }
     }
     
@@ -148,6 +170,15 @@ class PrefixMatcher {
         parseCtyDat(basic)
     }
     
-    func coordinates(forCountry country: String) -> (latitude: Double, longitude: Double)? { return countryCoordinates[country] }
-    func allCountries() -> [String] { return Array(Set(database.values)).sorted() }
+    func coordinates(forCountry country: String) -> (latitude: Double, longitude: Double)? {
+        lock.lock()
+        defer { lock.unlock() }
+        return countryCoordinates[country]
+    }
+    
+    func allCountries() -> [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return Array(Set(database.values)).sorted()
+    }
 }

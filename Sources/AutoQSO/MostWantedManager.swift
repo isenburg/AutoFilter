@@ -15,6 +15,7 @@ public class MostWantedManager: ObservableObject {
     
     private var prefixToRank: [String: Int] = [:]
     private var dxccIdToRank: [Int: Int] = [:]
+    private var sortedPrefixes: [String] = []
     
     public init() {
         loadDefaultTop100()
@@ -32,7 +33,6 @@ public class MostWantedManager: ObservableObject {
         guard !upper.isEmpty else { return nil }
         
         // Präfix-Suche: längste Übereinstimmung zuerst
-        let sortedPrefixes = prefixToRank.keys.sorted { $0.count > $1.count }
         for p in sortedPrefixes {
             var matched = false
             if upper == p {
@@ -270,5 +270,6 @@ public class MostWantedManager: ObservableObject {
         self.mostWantedList = list
         self.prefixToRank = pMap
         self.dxccIdToRank = dMap
+        self.sortedPrefixes = pMap.keys.sorted { $0.count > $1.count }
     }
 }
