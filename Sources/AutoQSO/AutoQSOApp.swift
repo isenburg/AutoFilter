@@ -139,19 +139,12 @@ struct AutoQSOApp: App {
 class AppDelegate: NSObject, NSApplicationDelegate {
     
     static func showAboutPanel() {
-        let credits = NSAttributedString(
-            string: "Copyright © 2024–2026 Georg Isenbürger · DJ6GI",
-            attributes: [
-                .font: NSFont.systemFont(ofSize: 12),
-                .foregroundColor: NSColor.secondaryLabelColor
-            ]
-        )
-        
+        let copyrightStr = "Copyright © 2026 Georg Isenbürger · DJ6GI"
         NSApp.orderFrontStandardAboutPanel(options: [
             .applicationName: "AutoQSO",
             .applicationVersion: "Version \(APP_VERSION)",
             .version: "Build \(APP_BUILD_NUMBER)",
-            .credits: credits
+            NSApplication.AboutPanelOptionKey(rawValue: "Copyright"): copyrightStr
         ])
     }
 }
