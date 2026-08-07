@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 enum HelpSection: String, CaseIterable, Identifiable {
     case overview = "Übersicht"
@@ -12,7 +11,6 @@ enum HelpSection: String, CaseIterable, Identifiable {
     case compactMode = "Kompaktmodus"
     case logbook = "Logbuch & Sync"
     case storage = "Speicherort & iCloud"
-    case support = "Support"
     case disclaimer = "Rechtlicher Hinweis"
     case changelog = "Changelog"
     case copyright = "Copyright & Lizenz"
@@ -31,7 +29,6 @@ enum HelpSection: String, CaseIterable, Identifiable {
         case .compactMode: return "rectangle.compress.vertical"
         case .logbook: return "book.closed"
         case .storage: return "folder.fill"
-        case .support: return "lifepreserver"
         case .disclaimer: return "exclamationmark.triangle"
         case .changelog: return "clock"
         case .copyright: return "c.circle"
@@ -45,16 +42,15 @@ struct HelpView: View {
     var body: some View {
         HStack(spacing: 0) {
             // Non-collapsible Left Sidebar
-            
             VStack(alignment: .leading, spacing: 6) {
-             /*
+                /*
                 Text("Hilfe Themen")
                     .font(.caption)
                     .fontWeight(.bold)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 12)
                     .padding(.top, 12)
-             */
+               */
                 List(HelpSection.allCases, selection: $selectedSection) { section in
                     HStack(spacing: 8) {
                         Image(systemName: section.icon)
@@ -96,10 +92,9 @@ struct HelpView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 720, height: 540)
+        .frame(width: 720, height: 510)
     }
-
-    @ViewBuilder
+        @ViewBuilder
     private func detailView(for section: HelpSection) -> some View {
         switch section {
         case .overview:
@@ -195,7 +190,7 @@ struct HelpView: View {
                     bullet("**RR73 / RRR Nachrichten**: z.B. `K1ABC W1AW RR73`")
                 }
                 .padding()
-                .background(Color.blue.opacity(0.1))
+                .background(Color.gray.opacity(0.1))
                 .cornerRadius(8)
                 Text("Ablauf:")
                     .font(.headline)
@@ -360,44 +355,6 @@ struct HelpView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-
-        case .support:
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Support & Hilfestellung")
-                    .font(.title2)
-                    .bold()
-                
-                Text("Haben Sie Fragen, Probleme oder Feedback zu AutoQSO? Über den unten stehenden Button können Sie direkt eine E-Mail an unseren Support senden.")
-                    .font(.body)
-                
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Automatisch übermittelte Systeminformationen:")
-                        .font(.headline)
-                    bullet("App Version & Build-Nummer (`AutoQSO v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))`)")
-                    bullet("macOS-Version & Build-Nummer")
-                    bullet("Hardware-Informationen (Mac-Modell/Hostname, Prozessortyp, CPU-Kerne, Arbeitsspeicher)")
-                }
-                .padding()
-                .background(Color.blue.opacity(0.08))
-                .cornerRadius(8)
-                
-                Button(action: sendSupportEmail) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "envelope.fill")
-                        Text("Support-E-Mail senden")
-                    }
-                    .font(.headline)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .padding(.top, 6)
-                
-                Text("Hinweis: Es öffnet sich Ihr bevorzugtes E-Mail-Programm mit einer vorbereiteten Nachricht, die Sie vor dem Absenden überprüfen können.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
             
         case .disclaimer:
             VStack(alignment: .leading, spacing: 12) {
@@ -415,9 +372,9 @@ struct HelpView: View {
                         .font(.headline)
                     VStack(alignment: .leading, spacing: 8) {
                         numberedItem("1.", "**Stationskontrolle**: Der lizenzierte Funkamateur ist für alle von seiner Station ausgesendeten Signale gemäß den nationalen Fernmeldegesetzen (z.B. TKG/AFuG in Deutschland, BNetzA, FCC) voll verantwortlich.")
-                        numberedItem("2.", "**Beaufsichtigter Betrieb**: Der automatische Sendebetrieb muss stets beaufsichtigt werden.")
+                        numberedItem("2.", "**Beaufsichtigter Betrieb**: Der automatische Sendebetrieb ist gemäß der gültigen Richtlinien zu betreiben.")
                         numberedItem("3.", "**Gewährleistungsausschluss**: Die Software wird 'OHNE JEDE GEWÄHRLEISTUNG' zur Verfügung gestellt.")
-                        numberedItem("4.", "**Haftungsbeschränkung**: Der Autor (Georg Isenbürger - DJ6GI) übernimmt keinerlei Haftung für Schäden, Ordnungswidrigkeiten oder Folgeschäden.")
+                        numberedItem("4.", "**Haftungsbeschränkung**: Der Autor (Georg Isenbürger - DJ6GI) übernimmt keinerlei Haftung für Schäden, Ordnungswidrigkeiten oder Folgeschäden, nicht erfolgte QSOs, verlorene Contests, nicht angezeigte Most Wanted, etc.")
                     }
                 }
                 .padding()
@@ -431,73 +388,6 @@ struct HelpView: View {
                     .font(.title)
                     .bold()
                 
-                // Version 3.2.2
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack(spacing: 8) {
-                                        Text("Version 3.2.2")
-                                            .font(.headline)
-                                            .bold()
-                                        Text("(Build \(APP_BUILD_NUMBER))")
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                        Text("AKTUELL")
-                                            .font(.system(size: 10, weight: .bold))
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(Color.green)
-                                            .foregroundColor(.white)
-                                            .cornerRadius(4)
-                                    }
-                                    VStack(alignment: .leading, spacing: 5) {
-                                        Text("🐛 Bugfixes & Layoutverbesserungen")
-                                            .font(.subheadline)
-                                            .bold()
-                                        bullet("Einstellungen & Hilfe: Diverse Bugfixes sowie Optimierungen und Feinschliff am Layout der Einstellungs- und Hilfeseiten.", font: .subheadline, color: .secondary)
-                                    }
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                }
-                                .padding()
-                                .background(Color.green.opacity(0.08))
-                                .cornerRadius(8)
-                                
-                                Divider()
-                                
-                                // Version 3.2.1
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack(spacing: 8) {
-                                        Text("Version 3.2.1")
-                                            .font(.headline)
-                                            .bold()
-                                    }
-                                    VStack(alignment: .leading, spacing: 5) {
-                                        Text("✨ Neue Funktionen & Verbesserungen")
-                                            .font(.subheadline)
-                                            .bold()
-                                        bullet("Freeze-Snapshot-Modus: Pause-Button friert die Dekodierliste & Protokolle mit einem statischen Snapshot ein. Hintergrunddaten werden weiter empfangen; das freie Scrollen in historischen Daten ist ohne automatisches Zurückspringen möglich.", font: .subheadline, color: .secondary)
-                                        bullet("Echtzeit-Suchfeld: Neue Suchfelder in der Hauptleiste und Log-Konsole filtern Einträge in Echtzeit nach Rufzeichen, Land, Spotter, Grid-Locator oder Nachrichten-Text.", font: .subheadline, color: .secondary)
-                                        bullet("Vollständige Tabellenanzeige & Farbkodierung: Alle empfangenen Decodes und DX-Spots erscheinen in der Haupttabelle. Filter-Regeln löschen keine Einträge mehr, sondern steuern die farbliche Hervorhebung (z.B. Grau für blockiert) und automatische Aktionen.", font: .subheadline, color: .secondary)
-                                        bullet("Universelles Spot-Parsing: Unterstützung für DX-Spots aller gängigen Cluster-Knotentypen (VE7CC, K3LR, RBNet, AR-Cluster, CC-Cluster, DXSpider).", font: .subheadline, color: .secondary)
-                                        bullet("Erweiterte Länderfilterung: Teilstring- und Regionen-Matching (z.B. `Russia` / `Russland` erkennt sowohl `European Russia` als auch `Asiatic Russia`) inklusive verbesserter Autovervollständigung.", font: .subheadline, color: .secondary)
-                                        
-                                        Text("🐞 Fehlerbehebungen (Bugfixes)")
-                                            .font(.subheadline)
-                                            .bold()
-                                            .padding(.top, 4)
-                                        bullet("Eingabefelder: Behebung eines SwiftUI-Bugs unter macOS, bei dem die Eingabe von Portnummern und Cooldowns während des Tippens zurückgesetzt wurde.", font: .subheadline, color: .secondary)
-                                        bullet("Auto-Scroll: Korrektur der Sortier- und Scrollrichtung bei Umschaltung zwischen \"Neueste oben\" und \"Neueste unten\".", font: .subheadline, color: .secondary)
-                                        bullet("Log-Löschen: Schaltfläche (Papierkorb) in der Toolbar des Hauptfensters sowie in der abgekoppelten Log-Konsole hinzugefügt.", font: .subheadline, color: .secondary)
-                                    }
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                }
-                                .padding()
-                                .background(Color.blue.opacity(0.05))
-                                .cornerRadius(8)
-                                
-                                Divider()
-                
-     /*
                 // Version 3.2.1
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
@@ -542,8 +432,6 @@ struct HelpView: View {
                 
                 Divider()
                 
-             */
-                
                 // Version 3.2.0
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
@@ -566,9 +454,6 @@ struct HelpView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 }
-                .padding()
-                .background(Color.blue.opacity(0.05))
-                .cornerRadius(8)
                 
                 Divider()
                 
@@ -595,9 +480,6 @@ struct HelpView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 }
-                .padding()
-                .background(Color.blue.opacity(0.05))
-                .cornerRadius(8)
                 
                 Divider()
                 
@@ -625,9 +507,6 @@ struct HelpView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 }
-                .padding()
-                .background(Color.blue.opacity(0.05))
-                .cornerRadius(8)
                 
                 Divider()
                 
@@ -651,7 +530,7 @@ struct HelpView: View {
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.blue.opacity(0.05))
+                .background(Color.gray.opacity(0.05))
                 .cornerRadius(8)
                 
                 Divider()
@@ -832,49 +711,6 @@ struct HelpView: View {
                 .cornerRadius(8)
             }
         }
-    }
-
-    private func sendSupportEmail() {
-        let recipient = "support@autoqso.app" // Hier Ziel-E-Mail eintragen
-        let subject = "AutoQSO Support Anfrage - v\(APP_VERSION)"
-        
-        // System & Hardware Details ermitteln
-        let osVersion = ProcessInfo.processInfo.operatingSystemVersionString
-        let hostName = Host.current().localizedName ?? Host.current().name ?? "Unbekannter Mac"
-        let processorCount = ProcessInfo.processInfo.processorCount
-        let physicalMemoryGB = String(format: "%.1f GB", Double(ProcessInfo.processInfo.physicalMemory) / (1024 * 1024 * 1024))
-        
-        #if arch(arm64)
-        let architecture = "Apple Silicon (arm64)"
-        #else
-        let architecture = "Intel (x86_64)"
-        #endif
-
-        let bodyText = """
-        Hallo AutoQSO Support-Team,
-
-        [Bitte beschreiben Sie hier Ihr Anliegen oder Problem]
-
-
-        --------------------------------------------------
-        SYSTEM INFORMATIONEN (Automatisch generiert)
-        --------------------------------------------------
-        App Version:      AutoQSO v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))
-        macOS Version:    \(osVersion)
-        Gerätename:       \(hostName)
-        Architektur:      \(architecture)
-        CPU Kerne:        \(processorCount)
-        Arbeitsspeicher:  \(physicalMemoryGB)
-        --------------------------------------------------
-        """
-
-        guard let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let encodedBody = bodyText.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let mailToURL = URL(string: "mailto:\(recipient)?subject=\(encodedSubject)&body=\(encodedBody)") else {
-            return
-        }
-
-        NSWorkspace.shared.open(mailToURL)
     }
 
     private func bullet(_ text: String, font: Font = .body, color: Color = .primary) -> some View {

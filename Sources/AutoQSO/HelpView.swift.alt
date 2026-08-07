@@ -195,7 +195,7 @@ struct HelpView: View {
                     bullet("**RR73 / RRR Nachrichten**: z.B. `K1ABC W1AW RR73`")
                 }
                 .padding()
-                .background(Color.blue.opacity(0.1))
+                .background(Color.gray.opacity(0.1))
                 .cornerRadius(8)
                 Text("Ablauf:")
                     .font(.headline)
@@ -431,73 +431,6 @@ struct HelpView: View {
                     .font(.title)
                     .bold()
                 
-                // Version 3.2.2
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack(spacing: 8) {
-                                        Text("Version 3.2.2")
-                                            .font(.headline)
-                                            .bold()
-                                        Text("(Build \(APP_BUILD_NUMBER))")
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                        Text("AKTUELL")
-                                            .font(.system(size: 10, weight: .bold))
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(Color.green)
-                                            .foregroundColor(.white)
-                                            .cornerRadius(4)
-                                    }
-                                    VStack(alignment: .leading, spacing: 5) {
-                                        Text("🐛 Bugfixes & Layoutverbesserungen")
-                                            .font(.subheadline)
-                                            .bold()
-                                        bullet("Einstellungen & Hilfe: Diverse Bugfixes sowie Optimierungen und Feinschliff am Layout der Einstellungs- und Hilfeseiten.", font: .subheadline, color: .secondary)
-                                    }
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                }
-                                .padding()
-                                .background(Color.green.opacity(0.08))
-                                .cornerRadius(8)
-                                
-                                Divider()
-                                
-                                // Version 3.2.1
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack(spacing: 8) {
-                                        Text("Version 3.2.1")
-                                            .font(.headline)
-                                            .bold()
-                                    }
-                                    VStack(alignment: .leading, spacing: 5) {
-                                        Text("✨ Neue Funktionen & Verbesserungen")
-                                            .font(.subheadline)
-                                            .bold()
-                                        bullet("Freeze-Snapshot-Modus: Pause-Button friert die Dekodierliste & Protokolle mit einem statischen Snapshot ein. Hintergrunddaten werden weiter empfangen; das freie Scrollen in historischen Daten ist ohne automatisches Zurückspringen möglich.", font: .subheadline, color: .secondary)
-                                        bullet("Echtzeit-Suchfeld: Neue Suchfelder in der Hauptleiste und Log-Konsole filtern Einträge in Echtzeit nach Rufzeichen, Land, Spotter, Grid-Locator oder Nachrichten-Text.", font: .subheadline, color: .secondary)
-                                        bullet("Vollständige Tabellenanzeige & Farbkodierung: Alle empfangenen Decodes und DX-Spots erscheinen in der Haupttabelle. Filter-Regeln löschen keine Einträge mehr, sondern steuern die farbliche Hervorhebung (z.B. Grau für blockiert) und automatische Aktionen.", font: .subheadline, color: .secondary)
-                                        bullet("Universelles Spot-Parsing: Unterstützung für DX-Spots aller gängigen Cluster-Knotentypen (VE7CC, K3LR, RBNet, AR-Cluster, CC-Cluster, DXSpider).", font: .subheadline, color: .secondary)
-                                        bullet("Erweiterte Länderfilterung: Teilstring- und Regionen-Matching (z.B. `Russia` / `Russland` erkennt sowohl `European Russia` als auch `Asiatic Russia`) inklusive verbesserter Autovervollständigung.", font: .subheadline, color: .secondary)
-                                        
-                                        Text("🐞 Fehlerbehebungen (Bugfixes)")
-                                            .font(.subheadline)
-                                            .bold()
-                                            .padding(.top, 4)
-                                        bullet("Eingabefelder: Behebung eines SwiftUI-Bugs unter macOS, bei dem die Eingabe von Portnummern und Cooldowns während des Tippens zurückgesetzt wurde.", font: .subheadline, color: .secondary)
-                                        bullet("Auto-Scroll: Korrektur der Sortier- und Scrollrichtung bei Umschaltung zwischen \"Neueste oben\" und \"Neueste unten\".", font: .subheadline, color: .secondary)
-                                        bullet("Log-Löschen: Schaltfläche (Papierkorb) in der Toolbar des Hauptfensters sowie in der abgekoppelten Log-Konsole hinzugefügt.", font: .subheadline, color: .secondary)
-                                    }
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                }
-                                .padding()
-                                .background(Color.blue.opacity(0.05))
-                                .cornerRadius(8)
-                                
-                                Divider()
-                
-     /*
                 // Version 3.2.1
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
@@ -542,8 +475,6 @@ struct HelpView: View {
                 
                 Divider()
                 
-             */
-                
                 // Version 3.2.0
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
@@ -566,9 +497,6 @@ struct HelpView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 }
-                .padding()
-                .background(Color.blue.opacity(0.05))
-                .cornerRadius(8)
                 
                 Divider()
                 
@@ -595,9 +523,6 @@ struct HelpView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 }
-                .padding()
-                .background(Color.blue.opacity(0.05))
-                .cornerRadius(8)
                 
                 Divider()
                 
@@ -625,9 +550,6 @@ struct HelpView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 }
-                .padding()
-                .background(Color.blue.opacity(0.05))
-                .cornerRadius(8)
                 
                 Divider()
                 
@@ -651,7 +573,7 @@ struct HelpView: View {
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.blue.opacity(0.05))
+                .background(Color.gray.opacity(0.05))
                 .cornerRadius(8)
                 
                 Divider()
