@@ -64,6 +64,8 @@ struct SettingsView: View {
     @AppStorage("appColorScheme") private var appColorScheme = "system"
     @AppStorage("fontSizeTable") private var fontSizeTable = 11.0
     @AppStorage("fontSizeLog") private var fontSizeLog = 11.0
+    @AppStorage("gridOverlayFontSize") private var gridOverlayFontSize = 11.0
+    @AppStorage("gridOverlayShowPill") private var gridOverlayShowPill = true
     
     // Aktive Upstream DX Clusters (1 - 3)
     @AppStorage("isCluster1Enabled") private var isCluster1Enabled = false
@@ -368,16 +370,11 @@ struct SettingsView: View {
                         }
                         
                         HStack(spacing: 8) {
-                            Button("LoTW Logbuch Synchronisieren") {
-                                viewModel.lotwManager.downloadLoTW(username: lotwUsername, password: lotwPassword)
+                            Button("LoTW Logbuch Synchronisieren (Vollständig ab 1900)") {
+                                viewModel.lotwManager.downloadLoTW(username: lotwUsername, password: lotwPassword, fullSync: true)
                             }
                             .disabled(lotwUsername.isEmpty || lotwPassword.isEmpty || viewModel.lotwManager.isDownloading)
                             .buttonStyle(.borderedProminent)
-                            
-                            Button("Sync-Datum auf 1900 zurücksetzen") {
-                                viewModel.lotwManager.resetSyncDateTo1900()
-                            }
-                            .buttonStyle(.bordered)
                         }
                         .padding(.top, 4)
                     }
@@ -399,16 +396,11 @@ struct SettingsView: View {
                         }
                         
                         HStack(spacing: 8) {
-                            Button("QRZ.com Logbuch Synchronisieren") {
-                                viewModel.syncQRZ(apiKey: qrzApiKey)
+                            Button("QRZ.com Logbuch Synchronisieren (Vollständig ab 1900)") {
+                                viewModel.syncQRZ(apiKey: qrzApiKey, fullSync: true)
                             }
                             .disabled(qrzApiKey.isEmpty || viewModel.qrzManager.isDownloading)
                             .buttonStyle(.borderedProminent)
-                            
-                            Button("Sync-Datum auf 1900 zurücksetzen") {
-                                viewModel.qrzManager.resetSyncDateTo1900()
-                            }
-                            .buttonStyle(.bordered)
                         }
                         .padding(.top, 4)
                     }
@@ -619,26 +611,28 @@ struct SettingsView: View {
                     Text("Minuten")
                         .foregroundStyle(.secondary)
                 }
+                
+                Divider()
+                
+                Toggle("Nur ungearbeitete 4-Stellen Grids durchlassen (z.B. JO31)", isOn: Binding(
+                    get: { viewModel.isNew4CharGridOnlyFilterEnabled },
+                    set: { viewModel.isNew4CharGridOnlyFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                ))
+                .font(.headline)
+
+                Toggle("Nur ungearbeitete 6-Stellen Grids durchlassen (z.B. JO31aa)", isOn: Binding(
+                    get: { viewModel.isNew6CharGridOnlyFilterEnabled },
+                    set: { viewModel.isNew6CharGridOnlyFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                ))
+                .font(.headline)
             }
             
         // --- 8. Ansicht, Schriftgrößen & Farbanpassungen ---
         case .appearance:
-            VStack(alignment: .leading, spacing: 18) {
-                // Allgemeine Ansichtsoptionen
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Ansichts-Optionen")
-                        .font(.title2)
-                        .bold()
-                    
-                    Toggle("Neueste Einträge oben anzeigen (Tabelle & Logfenster)", isOn: $isNewestOnTop)
-                        .font(.headline)
-                }
-                
-                Divider()
-                
-                // System-Farbschema
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Farbschema / Darstellung")
+            VStack(alignment: .leading, spacing: 20) {
+                // 1. System-Farbschema & Ansichts-Optionen
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Farbschema & Darstellung")
                         .font(.title2)
                         .bold()
                     
@@ -649,52 +643,50 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     .frame(width: 280)
+                    
+                    Toggle("Neueste Einträge oben anzeigen (Tabelle & Logfenster)", isOn: $isNewestOnTop)
+                        .font(.subheadline)
                 }
                 
                 Divider()
                 
-                // Schriftgrößen für Tabellen und Logs
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Schriftgrößen")
+                // 2. Listen-Ansicht (Haupttabelle & Log-Konsole: Schriftgrößen + Farbanpassungen)
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Listen-Ansicht (Haupttabelle & Log-Konsole)")
                         .font(.title2)
                         .bold()
                     
-                    HStack {
-                        Text("Tabelle Schriftgröße:")
-                            .frame(width: 150, alignment: .leading)
-                        Slider(value: $fontSizeTable, in: 8...20, step: 1) {
-                            Text("")
+                    Text("Schriftgrößen:")
+                        .font(.headline)
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Tabelle Schriftgröße:")
+                                .frame(width: 160, alignment: .leading)
+                            Slider(value: $fontSizeTable, in: 8...20, step: 1) { Text("") }
+                                .frame(width: 150)
+                            Text("\(Int(fontSizeTable)) pt")
+                                .foregroundColor(.secondary)
                         }
-                        .frame(width: 150)
-                        Text("\(Int(fontSizeTable)) pt")
-                            .foregroundColor(.secondary)
+                        
+                        HStack {
+                            Text("Logs Schriftgröße:")
+                                .frame(width: 160, alignment: .leading)
+                            Slider(value: $fontSizeLog, in: 8...20, step: 1) { Text("") }
+                                .frame(width: 150)
+                            Text("\(Int(fontSizeLog)) pt")
+                                .foregroundColor(.secondary)
+                        }
                     }
                     
-                    HStack {
-                        Text("Logs Schriftgröße:")
-                            .frame(width: 150, alignment: .leading)
-                        Slider(value: $fontSizeLog, in: 8...20, step: 1) {
-                            Text("")
-                        }
-                        .frame(width: 150)
-                        Text("\(Int(fontSizeLog)) pt")
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                Divider()
-                
-                // Farb-Anpassungen (Symmetrisches Grid mit separaten Labels und Farb-Buttons)
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Farbanpassungen")
-                        .font(.title2)
-                        .bold()
-                    
-                    Text("Haupttabelle:")
+                    Text("Farbanpassungen:")
                         .font(.headline)
                         .padding(.top, 4)
                     
-                    // Tabellen-Farben Grid
+                    Text("Haupttabelle:")
+                        .font(.subheadline).bold()
+                        .foregroundColor(.secondary)
+                    
                     Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
                         GridRow {
                             Text("Standard-Text")
@@ -718,10 +710,10 @@ struct SettingsView: View {
                     }
                     
                     Text("Log-Konsole:")
-                        .font(.headline)
-                        .padding(.top, 8)
+                        .font(.subheadline).bold()
+                        .foregroundColor(.secondary)
+                        .padding(.top, 4)
                     
-                    // Log-Konsolen-Farben Grid
                     Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
                         GridRow {
                             Text("Konsolen-Hintergrund")
@@ -757,10 +749,60 @@ struct SettingsView: View {
                 
                 Divider()
                 
+                // 3. Landkarten-Ansicht (Maidenhead Grid-Overlay)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Landkarten-Ansicht (Maidenhead Grid-Overlay)")
+                        .font(.title2)
+                        .bold()
+                    
+                    HStack {
+                        Text("Gitter Schriftgröße:")
+                            .frame(width: 180, alignment: .leading)
+                        Slider(value: $gridOverlayFontSize, in: 8...22, step: 1) { Text("") }
+                            .frame(width: 150)
+                        Text("\(Int(gridOverlayFontSize)) pt")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
+                        GridRow {
+                            Text("Beschriftung-Farbe:")
+                            ColorPicker("", selection: colorBinding(forKey: "gridOverlayTextColor", defaultColor: Color(red: 1.0, green: 0.85, blue: 0.2)))
+                                .labelsHidden()
+                            
+                            Text("Gitterlinien-Farbe:")
+                            ColorPicker("", selection: colorBinding(forKey: "gridOverlayLineColor", defaultColor: .cyan))
+                                .labelsHidden()
+                        }
+                        
+                        GridRow {
+                            Text("Badge-Hintergrundfarbe:")
+                            ColorPicker("", selection: colorBinding(forKey: "gridOverlayBadgeColor", defaultColor: .black))
+                                .labelsHidden()
+                            
+                            Text("Gearbeitete Grid-Felder:")
+                            ColorPicker("", selection: colorBinding(forKey: "workedGridShadeColor", defaultColor: Color(red: 1.0, green: 0.35, blue: 0.15)))
+                                .labelsHidden()
+                        }
+                    }
+                    
+                    Toggle("Dunkle Lesbarkeits-Badges hinter Schrift anzeigen", isOn: $gridOverlayShowPill)
+                        .toggleStyle(.checkbox)
+                        .padding(.top, 4)
+                }
+                
+                Divider()
+                
                 // Button zum Zurücksetzen aller visuellen Einstellungen
                 Button("Standard-Farben & Größen wiederherstellen") {
                     fontSizeTable = 11.0
                     fontSizeLog = 11.0
+                    gridOverlayFontSize = 11.0
+                    gridOverlayShowPill = true
+                    UserDefaults.standard.removeObject(forKey: "gridOverlayTextColor")
+                    UserDefaults.standard.removeObject(forKey: "gridOverlayLineColor")
+                    UserDefaults.standard.removeObject(forKey: "gridOverlayBadgeColor")
+                    UserDefaults.standard.removeObject(forKey: "workedGridShadeColor")
                     UserDefaults.standard.removeObject(forKey: "colorTableStandard")
                     UserDefaults.standard.removeObject(forKey: "colorTableMostWanted")
                     UserDefaults.standard.removeObject(forKey: "colorTableWorked")

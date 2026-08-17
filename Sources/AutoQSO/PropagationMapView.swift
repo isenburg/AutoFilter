@@ -14,6 +14,9 @@ struct PropagationMapView: View {
     @AppStorage("fontSizeTable") private var fontSizeTable = 11.0
 
     @State private var displayClusters: [CountryCluster] = []
+    @State private var showMaidenheadOverlay = false
+    @State private var showPropagationChart = false
+    @State private var currentRegion = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 48.0, longitude: 10.0), span: MKCoordinateSpan(latitudeDelta: 30.0, longitudeDelta: 40.0))
 
     struct BandLegendInfo: Hashable {
         let name: String
@@ -95,89 +98,143 @@ struct PropagationMapView: View {
     }
 
     private var mapSection: some View {
-        ZStack(alignment: .bottom) {
-            Map {
-                let topCount = min(displayClusters.count, 20)
-                let detailClusters = displayClusters.prefix(topCount)
-                let backgroundClusters = displayClusters.dropFirst(topCount)
+        MapReader { proxy in
+            ZStack(alignment: .bottom) {
+                Map {
+                    let topCount = min(displayClusters.count, 20)
+                    let detailClusters = displayClusters.prefix(topCount)
+                    let backgroundClusters = displayClusters.dropFirst(topCount)
 
-                ForEach(detailClusters) { cluster in
-                    Annotation(cluster.country, coordinate: CLLocationCoordinate2D(
-                        latitude: cluster.latitude,
-                        longitude: cluster.longitude
-                    )) {
-                        CountryMarkerView(cluster: cluster)
-                            .drawingGroup()
-                    }
-                }
-
-                ForEach(backgroundClusters) { cluster in
-                    Marker(cluster.country, coordinate: CLLocationCoordinate2D(
-                        latitude: cluster.latitude,
-                        longitude: cluster.longitude
-                    ))
-                    .tint(colorForBandName(cluster.bands.first?.name ?? ""))
-                }
-            }
-            .id("propagation-map-instance")
-            .mapStyle(.standard(elevation: .flat))
-            .overlay(alignment: .topTrailing) {
-                if !showList {
-                    Button(action: { withAnimation { showList = true } }) {
-                        Image(systemName: "sidebar.trailing")
-                            .font(.title3)
-                            .padding(6)
-                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
-                    }
-                    .buttonStyle(.plain)
-                    .padding(8)
-                    .help("Liste einblenden")
-                }
-            }
-            .overlay(alignment: .topLeading) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("\(displayClusters.count) Länder").font(.caption).bold()
-                    Rectangle().fill(.secondary.opacity(0.3)).frame(height: 1)
-                    
-                    Stepper(value: $mapTimeWindow, in: 5...120, step: 5) {
-                        Text("Fenster: \(mapTimeWindow) Min.").font(.caption2)
-                    }
-                    .onChange(of: mapTimeWindow) { _, _ in
-                        viewModel.updatePropagationClusters()
-                    }
-                    
-                    Rectangle().fill(.secondary.opacity(0.3)).frame(height: 1)
-                    
-                    Toggle("Gearbeitete mitzählen", isOn: $mapCountWorkedBefore)
-                        .font(.system(size: 9))
-                        .toggleStyle(.checkbox)
-                        .controlSize(.small)
-                        .onChange(of: mapCountWorkedBefore) { _, _ in
-                            viewModel.updatePropagationClusters()
+                    ForEach(detailClusters) { cluster in
+                        Annotation("", coordinate: CLLocationCoordinate2D(
+                            latitude: cluster.latitude,
+                            longitude: cluster.longitude
+                        )) {
+                            CountryMarkerView(cluster: cluster)
+                                .drawingGroup()
                         }
-                    
-                    Rectangle().fill(.secondary.opacity(0.3)).frame(height: 1)
-                    
-                    StatRow(label: "Empf.", value: "\(viewModel.totalReceived)", rate: "\(spotsPerHour.received)/h")
-                    StatRow(label: "Durchg.", value: "\(viewModel.totalForwarded)", rate: "\(spotsPerHour.filtered)/h", color: .green)
-                }
-                .fixedSize()
-                .padding(8)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
-                .padding(8)
-            }
+                    }
 
-            HStack(spacing: 10) {
-                ForEach(allBands, id: \.name) { band in
-                    HStack(spacing: 4) {
-                        Circle().fill(band.color).frame(width: 8, height: 8)
-                        Text(band.name).font(.system(size: 9, weight: .medium))
+                    ForEach(backgroundClusters) { cluster in
+                        Marker(cluster.country, coordinate: CLLocationCoordinate2D(
+                            latitude: cluster.latitude,
+                            longitude: cluster.longitude
+                        ))
+                        .tint(colorForBandName(cluster.bands.first?.name ?? ""))
                     }
                 }
+                .id("propagation-map-instance")
+                .mapStyle(.standard(elevation: .flat))
+                .onMapCameraChange(frequency: .continuous) { context in
+                    currentRegion = context.region
+                }
+                .overlay {
+                    if showMaidenheadOverlay {
+                        MaidenheadGridCanvasView(proxy: proxy, region: currentRegion)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .overlay(alignment: .topLeading) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("\(displayClusters.count) Länder").font(.caption).bold()
+                            Rectangle().fill(.secondary.opacity(0.3)).frame(height: 1)
+                            
+                            Stepper(value: $mapTimeWindow, in: 5...120, step: 5) {
+                                Text("Fenster: \(mapTimeWindow) Min.").font(.caption2)
+                            }
+                            .onChange(of: mapTimeWindow) { _, _ in
+                                viewModel.updatePropagationClusters()
+                            }
+                            
+                            Rectangle().fill(.secondary.opacity(0.3)).frame(height: 1)
+                            
+                            Toggle("Gearbeitete mitzählen", isOn: $mapCountWorkedBefore)
+                                .font(.system(size: 9))
+                                .toggleStyle(.checkbox)
+                                .controlSize(.small)
+                                .onChange(of: mapCountWorkedBefore) { _, _ in
+                                    viewModel.updatePropagationClusters()
+                                }
+                            
+                            Rectangle().fill(.secondary.opacity(0.3)).frame(height: 1)
+                            
+                            StatRow(label: "Empf.", value: "\(viewModel.totalReceived)", rate: "\(spotsPerHour.received)/h")
+                            StatRow(label: "Durchg.", value: "\(viewModel.totalForwarded)", rate: "\(spotsPerHour.filtered)/h", color: .green)
+                        }
+                        .fixedSize()
+                        .padding(8)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+
+                        if showPropagationChart {
+                            PropagationChartView(viewModel: viewModel)
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                        }
+                    }
+                    .padding(8)
+                }
+                .overlay(alignment: .topTrailing) {
+                    HStack(spacing: 6) {
+                        Button(action: {
+                            withAnimation {
+                                showPropagationChart.toggle()
+                            }
+                        }) {
+                            Image(systemName: showPropagationChart ? "chart.bar.fill" : "chart.bar.xaxis")
+                                .font(.title3)
+                                .padding(6)
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                                .foregroundColor(showPropagationChart ? .orange : .primary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Ausbreitungsdiagramm (Propagation Chart) ein/ausblenden")
+
+                        Button(action: {
+                            withAnimation {
+                                showMaidenheadOverlay.toggle()
+                            }
+                        }) {
+                            Image(systemName: showMaidenheadOverlay ? "grid.circle.fill" : "grid.circle")
+                                .font(.title3)
+                                .padding(6)
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                                .foregroundColor(showMaidenheadOverlay ? .blue : .primary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Maidenhead Grid-Gitter ein/ausblenden (bis 8-Stellen Resolution)")
+
+                        if !showList {
+                            Button(action: { withAnimation { showList = true } }) {
+                                Image(systemName: "sidebar.trailing")
+                                    .font(.title3)
+                                    .padding(6)
+                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                            }
+                            .buttonStyle(.plain)
+                            .help("Liste einblenden")
+                        }
+                    }
+                    .padding(8)
+                }
+
+                VStack(spacing: 6) {
+                    if showMaidenheadOverlay {
+                        GridOverlaySettingsBar()
+                    }
+
+                    HStack(spacing: 10) {
+                        ForEach(allBands, id: \.name) { band in
+                            HStack(spacing: 4) {
+                                Circle().fill(band.color).frame(width: 8, height: 8)
+                                Text(band.name).font(.system(size: 9, weight: .medium))
+                            }
+                        }
+                    }
+                    .padding(6)
+                    .background(.ultraThinMaterial, in: Capsule())
+                }
+                .padding(.bottom, 16)
             }
-            .padding(6)
-            .background(.ultraThinMaterial, in: Capsule())
-            .padding(.bottom, 20)
         }
     }
 
@@ -273,6 +330,23 @@ struct PropagationMapView: View {
     }
 }
 
+func colorForBandName(_ name: String) -> Color {
+    switch name.uppercased() {
+    case "160M": return Color(red: 0.4, green: 0.4, blue: 0.4)
+    case "80M": return Color(red: 0.5, green: 0.0, blue: 0.5)
+    case "60M": return Color(red: 0.0, green: 0.3, blue: 0.6)
+    case "40M": return .blue
+    case "30M": return Color(red: 0.0, green: 0.6, blue: 0.6)
+    case "20M": return Color(red: 0.0, green: 0.7, blue: 0.0)
+    case "17M": return Color(red: 0.6, green: 0.8, blue: 0.0)
+    case "15M": return .orange
+    case "12M": return Color(red: 0.9, green: 0.4, blue: 0.0)
+    case "10M": return .red
+    case "6M": return Color(red: 0.3, green: 0.3, blue: 0.3)
+    default: return .gray
+    }
+}
+
 private struct CountryMarkerView: View {
     let cluster: CountryCluster
     @AppStorage("fontSizeTable") private var fontSizeTable = 11.0
@@ -339,22 +413,5 @@ private struct StatRow: View {
             Spacer()
             Text(rate).font(.system(size: 9)).foregroundColor(.secondary)
         }
-    }
-}
-
-private func colorForBandName(_ name: String) -> Color {
-    switch name.uppercased() {
-    case "160M": return Color(red: 0.4, green: 0.4, blue: 0.4)
-    case "80M": return Color(red: 0.5, green: 0.0, blue: 0.5)
-    case "60M": return Color(red: 0.0, green: 0.3, blue: 0.6)
-    case "40M": return .blue
-    case "30M": return Color(red: 0.0, green: 0.6, blue: 0.6)
-    case "20M": return Color(red: 0.0, green: 0.7, blue: 0.0)
-    case "17M": return Color(red: 0.6, green: 0.8, blue: 0.0)
-    case "15M": return .orange
-    case "12M": return Color(red: 0.9, green: 0.4, blue: 0.0)
-    case "10M": return .red
-    case "6M": return Color(red: 0.3, green: 0.3, blue: 0.3)
-    default: return .gray
     }
 }

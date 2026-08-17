@@ -2,6 +2,59 @@ import Foundation
 import Combine
 import SwiftUI
 
+struct CountryCluster: Identifiable, Equatable {
+    let id: String // Ländername
+    let country: String
+    let continent: String
+    let latitude: Double
+    let longitude: Double
+    let spotCount: Int
+    let bands: [BandInfo]
+
+    struct BandInfo: Hashable, Equatable {
+        let name: String
+        let count: Int
+    }
+}
+
+struct NewGridCluster: Identifiable, Equatable {
+    var id: String { "\(grid)_\(isBlocked ? "blocked" : "pass")" }
+    let grid: String
+    let is6Char: Bool
+    let isBlocked: Bool
+    let country: String
+    let continent: String
+    let latitude: Double
+    let longitude: Double
+    let spotCount: Int
+    let calls: [String]
+    let bands: [CountryCluster.BandInfo]
+    let latestTime: Date
+
+    var upperRightLatitude: Double {
+        let latSpan: Double = is6Char ? (1.0 / 24.0) : 1.0
+        return latitude + (latSpan * 0.35)
+    }
+
+    var upperRightLongitude: Double {
+        let lonSpan: Double = is6Char ? (2.0 / 24.0) : 2.0
+        return longitude + (lonSpan * 0.35)
+    }
+}
+
+public struct PropagationChartItem: Identifiable, Equatable {
+    public var id: String { "\(continent)-\(band)" }
+    public let continent: String
+    public let band: String
+    public let count: Int
+
+    public init(continent: String, band: String, count: Int) {
+        self.continent = continent
+        self.band = band
+        self.count = count
+    }
+}
+
 class DecodeViewModel: ObservableObject {
     @Published var server = WSJTXServer()
     @Published var lotwManager = LoTWManager()
@@ -35,6 +88,8 @@ class DecodeViewModel: ObservableObject {
     
     @Published var isFiltersEnabled: Bool = true
     @Published var isWsjtSpecialFilterEnabled: Bool = false
+    @Published var isNew4CharGridOnlyFilterEnabled: Bool = false
+    @Published var isNew6CharGridOnlyFilterEnabled: Bool = false
     @Published var isDuplicateFilterEnabled: Bool = true
     @Published var duplicateSpotWindowMinutes: Int = 1
     @Published var duplicateSpotFrequencyTolerance: Double = 0.5
@@ -90,6 +145,8 @@ class DecodeViewModel: ObservableObject {
     @Published var telnetServerError: String? = nil
     @Published var clusterSpots: [WSJTXDecode] = []
     @Published var propagationClusters: [CountryCluster] = []
+    @Published var propagationChartData: [PropagationChartItem] = []
+    @Published var newGridClusters: [NewGridCluster] = []
     @Published var mostWantedDecodes: [WSJTXDecode] = []
     @Published var isMainTableScrollPaused: Bool = false {
         didSet {
@@ -178,6 +235,18 @@ class DecodeViewModel: ObservableObject {
                 self.totalForwarded += 1
             }
             self.updatePropagationClusters()
+
+            // Sofortige Cooldown-Sperre, sobald die aktuelle Zielstation 73/RR73 sendet
+            if !self.currentTargetCall.isEmpty {
+                let targetUpper = self.currentTargetCall.uppercased()
+                let msgUpper = decode.message.uppercased()
+                if msgUpper.contains(targetUpper) {
+                    let tokens = msgUpper.components(separatedBy: .whitespacesAndNewlines).map { $0.trimmingCharacters(in: CharacterSet.alphanumerics.inverted) }
+                    if tokens.contains("73") || tokens.contains("RR73") || tokens.contains("RRR") {
+                        self.blacklistedCalls[targetUpper] = Date()
+                    }
+                }
+            }
         }
         
         server.onRawLogReceived = { [weak self] type, message in
@@ -219,7 +288,9 @@ class DecodeViewModel: ObservableObject {
             self.lotwManager.mergeEntries(newEntries)
             
             for entry in newEntries {
-                if entry.callsign.uppercased() == self.currentTargetCall.uppercased() || self.currentTargetCall.isEmpty {
+                let callUpper = entry.callsign.uppercased()
+                self.blacklistedCalls[callUpper] = Date()
+                if callUpper == self.currentTargetCall.uppercased() || self.currentTargetCall.isEmpty {
                     self.currentQSOStatus = "QSO mit \(entry.callsign) erfolgreich beendet!"
                     self.currentTargetCall = ""
                     self.qsoStartTime = nil
@@ -251,6 +322,25 @@ class DecodeViewModel: ObservableObject {
                 self.lastTxTriggerTime = nil
             }
         }
+    }
+
+    var worked4CharGrids: Set<String> {
+        var result = Set<String>()
+        for qso in lotwManager.logbook {
+            let clean = qso.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+            if clean.count >= 4 {
+                let prefix4 = String(clean.prefix(4))
+                let bytes = Array(prefix4.utf8)
+                if bytes.count == 4 &&
+                   bytes[0] >= 65 && bytes[0] <= 82 &&
+                   bytes[1] >= 65 && bytes[1] <= 82 &&
+                   bytes[2] >= 48 && bytes[2] <= 57 &&
+                   bytes[3] >= 48 && bytes[3] <= 57 {
+                    result.insert(prefix4)
+                }
+            }
+        }
+        return result
     }
     
     func evaluateAutoQSO() {
@@ -471,8 +561,8 @@ class DecodeViewModel: ObservableObject {
         sendReply(for: bestTarget)
     }
     
-    func syncQRZ(apiKey: String) {
-        qrzManager.downloadQRZ(apiKey: apiKey) { [weak self] qrzEntries in
+    func syncQRZ(apiKey: String, fullSync: Bool = true) {
+        qrzManager.downloadQRZ(apiKey: apiKey, fullSync: fullSync) { [weak self] qrzEntries in
             self?.lotwManager.mergeEntries(qrzEntries)
         }
     }
@@ -959,6 +1049,8 @@ class DecodeViewModel: ObservableObject {
         blockedITUZones = defaults.array(forKey: "blockedITUZones") as? [Int] ?? []
         
         isWsjtSpecialFilterEnabled = defaults.bool(forKey: "isWsjtSpecialFilterEnabled")
+        isNew4CharGridOnlyFilterEnabled = defaults.bool(forKey: "isNew4CharGridOnlyFilterEnabled")
+        isNew6CharGridOnlyFilterEnabled = defaults.bool(forKey: "isNew6CharGridOnlyFilterEnabled")
         isDuplicateFilterEnabled = defaults.object(forKey: "isDuplicateFilterEnabled") as? Bool ?? true
         duplicateSpotWindowMinutes = defaults.integer(forKey: "duplicateSpotWindowMinutes")
         if duplicateSpotWindowMinutes == 0 { duplicateSpotWindowMinutes = 1 }
@@ -979,6 +1071,8 @@ class DecodeViewModel: ObservableObject {
         defaults.set(blockedITUZones, forKey: "blockedITUZones")
         
         defaults.set(isWsjtSpecialFilterEnabled, forKey: "isWsjtSpecialFilterEnabled")
+        defaults.set(isNew4CharGridOnlyFilterEnabled, forKey: "isNew4CharGridOnlyFilterEnabled")
+        defaults.set(isNew6CharGridOnlyFilterEnabled, forKey: "isNew6CharGridOnlyFilterEnabled")
         defaults.set(isDuplicateFilterEnabled, forKey: "isDuplicateFilterEnabled")
         defaults.set(duplicateSpotWindowMinutes, forKey: "duplicateSpotWindowMinutes")
         defaults.set(duplicateSpotFrequencyTolerance, forKey: "duplicateSpotFrequencyTolerance")
@@ -1046,6 +1140,24 @@ class DecodeViewModel: ObservableObject {
                 }
             }
             if !passed { return false }
+        }
+        
+        // 8.5. New 4 Character Maidenhead Grid Only Filter
+        if isNew4CharGridOnlyFilterEnabled {
+            guard let g = decode.grid, g.count >= 4 else { return false }
+            let grid4 = String(g.prefix(4)).uppercased()
+            if lotwManager.hasWorkedGrid(grid4) {
+                return false
+            }
+        }
+        
+        // 8.6. New 6 Character Maidenhead Grid Only Filter
+        if isNew6CharGridOnlyFilterEnabled {
+            guard let g = decode.grid, g.count >= 6 else { return false }
+            let grid6 = String(g.prefix(6)).uppercased()
+            if lotwManager.hasWorkedGrid6(grid6) {
+                return false
+            }
         }
         
         // 9. Duplicate Filter
@@ -1388,6 +1500,7 @@ class DecodeViewModel: ObservableObject {
     private func performRecalculations() {
         recalculatePropagationClusters()
         recalculateMostWantedDecodes()
+        recalculateNewGridClusters()
     }
     
     private func recalculatePropagationClusters() {
@@ -1445,6 +1558,28 @@ class DecodeViewModel: ObservableObject {
         }
         
         self.propagationClusters = clusters.sorted { $0.country < $1.country }
+
+        // Build propagation chart data by continent & band for accepted items ONLY
+        let allContinentsList = ["EU", "NA", "AS", "SA", "AF", "OC", "AN"]
+        var chartCounts: [String: [String: Int]] = [:]
+
+        for decode in filteredItems {
+            let rawCont = decode.continent.uppercased()
+            let cont = allContinentsList.contains(rawCont) ? rawCont : "OTHER"
+            let band = decode.band
+            guard !band.isEmpty else { continue }
+            chartCounts[cont, default: [:]][band, default: 0] += 1
+        }
+
+        var chartItems: [PropagationChartItem] = []
+        for cont in allContinentsList + ["OTHER"] {
+            if let bandMap = chartCounts[cont] {
+                for (band, count) in bandMap {
+                    chartItems.append(PropagationChartItem(continent: cont, band: band, count: count))
+                }
+            }
+        }
+        self.propagationChartData = chartItems
     }
     
     private func recalculateMostWantedDecodes() {
@@ -1474,6 +1609,93 @@ class DecodeViewModel: ObservableObject {
             let rankB = b.mostWantedRank ?? 999
             return rankA < rankB
         }
+    }
+
+    private func recalculateNewGridClusters() {
+        let currentDecodes = self.server.decodes
+        let currentSpots = self.clusterSpots
+        
+        let window = UserDefaults.standard.integer(forKey: "mapTimeWindow") == 0 ? 30 : UserDefaults.standard.integer(forKey: "mapTimeWindow")
+        let now = Date()
+        let cutoff = now.addingTimeInterval(-Double(window) * 60)
+        let is4CharOnly = UserDefaults.standard.bool(forKey: "isNew4CharGridOnlyFilterEnabled")
+        let is6CharOnly = UserDefaults.standard.bool(forKey: "isNew6CharGridOnlyFilterEnabled")
+        
+        let allItems = currentDecodes + currentSpots
+        
+        let filteredItems = allItems.filter { decode in
+            guard decode.receivedAt > cutoff else { return false }
+            guard let g = decode.grid, g.count >= 4 else { return false }
+            let grid4 = String(g.prefix(4)).uppercased()
+            
+            if is6CharOnly {
+                guard g.count >= 6 else { return false }
+                let grid6 = String(g.prefix(6)).uppercased()
+                guard !lotwManager.hasWorkedGrid6(grid6) else { return false }
+            } else if is4CharOnly {
+                guard !lotwManager.hasWorkedGrid(grid4) else { return false }
+            } else {
+                let grid6 = g.count >= 6 ? String(g.prefix(6)).uppercased() : nil
+                let is4Worked = lotwManager.hasWorkedGrid(grid4)
+                let is6Worked = grid6 != nil ? lotwManager.hasWorkedGrid6(grid6!) : true
+                guard !is4Worked || !is6Worked else { return false }
+            }
+            
+            guard shouldAccept(decode: decode, recordDuplicates: false) else { return false }
+            return true
+        }
+        
+        let grouped = Dictionary(grouping: filteredItems) { decode -> String in
+            let g = decode.grid!.uppercased()
+            if is6CharOnly && g.count >= 6 {
+                return String(g.prefix(6))
+            } else if g.count >= 6 && !lotwManager.hasWorkedGrid6(String(g.prefix(6))) {
+                return String(g.prefix(6))
+            }
+            return String(g.prefix(4))
+        }
+        
+        let clusters: [NewGridCluster] = grouped.compactMap { (gridKey, decodes) -> NewGridCluster? in
+            guard let latLon = Maidenhead.locatorToLatLon(gridKey) else { return nil }
+            let first = decodes.first!
+            let country = first.country
+            let continent = first.continent
+            let is6Char = gridKey.count >= 6
+            
+            var bandCounts: [String: Int] = [:]
+            var callSet = Set<String>()
+            var latest = first.receivedAt
+            
+            for d in decodes {
+                bandCounts[d.band, default: 0] += 1
+                if !d.callsign.isEmpty {
+                    callSet.insert(d.callsign.uppercased())
+                }
+                if d.receivedAt > latest {
+                    latest = d.receivedAt
+                }
+            }
+            
+            let sortedBands = bandCounts.map { bandName, count in
+                CountryCluster.BandInfo(name: bandName, count: count)
+            }.sorted { self.bandOrder($0.name) < self.bandOrder($1.name) }
+            
+            return NewGridCluster(
+                grid: gridKey,
+                is6Char: is6Char,
+                isBlocked: false,
+                country: country,
+                continent: continent,
+                latitude: latLon.lat,
+                longitude: latLon.lon,
+                spotCount: decodes.count,
+                calls: callSet.sorted(),
+                bands: sortedBands,
+                latestTime: latest
+            )
+        }
+        
+        self.newGridClusters = clusters.sorted { $0.grid < $1.grid }
     }
 
     func colorForBand(_ band: String) -> Color {
@@ -1538,21 +1760,6 @@ class DecodeViewModel: ObservableObject {
         default:
             break
         }
-    }
-}
-
-struct CountryCluster: Identifiable, Equatable {
-    let id: String // Ländername
-    let country: String
-    let continent: String
-    let latitude: Double
-    let longitude: Double
-    let spotCount: Int
-    let bands: [BandInfo]
-
-    struct BandInfo: Hashable, Equatable {
-        let name: String
-        let count: Int
     }
 }
 

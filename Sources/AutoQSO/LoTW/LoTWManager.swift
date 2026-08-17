@@ -8,6 +8,8 @@ class LoTWManager: ObservableObject {
     @Published var logbook: [QSOEntry] = []
     
     private var workedSet = Set<String>()
+    private(set) var workedGridsSet = Set<String>()
+    private(set) var workedGrids6Set = Set<String>()
     
     init() {
         loadLog()
@@ -26,25 +28,36 @@ class LoTWManager: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let qsos = DatabaseManager.shared.fetchAllQSOs()
             var newSet = Set<String>()
+            var newGrids = Set<String>()
+            var newGrids6 = Set<String>()
             newSet.reserveCapacity(qsos.count)
             for qso in qsos {
                 newSet.insert("\(qso.callsign.uppercased())_\(qso.band.uppercased())")
+                let cleanGrid = qso.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+                if cleanGrid.count >= 4 {
+                    newGrids.insert(String(cleanGrid.prefix(4)))
+                }
+                if cleanGrid.count >= 6 {
+                    newGrids6.insert(String(cleanGrid.prefix(6)))
+                }
             }
             
             DispatchQueue.main.async {
                 self?.logbook = qsos
                 self?.workedSet = newSet
-                self?.addLog("SQLite Logbuch geladen: \(qsos.count) QSOs.")
+                self?.workedGridsSet = newGrids
+                self?.workedGrids6Set = newGrids6
+                self?.addLog("SQLite Logbuch geladen: \(qsos.count) QSOs (\(newGrids.count) 4-Stellen Grids / \(newGrids6.count) 6-Stellen Grids).")
             }
         }
     }
     
-    func downloadLoTW(username: String, password: String) {
+    func downloadLoTW(username: String, password: String, fullSync: Bool = true) {
         let allowedCharacters = CharacterSet.urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&+=?/#"))
         let safeUser = username.addingPercentEncoding(withAllowedCharacters: allowedCharacters) ?? username
         let safePass = password.addingPercentEncoding(withAllowedCharacters: allowedCharacters) ?? password
         
-        let startDateStr = getStartDateString()
+        let startDateStr = fullSync ? "1900-01-01" : getStartDateString()
         
         guard let url = URL(string: "https://lotw.arrl.org/lotwuser/lotwreport.adi?login=\(safeUser)&password=\(safePass)&qso_query=1&qso_qsos=1&qso_startdate=\(startDateStr)") else {
             addLog("Fehler: Ungültige Zugangsdaten für URL")
@@ -53,7 +66,7 @@ class LoTWManager: ObservableObject {
         
         isDownloading = true
         errorMessage = nil
-        addLog("Starte LoTW Sync für User '\(username)' (ab Startdatum: \(startDateStr))...")
+        addLog("Starte LoTW Sync für User '\(username)' (Vollständig ab \(startDateStr))...")
         
         let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
             DispatchQueue.main.async {
@@ -89,13 +102,20 @@ class LoTWManager: ObservableObject {
     func mergeEntries(_ newEntries: [QSOEntry]) {
         guard !newEntries.isEmpty else { return }
         
-        // Sofort im Speicher-Set registrieren (damit hasWorked sofort true liefert!)
+        // Sofort im Speicher-Set registrieren (damit hasWorked / hasWorkedGrid sofort true liefert!)
         DispatchQueue.main.async { [weak self] in
             for entry in newEntries {
                 let call = entry.callsign.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
                 let b = entry.band.uppercased().trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "")
                 if !call.isEmpty && !b.isEmpty {
                     self?.workedSet.insert("\(call)_\(b)")
+                }
+                let cleanGrid = entry.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+                if cleanGrid.count >= 4 {
+                    self?.workedGridsSet.insert(String(cleanGrid.prefix(4)))
+                }
+                if cleanGrid.count >= 6 {
+                    self?.workedGrids6Set.insert(String(cleanGrid.prefix(6)))
                 }
             }
         }
@@ -105,6 +125,8 @@ class LoTWManager: ObservableObject {
             let updatedLog = DatabaseManager.shared.fetchAllQSOs()
             
             var newSet = Set<String>()
+            var newGrids = Set<String>()
+            var newGrids6 = Set<String>()
             newSet.reserveCapacity(updatedLog.count)
             for qso in updatedLog {
                 let call = qso.callsign.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
@@ -112,12 +134,21 @@ class LoTWManager: ObservableObject {
                 if !call.isEmpty && !b.isEmpty {
                     newSet.insert("\(call)_\(b)")
                 }
+                let cleanGrid = qso.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+                if cleanGrid.count >= 4 {
+                    newGrids.insert(String(cleanGrid.prefix(4)))
+                }
+                if cleanGrid.count >= 6 {
+                    newGrids6.insert(String(cleanGrid.prefix(6)))
+                }
             }
             
             DispatchQueue.main.async {
                 self?.logbook = updatedLog
                 self?.workedSet = newSet
-                self?.addLog("SQLite Logbuch aktualisiert: +\(addedCount) neue QSOs. Gesamt: \(updatedLog.count) QSOs.")
+                self?.workedGridsSet = newGrids
+                self?.workedGrids6Set = newGrids6
+                self?.addLog("SQLite Logbuch aktualisiert: +\(addedCount) neue QSOs. Gesamt: \(updatedLog.count) QSOs (\(newGrids.count) 4-Stellen Grids / \(newGrids6.count) 6-Stellen Grids).")
             }
         }
     }
@@ -127,6 +158,20 @@ class LoTWManager: ObservableObject {
         let cleanCall = callsign.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanBand = band.uppercased().trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "")
         return workedSet.contains("\(cleanCall)_\(cleanBand)")
+    }
+
+    func hasWorkedGrid(_ grid: String) -> Bool {
+        let clean = grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard clean.count >= 4 else { return false }
+        let grid4 = String(clean.prefix(4))
+        return workedGridsSet.contains(grid4)
+    }
+
+    func hasWorkedGrid6(_ grid: String) -> Bool {
+        let clean = grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard clean.count >= 6 else { return false }
+        let grid6 = String(clean.prefix(6))
+        return workedGrids6Set.contains(grid6)
     }
     
     func workedBands(for callsign: String) -> [String] {

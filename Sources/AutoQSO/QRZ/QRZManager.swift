@@ -15,7 +15,7 @@ class QRZManager: ObservableObject {
         }
     }
     
-    func downloadQRZ(apiKey: String, completion: @escaping ([QSOEntry]) -> Void) {
+    func downloadQRZ(apiKey: String, fullSync: Bool = true, completion: @escaping ([QSOEntry]) -> Void) {
         let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedKey.isEmpty else {
             addLog("Fehler: Kein QRZ API Key angegeben")
@@ -25,7 +25,7 @@ class QRZManager: ObservableObject {
         let allowedCharacters = CharacterSet.urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&+=?/#"))
         let safeKey = trimmedKey.addingPercentEncoding(withAllowedCharacters: allowedCharacters) ?? trimmedKey
         
-        let startDateStr = getStartDateString()
+        let startDateStr = fullSync ? "1900-01-01" : getStartDateString()
         
         guard let url = URL(string: "https://logbook.qrz.com/api?KEY=\(safeKey)&ACTION=FETCH&OPTION=TYPE:ADIF,MODSINCE:\(startDateStr)") else {
             addLog("Fehler: Ungültiger QRZ API Key")
@@ -34,7 +34,7 @@ class QRZManager: ObservableObject {
         
         isDownloading = true
         errorMessage = nil
-        addLog("Starte QRZ.com Logbuch Sync (ab Startdatum: \(startDateStr))...")
+        addLog("Starte QRZ.com Logbuch Sync (Vollständig ab \(startDateStr))...")
         
         let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
             DispatchQueue.main.async {

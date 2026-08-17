@@ -8,6 +8,7 @@ struct QSOEntry: Identifiable, Codable {
     var qsoDate: String
     var timeOn: String
     var dxcc: String
+    var grid: String = ""
     
     var formattedDate: String {
         let clean = qsoDate.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -99,8 +100,12 @@ struct ADIFParser {
             let timeOn = rawTime.replacingOccurrences(of: ":", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
             
             let dxcc = extractTagValue("DXCC", from: record) ?? ""
+            var grid = extractTagValue("GRIDSQUARE", from: record) ?? extractTagValue("GRID", from: record) ?? extractTagValue("GRID_SQUARE", from: record) ?? ""
+            if grid.isEmpty, let vucc = extractTagValue("VUCC_GRIDS", from: record) {
+                grid = vucc.components(separatedBy: CharacterSet(charactersIn: ",;/")).first ?? ""
+            }
             
-            let entry = QSOEntry(callsign: call.uppercased(), band: band.uppercased(), mode: mode.uppercased(), qsoDate: qsoDate, timeOn: timeOn, dxcc: dxcc)
+            let entry = QSOEntry(callsign: call.uppercased(), band: band.uppercased(), mode: mode.uppercased(), qsoDate: qsoDate, timeOn: timeOn, dxcc: dxcc, grid: grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())
             entries.append(entry)
         }
         return entries

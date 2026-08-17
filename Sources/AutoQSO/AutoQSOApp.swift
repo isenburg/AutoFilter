@@ -86,6 +86,11 @@ struct AutoQSOApp: App {
                 }
                 .keyboardShortcut("m", modifiers: [.command, .shift])
                 
+                Button("Neue Maidenhead-Grids Karte") {
+                    NotificationCenter.default.post(name: NSNotification.Name("OpenNewGridMapWindow"), object: nil)
+                }
+                .keyboardShortcut("g", modifiers: [.command, .shift])
+                
                 Button("Logs & Rohdaten") {
                     NotificationCenter.default.post(name: NSNotification.Name("OpenLogsRawWindow"), object: nil)
                 }
@@ -125,6 +130,11 @@ struct AutoQSOApp: App {
         
         Window("Ausbreitungskarte", id: "propagation_map") {
             PropagationMapView(viewModel: viewModel)
+                .preferredColorScheme(preferredScheme)
+        }
+
+        Window("Neue Maidenhead-Grids", id: "new_grid_map") {
+            NewGridMapView(viewModel: viewModel)
                 .preferredColorScheme(preferredScheme)
         }
         

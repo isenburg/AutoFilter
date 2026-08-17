@@ -93,6 +93,7 @@ class DatabaseManager {
             qso_date TEXT NOT NULL,
             time_on TEXT NOT NULL,
             dxcc TEXT,
+            grid TEXT,
             unique_key TEXT UNIQUE NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_call_band ON qsos(callsign, band);
@@ -106,6 +107,8 @@ class DatabaseManager {
                 sqlite3_free(errMsg)
             }
         }
+        // Migration for existing tables created without grid column
+        sqlite3_exec(db, "ALTER TABLE qsos ADD COLUMN grid TEXT;", nil, nil, nil)
     }
     
     private func migrateJSONIfNeeded() {
@@ -145,10 +148,13 @@ class DatabaseManager {
         dbQueue.sync {
             sqlite3_exec(db, "BEGIN TRANSACTION;", nil, nil, nil)
             
-            // INSERT OR IGNORE verhindert Doubletten via unique_key UNIQUE Constraint
+            // Fügt neue QSOs ein ODER ergänzt fehlendes Grid/DXCC bei bestehenden QSOs (z.B. durch QRZ.com Sync)
             let insertSQL = """
-            INSERT OR IGNORE INTO qsos (id, callsign, band, mode, qso_date, time_on, dxcc, unique_key)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+            INSERT INTO qsos (id, callsign, band, mode, qso_date, time_on, dxcc, grid, unique_key)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(unique_key) DO UPDATE SET
+            grid = CASE WHEN (qsos.grid IS NULL OR qsos.grid = '') AND excluded.grid != '' THEN excluded.grid ELSE qsos.grid END,
+            dxcc = CASE WHEN (qsos.dxcc IS NULL OR qsos.dxcc = '') AND excluded.dxcc != '' THEN excluded.dxcc ELSE qsos.dxcc END;
             """
             
             var statement: OpaquePointer?
@@ -183,6 +189,7 @@ class DatabaseManager {
                     }
                     let timeNorm = rawTime.count >= 4 ? String(rawTime.prefix(4)) : rawTime
                     let keyStr = "\(callStr)_\(bandStr)_\(modeStr)_\(cleanDate)_\(timeNorm)"
+                    let gridStr = qso.grid.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
                     
                     guard !callStr.isEmpty, !bandStr.isEmpty else { continue }
                     
@@ -193,7 +200,8 @@ class DatabaseManager {
                     sqlite3_bind_text(statement, 5, (cleanDate as NSString).utf8String, -1, nil)
                     sqlite3_bind_text(statement, 6, (timeNorm as NSString).utf8String, -1, nil)
                     sqlite3_bind_text(statement, 7, (qso.dxcc as NSString).utf8String, -1, nil)
-                    sqlite3_bind_text(statement, 8, (keyStr as NSString).utf8String, -1, nil)
+                    sqlite3_bind_text(statement, 8, (gridStr as NSString).utf8String, -1, nil)
+                    sqlite3_bind_text(statement, 9, (keyStr as NSString).utf8String, -1, nil)
                     
                     if sqlite3_step(statement) == SQLITE_DONE {
                         if sqlite3_changes(db) > 0 {
@@ -213,7 +221,7 @@ class DatabaseManager {
     func fetchAllQSOs() -> [QSOEntry] {
         var results = [QSOEntry]()
         dbQueue.sync {
-            let querySQL = "SELECT id, callsign, band, mode, qso_date, time_on, dxcc FROM qsos ORDER BY qso_date DESC, time_on DESC;"
+            let querySQL = "SELECT id, callsign, band, mode, qso_date, time_on, dxcc, grid FROM qsos ORDER BY qso_date DESC, time_on DESC;"
             var statement: OpaquePointer?
             
             if sqlite3_prepare_v2(db, querySQL, -1, &statement, nil) == SQLITE_OK {
@@ -225,9 +233,10 @@ class DatabaseManager {
                     let qsoDate = String(cString: sqlite3_column_text(statement, 4))
                     let timeOn = String(cString: sqlite3_column_text(statement, 5))
                     let dxcc = sqlite3_column_text(statement, 6) != nil ? String(cString: sqlite3_column_text(statement, 6)) : ""
+                    let grid = sqlite3_column_text(statement, 7) != nil ? String(cString: sqlite3_column_text(statement, 7)) : ""
                     
                     let uuid = UUID(uuidString: idStr) ?? UUID()
-                    let qso = QSOEntry(id: uuid, callsign: call, band: band, mode: mode, qsoDate: qsoDate, timeOn: timeOn, dxcc: dxcc)
+                    let qso = QSOEntry(id: uuid, callsign: call, band: band, mode: mode, qsoDate: qsoDate, timeOn: timeOn, dxcc: dxcc, grid: grid)
                     results.append(qso)
                 }
                 sqlite3_finalize(statement)

@@ -37,6 +37,13 @@ struct LogbookView: View {
                 .width(min: 80, ideal: 120, max: 200)
                 .customizationID("callsign")
                 
+                TableColumn("Grid", value: \.grid) { qso in
+                    Text(qso.grid)
+                        .font(.system(.body, design: .monospaced))
+                }
+                .width(min: 60, ideal: 80, max: 120)
+                .customizationID("grid")
+                
                 TableColumn("Band", value: \.band) { qso in
                     Text(qso.band)
                 }

@@ -8,10 +8,11 @@ enum HelpSection: String, CaseIterable, Identifiable {
     case triggers = "Auto QSO Triggers"
     case cluster = "DX Cluster"
     case telnet = "Telnet Server"
-    case propagationMap = "Ausbreitungskarte"
+    case propagationMap = "Ausbreitungskarte & Grid-Map"
     case compactMode = "Kompaktmodus"
     case logbook = "Logbuch & Sync"
     case storage = "Speicherort & iCloud"
+    case appearance = "Ansicht & Farbschema"
     case support = "Support"
     case disclaimer = "Rechtlicher Hinweis"
     case changelog = "Changelog"
@@ -31,6 +32,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
         case .compactMode: return "rectangle.compress.vertical"
         case .logbook: return "book.closed"
         case .storage: return "folder.fill"
+        case .appearance: return "paintpalette"
         case .support: return "lifepreserver"
         case .disclaimer: return "exclamationmark.triangle"
         case .changelog: return "clock"
@@ -271,27 +273,50 @@ struct HelpView: View {
             }
             
         case .propagationMap:
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Ausbreitungskarte (Propagation Map)")
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Ausbreitungskarte & Maidenhead Grid-Map")
                     .font(.title2)
                     .bold()
-                Text("Die Ausbreitungskarte stellt die Funkwellenausbreitung visuell auf einer interaktiven Weltkarte dar. Sie kann über den Button **Karte ↗** in der Menüleiste/Toolbar (im Bereich FENSTER) als eigenständiges, separates Fenster geöffnet werden.")
+                Text("AutoQSO bietet zwei spezialisierte interaktive Kartenansichten, die über die Toolbar-Buttons **Karte ↗** und **Grid-Map ↗** als eigenständige Fenster geöffnet werden können.")
                     .font(.body)
                 
-                Text("Wichtige Steuerungsmöglichkeiten:")
+                Text("1. Ausbreitungskarte (Propagation Map):")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**Zeitfenster**: Bestimmt, wie weit Spots und Dekodierungen in die Vergangenheit zurückreichen (5 bis 120 Minuten).")
-                    bullet("**Gearbeitete mitzählen**: Ein Umschalter, der es ermöglicht, auch Stationen, die bereits auf dem Band gearbeitet wurden, mit auf der Karte anzuzeigen und zu zählen (Standardmäßig werden diese herausgefiltert).")
+                    bullet("**Länder-Cluster**: Stellt aktive DX-Entitäten visuell auf einer Weltkarte dar mit farblich codierten Band-Badges.")
+                    bullet("**Zeitfenster-Steuerung**: Einstellbar von 5 bis 120 Minuten.")
+                    bullet("**Gearbeitete mitzählen**: Umschalter zur Anzeige bereits gearbeiteter Länder auf der Karte.")
+                    bullet("**Seitenleiste**: Übersichtliche Gruppierung nach Kontinent, A–Z oder Spot-Anzahl.")
                 }
                 
-                Text("Filterung der Spots:")
+                Text("2. Neue Maidenhead Grid-Map:")
                     .font(.headline)
-                bullet("Die Karte aggregiert ausschließlich Dekodierungen und DX-Spots, die die aktiven DX-Filterregeln erfolgreich bestanden haben.")
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet("**Ungearbeitete Maidenhead Grids**: Visualisiert gezielt noch ungearbeitete 4-Stellen (`JO31`) und 6-Stellen (`JO31AA`) Maidenhead-Lokaltore auf der Weltkarte.")
+                    bullet("**Farbkodierung**: 4-Stellen Grids werden grün hervorgehoben, 6-Stellen Grids blau.")
+                    bullet("**Echtzeit-Suchleiste**: Schnellsuche nach Grid-Locatoren oder Rufzeichen in der rechten Seitenleiste.")
+                    bullet("**Fokussierung**: Klick auf eine Zeile oder ein Marker-Badge zentriert die Karte direkt auf den ausgewählten Locator.")
+                }
                 
-                Text("Aktive Länder Liste:")
+                Text("3. Dynamisches Maidenhead Grid-Overlay (GridTracker-Stil):")
                     .font(.headline)
-                bullet("In der rechten Seitenleiste der Karte werden alle aktiven Länder nach Kontinent, alphabetisch oder nach Spot-Häufigkeit aufgelistet.")
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet("**Lückenlose Kartenabdeckung**: Hardwarebeschleunigtes Canvas-Gitter im GridTracker-Stil über der gesamten Karte.")
+                    bullet("**Standardmäßig aktiv**: In der Grid-Map beim Öffnen automatisch eingeschaltet (über das Grid-Icon `grid.circle` in der oberen rechten Ecke umschaltbar).")
+                    bullet("**Zoomabhängige Auflösung**: Automatischer Wechsel von 2-Stellen (`JO`), 4-Stellen (`JO31`), 6-Stellen (`JO31AA`) bis hin zu 8-Stellen Resolution (`JO31AA11`).")
+                    bullet("**Lesbarkeits-Badges**: Dunkle Unterlegungen hinter den Schriftzügen sorgen für optimale Lesbarkeit über blauen Ozeanen und Landmassen.")
+                    bullet("**Gearbeitete Grid-Schattierung**: Über das Häkchen-Icon (`checkmark.square`) lassen sich bereits gearbeitete 4-Stellen Grids aus dem Logbuch auf der Karte farbig schattieren. Die Schattierungsfarbe ist in den Einstellungen und in der unteren Leiste anpassbar (Standard: Rot-Orange `#FF5926`).")
+                    bullet("**Klick auf gearbeitetes Grid**: Ein Klick auf ein schattiertes/gearbeitetes Grid-Feld öffnet ein Detailfenster (**WorkedGridDetailView**) mit allen im Logbuch enthaltenen QSOs für diesen Maidenhead-Locator inklusive Such- und Filterfunktion.")
+                    bullet("**Doppelklick für QRZ.com**: Ein Doppelklick auf eine Station im Grid-Logbuchfenster öffnet direkt deren QRZ.com-Seite im Browser. Vor dem Öffnen wird automatisch geprüft, ob eine aktive Internetverbindung besteht; ansonsten erscheint ein nativer Fehlerhinweis.")
+                    bullet("**Schnellsteuerungs-Leiste am Kartenrand**: Live-Anpassung der Schriftgröße (`A-`/`A+`), der Textfarbe, der Gitterlinienfarbe, der Badge-Farbe sowie der Schattierungsfarbe für gearbeitete Grids.")
+                }
+                .padding()
+                .background(Color.blue.opacity(0.08))
+                .cornerRadius(8)
+                
+                Text("Filter-Garantie:")
+                    .font(.headline)
+                bullet("Beide Karten aggregieren ausschließlich Dekodierungen und DX-Spots, die alle Ihre aktiven DX-Filterregeln erfolgreich bestanden haben.")
             }
             
         case .compactMode:
@@ -319,11 +344,12 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                Text("Inkrementeller Sync:")
+                Text("Vollständiger Sync & Inkrementeller Sync:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("Startet automatisch ab dem QSO-Datum (minus 2 Tage Cooldown) Ihres neuesten Eintrags.")
-                    bullet("Synchronisiert Einträge direkt mit LoTW (Logbook of The World) und QRZ.com XML.")
+                    bullet("**Vollständiger Sync (ab 1900)**: Lädt das gesamte Logbuch ab `1900-01-01` von QRZ.com oder LoTW herunter.")
+                    bullet("**Intelligentes SQLite-Upsert**: Bei bestehenden Einträgen werden fehlende Attribute (wie z. B. Grid-Locatoren) automatisch ergänzt, ohne doppelte QSOs zu erzeugen (`ON CONFLICT DO UPDATE`).")
+                    bullet("**Inkrementeller Sync**: Synchronisiert automatisch nur neuere QSOs ab dem Datum des letzten Logbucheintrags.")
                 }
                 
                 Text("ADIF-Datei importieren:")
@@ -359,6 +385,41 @@ struct HelpView: View {
                 Text("Hinweis: Beim Wechsel des Speicherorts wird die bestehende SQLite-Datenbank automatisch an den neuen Zielort kopiert.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+
+        case .appearance:
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Ansicht & Farbanpassungen")
+                    .font(.title2)
+                    .bold()
+                Text("Im Einstellungsmenü unter **Ansicht** können Sie das gesamte Erscheinungsbild von AutoQSO Ihren individuellen Wünschen anpassen.")
+                    .font(.body)
+                
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("1. Farbschema & Darstellung:")
+                        .font(.headline)
+                    bullet("Auswahl zwischen **System**, **Hell** und **Dunkel**.")
+                    bullet("Umschaltung der Sortierrichtung: Neueste Einträge oben oder unten in Haupttabelle und Logfenster.")
+                    
+                    Text("2. Listen-Ansicht (Haupttabelle & Log-Konsole):")
+                        .font(.headline)
+                    bullet("**Schriftgrößen**: Stufenlose Regelung der Tabellen- und Protokoll-Schriftgrößen (8 pt bis 20 pt).")
+                    bullet("**Farbanpassungen Haupttabelle**: Individuelle Farbwahl für Standard-Text, Most Wanted (🔥), CQ-Aufrufe und bereits gearbeitete Stationen.")
+                    bullet("**Farbanpassungen Log-Konsole**: Einstellbare Farben für Konsolen-Hintergrund, System-Logs, WSJT-X Dekodierungen, eingehenden/ausgehenden Traffic und Cluster-Spots.")
+                    
+                    Text("3. Landkarten-Ansicht (Maidenhead Grid-Overlay):")
+                        .font(.headline)
+                    bullet("**Gitter-Schriftgröße**: Slider zur Skalierung der Locator-Beschriftungen (8 pt bis 22 pt).")
+                    bullet("**Farb-Customizing**: Separate Farbwahl für Gitter-Beschriftungen, Gitterlinien und Badge-Hintergründe.")
+                    bullet("**Lesbarkeits-Badges**: Ein- und Ausschalten der dunklen Hintergründe hinter Locator-Texten.")
+                    
+                    Text("4. Standard-Farben & Größen wiederherstellen:")
+                        .font(.headline)
+                    bullet("Setzt mit einem Klick alle Farben, Schriftgrößen und Badge-Einstellungen auf das bewährte Werks-Standard-Schema zurück.")
+                }
+                .padding()
+                .background(Color.blue.opacity(0.08))
+                .cornerRadius(8)
             }
 
         case .support:
@@ -431,35 +492,52 @@ struct HelpView: View {
                     .font(.title)
                     .bold()
                 
-                // Version 3.2.2
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack(spacing: 8) {
-                                        Text("Version 3.2.2")
-                                            .font(.headline)
-                                            .bold()
-                                        Text("(Build \(APP_BUILD_NUMBER))")
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                        Text("AKTUELL")
-                                            .font(.system(size: 10, weight: .bold))
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(Color.green)
-                                            .foregroundColor(.white)
-                                            .cornerRadius(4)
-                                    }
-                                    VStack(alignment: .leading, spacing: 5) {
-                                        Text("🐛 Bugfixes & Layoutverbesserungen")
-                                            .font(.subheadline)
-                                            .bold()
-                                        bullet("Einstellungen & Hilfe: Diverse Bugfixes sowie Optimierungen und Feinschliff am Layout der Einstellungs- und Hilfeseiten.", font: .subheadline, color: .secondary)
-                                    }
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                }
-                                .padding()
-                                .background(Color.green.opacity(0.08))
-                                .cornerRadius(8)
+                // Version 3.3.0
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 3.3.0")
+                            .font(.headline)
+                            .bold()
+                        Text("(Build \(APP_BUILD_NUMBER))")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Text("AKTUELL")
+                            .font(.system(size: 10, weight: .bold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.green)
+                            .foregroundColor(.white)
+                            .cornerRadius(4)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("✨ Neue Funktionen & Verbesserungen")
+                            .font(.subheadline)
+                            .bold()
+                        bullet("Schattierung gearbeiteter Grids: Umschaltbare farbige Unterlegung (`checkmark.square`) aller im Logbuch vorhandenen 4-Stellen-Grids auf der Maidenhead Grid-Map mit anpassbarem Farbton (Standard: `#FF5926` Rot-Orange).", font: .subheadline, color: .secondary)
+                        bullet("Interaktives Grid-Logbuchfenster: Einzelklick auf ein beliebiges gearbeitetes Grid-Feld auf der Karte öffnet ein Detailfenster (WorkedGridDetailView) mit allen im Logbuch gespeicherten QSOs für diesen Maidenhead-Locator inklusive Such- und Filterfunktion.", font: .subheadline, color: .secondary)
+                        bullet("Doppelklick QRZ.com-Aufruf: Doppelklick auf eine Station im Grid-Logbuchfenster öffnet direkt deren QRZ.com-Detailseite im Browser. Vorab wird automatisch geprüft, ob eine aktive Internetverbindung besteht (NWPathMonitor); ansonsten erscheint ein Fehlerhinweis.", font: .subheadline, color: .secondary)
+                        bullet("Vollständiger Logbuch-Sync (ab 1900): QRZ.com und LoTW Sync laden bei Bedarf das gesamte Logbuch ab 1900 herunter. Intelligentes SQLite-Upsert (ON CONFLICT DO UPDATE) reichert bestehende QSOs nachträglich mit fehlenden Grid-Locatoren an, ohne Duplikate zu erzeugen.", font: .subheadline, color: .secondary)
+                        bullet("Maidenhead Grid-Filter (4 & 6 Stellen): Neue Filterregeln zum gezielten Filtern nach bisher ungearbeiteten 4-Stellen (`JO31`) und 6-Stellen (`JO31AA`) Maidenhead-Lokaltoren.", font: .subheadline, color: .secondary)
+                        bullet("Neue Maidenhead Grid-Map: Separates interaktives Kartenfenster (`Grid-Map ↗`) zur Visualisierung aller ungearbeiteten 4-Stellen (grün) und 6-Stellen (blau) Grids inklusive Echtzeit-Suchleiste und einklappbaren Kontinent-Gruppen.", font: .subheadline, color: .secondary)
+                        bullet("Vollständiges GridTracker-Overlay: Hardwarebeschleunigtes Maidenhead-Gitter (2- bis 8-Stellen Resolution) im GridTracker-Stil mit Lesbarkeits-Badges über Ozeanen.", font: .subheadline, color: .secondary)
+                        bullet("Schnellsteuerungs-Leiste am Kartenrand: Live-Anpassung der Gitter-Schriftgröße (`A-`/`A+`), Textfarbe, Gitterlinienfarbe, Badge-Farbe sowie der Schattierungsfarbe für gearbeitete Grids.", font: .subheadline, color: .secondary)
+                        bullet("Logbuch-Tabelle mit Grid-Spalte: Die Logbuch-Ansicht wurde um eine eigene Spalte für Maidenhead Grid-Locatoren erweitert.", font: .subheadline, color: .secondary)
+                        
+                        Text("🐞 Fehlerbehebungen & Optimierungen")
+                            .font(.subheadline)
+                            .bold()
+                            .padding(.top, 4)
+                        bullet("Schutz vor Doppel-Anrufen: Automatische Cooldown-Sperre (blacklistedCalls) beim Empfang von 73/RR73-Signalen sowie beim QSO-Loggen verhindert ein versehentliches zweites Anrufen derselben Station.", font: .subheadline, color: .secondary)
+                        bullet("Karten-Projektionsstreifen beseitigt: Wrap-Around-Filterung im Canvas-Renderer verhindert visuelle Querstufen über die Datumsgrenze und Projektionsränder.", font: .subheadline, color: .secondary)
+                        bullet("Grid MarkerView Positionskorrektur: Stationen werden in die obere rechte Ecke der Grid-Zellen positioniert; redundante System-Textballons wurden entfernt.", font: .subheadline, color: .secondary)
+                        bullet("Propagation Chart Default: Standardansicht auf 'Propagation by Continent' (isStacked = false) umgestellt.", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
                                 
                                 Divider()
                                 

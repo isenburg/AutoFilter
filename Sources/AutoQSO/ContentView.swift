@@ -63,6 +63,7 @@ struct ContentView: View {
     @AppStorage("isBlockedCQZonesExpanded") private var isBlockedCQZonesExpanded = true
     @AppStorage("isBlockedITUZonesExpanded") private var isBlockedITUZonesExpanded = true
     @AppStorage("isWsjtSpecialFilterExpanded") private var isWsjtSpecialFilterExpanded = true
+    @AppStorage("isNewGridFilterExpanded") private var isNewGridFilterExpanded = true
     @AppStorage("isDuplicateFilterExpanded") private var isDuplicateFilterExpanded = true
     @AppStorage("isAllowedDXCallsignsExpanded") private var isAllowedDXCallsignsExpanded = true
     @AppStorage("isAllowedSpotterCountriesExpanded") private var isAllowedSpotterCountriesExpanded = true
@@ -97,6 +98,8 @@ struct ContentView: View {
         return false
     }
     
+    @AppStorage("showOnlyAcceptedSpots") private var showOnlyAcceptedSpots = false
+    
     private var displayDecodes: [WSJTXDecode] {
         let baseList: [WSJTXDecode]
         if viewModel.isMainTableScrollPaused, let frozen = viewModel.frozenMainDecodes {
@@ -106,11 +109,16 @@ struct ContentView: View {
         }
         
         let query = viewModel.mainTableSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let filtered: [WSJTXDecode]
-        if query.isEmpty {
-            filtered = baseList
+        var filtered: [WSJTXDecode]
+        
+        if showOnlyAcceptedSpots {
+            filtered = baseList.filter { viewModel.shouldAccept(decode: $0, recordDuplicates: false) }
         } else {
-            filtered = baseList.filter { decode in
+            filtered = baseList
+        }
+        
+        if !query.isEmpty {
+            filtered = filtered.filter { decode in
                 decode.callsign.lowercased().contains(query) ||
                 decode.country.lowercased().contains(query) ||
                 decode.spotter.lowercased().contains(query) ||
@@ -183,22 +191,7 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                 }
                 
-                Divider()
-                    .frame(height: 20)
-                
-                // Logbook Section
-                Button(action: {
-                    openWindow(id: "logbook")
-                }) {
-                    Image(systemName: "book")
-                }
-                .buttonStyle(.bordered)
-                .help("LoTW Logbuch öffnen")
-                
-                Divider()
-                    .frame(height: 20)
-                
-                // Sort Order Section
+                // Sort Order & Pause Section
                 Button(action: {
                     isNewestOnTop.toggle()
                 }) {
@@ -216,13 +209,34 @@ struct ContentView: View {
                 .foregroundColor(viewModel.isMainTableScrollPaused ? .orange : .primary)
                 .help(viewModel.isMainTableScrollPaused ? "Auto-Scroll fortsetzen" : "Auto-Scroll anhalten")
                 
+                // Filter Switch: Nur akzeptierte/gefilterte Spots anzeigen (links von Suchen)
+                if showOnlyAcceptedSpots {
+                    Button(action: {
+                        showOnlyAcceptedSpots.toggle()
+                    }) {
+                        Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.blue)
+                    .help("Nur gefilterte Spots anzeigen (Aktiv) – Klicken, um alle Spots anzuzeigen")
+                } else {
+                    Button(action: {
+                        showOnlyAcceptedSpots.toggle()
+                    }) {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                    }
+                    .buttonStyle(.bordered)
+                    .help("Alle Spots anzeigen – Klicken, um nur gefilterte Spots anzuzeigen")
+                }
+
+                // Search field (shortened placeholder to "Suchen...")
                 HStack(spacing: 4) {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.secondary)
-                    TextField("Tabelle durchsuchen...", text: $viewModel.mainTableSearchText)
+                    TextField("Suchen...", text: $viewModel.mainTableSearchText)
                         .font(.system(size: 11))
                         .textFieldStyle(.plain)
-                        .frame(width: 150)
+                        .frame(width: 120)
                     if !viewModel.mainTableSearchText.isEmpty {
                         Button(action: { viewModel.mainTableSearchText = "" }) {
                             Image(systemName: "xmark.circle.fill")
@@ -250,12 +264,28 @@ struct ContentView: View {
                 // Standard Window buttons (centered)
                 HStack(spacing: 6) {
                     Button(action: {
+                        openWindow(id: "logbook")
+                    }) {
+                        Image(systemName: "book")
+                    }
+                    .buttonStyle(.bordered)
+                    .help("LoTW Logbuch öffnen")
+
+                    Button(action: {
                         openWindow(id: "propagation_map")
                     }) {
                         Image(systemName: "map")
                     }
                     .buttonStyle(.bordered)
                     .help("Ausbreitungskarte in eigenem Fenster öffnen")
+                    
+                    Button(action: {
+                        openWindow(id: "new_grid_map")
+                    }) {
+                        Image(systemName: "square.grid.3x3.topleft.filled")
+                    }
+                    .buttonStyle(.bordered)
+                    .help("Neue 4-Stellen Grid-Karte in eigenem Fenster öffnen")
                     
                     Button(action: {
                         toggleCompactMode(toCompact: true)
@@ -485,6 +515,9 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenPropagationMapWindow"))) { _ in
             openWindow(id: "propagation_map")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenNewGridMapWindow"))) { _ in
+            openWindow(id: "new_grid_map")
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenLogsRawWindow"))) { _ in
             openWindow(id: "logs_raw")
@@ -1678,6 +1711,40 @@ struct ContentView: View {
             .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
         } header: {
             sidebarHeader("WSJT-X Spezialfilter", isExpanded: $isWsjtSpecialFilterExpanded, activeCount: viewModel.isWsjtSpecialFilterEnabled ? 1 : 0)
+        }
+
+        Section(isExpanded: $isNewGridFilterExpanded) {
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle(isOn: Binding(
+                    get: { viewModel.isNew4CharGridOnlyFilterEnabled },
+                    set: { viewModel.isNew4CharGridOnlyFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                )) {
+                    Text("Nur neue 4-Stellen Grids (z.B. JO31)").font(.system(size: 11)).bold()
+                }
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+
+                Toggle(isOn: Binding(
+                    get: { viewModel.isNew6CharGridOnlyFilterEnabled },
+                    set: { viewModel.isNew6CharGridOnlyFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                )) {
+                    Text("Nur neue 6-Stellen Grids (z.B. JO31aa)").font(.system(size: 11)).bold()
+                }
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+
+                Text("Lässt nur Stationen aus Maidenhead Grids durch, die in dieser Auflösung noch nicht im Logbuch gearbeitet wurden.")
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary)
+                    .italic()
+                    .lineLimit(nil)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+        } header: {
+            sidebarHeader("Maidenhead Grid-Filter", isExpanded: $isNewGridFilterExpanded, activeCount: (viewModel.isNew4CharGridOnlyFilterEnabled ? 1 : 0) + (viewModel.isNew6CharGridOnlyFilterEnabled ? 1 : 0))
         }
 
         Section(isExpanded: $isDuplicateFilterExpanded) {
