@@ -94,6 +94,8 @@ Im Einstellungsreiter **Ansicht** können visuelle Vorlieben konfiguriert werden
 
 Über den Button **Karte ↗** in der Menüleiste/Toolbar (im Bereich FENSTER) kann die **Ausbreitungskarte** in einem eigenständigen, separaten Fenster geöffnet werden:
 - **Karte**: Zeigt eine interaktive Landkarte mit Annotations-Badges der aktiven Länder. Auf den Badges sind die Bänder und die Anzahl der Spots (z.B. `20M:5`) verzeichnet.
+- **Kartenstile & 3D-Globus**: Auswahl zwischen Standard, Satellit, Hybrid und nativer 3D-Globusansicht (Kugeldarstellung). Der Kartenstil lässt sich für Ausbreitungskarte und Grid-Karte unabhängig wählen.
+- **3D Maidenhead Grid & Schattierung**: Im 3D-Globus-Modus werden Maidenhead-Gitterlinien sowie gearbeitete 4-Stellen-Planquadrate als 3D-Geometrie direkt auf die Erdkugel projiziert. Ein Klick auf ein gearbeitetes Feld öffnet das Grid-Logbuchfenster.
 - **Datenbasis**: Die Karte aggregiert ausschließlich Spots und Decodes, die die aktiven Filterkriterien erfolgreich durchlaufen haben (d.h. nicht blockiert sind).
 - **Steuerungsoverlay (oben links)**:
   - **Zeitfenster**: Stepper zur Einstellung des Auswertungszeitfensters (5 bis 120 Minuten).
