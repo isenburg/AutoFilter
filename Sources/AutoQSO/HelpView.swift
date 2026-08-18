@@ -109,13 +109,14 @@ struct HelpView: View {
                 Text("System-Übersicht")
                     .font(.title2)
                     .bold()
-                Text("AutoQSO ist eine macOS-Anwendung zur Automatisierung von FT8- und FT4-Kontakten in Verbindung mit WSJT-X.")
+                Text("AutoQSO ist eine macOS-Anwendung für Funkamateure. Die **Hauptfunktion ist der DX-Filter** zur intelligenten Auswertung, Klassifizierung und Filterung von Spots und Dekodierungen. **Für WSJT-X steht die automatisierte Auto QSO Sende-Engine** zur Verfügung.")
                     .font(.body)
                 
                 Text("Hauptfunktionen:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 6) {
-                    bullet("WSJTX Auto Transmit: Automatisierte Sende-Engine")
+                    bullet("DX-Filter (Hauptfunktion): Intelligente Auswertung, Klassifizierung & Weiterleitung von DX-Spots & Decodes")
+                    bullet("Auto QSO für WSJT-X: Automatisierte Sende-Engine für FT8 & FT4")
                     bullet("Prüfung gegen SQLite-Logbuch (bereits auf Band gearbeitet)")
                     bullet("Detektieren von CQ, 73, RR73 und RRR Decodes")
                     bullet("Top 100 Most Wanted DXCC – Rote Hervorhebung (🔥) & Priorität")
@@ -514,6 +515,10 @@ struct HelpView: View {
                             .font(.subheadline)
                             .bold()
                         bullet("3D-Globus-Projektion & Maidenhead-Gitter: Maidenhead-Grid-Linien und gearbeitete 4-Stellen Planquadrate werden in der 3D-Globusansicht nativ als 3D-Polylines und 3D-Polygone auf die Erdkugel projiziert.", font: .subheadline, color: .secondary)
+                        bullet("Aktiver QSO-Pfad auf Ausbreitungskarte: Zeichnet bei einem aktiven WSJT-X Anruf/QSO eine leuchtend gelbe Großkreis-Verbindungslinie zwischen eigenem QTH (minimalistisches 🏠 Symbol) und der Zielstation auf der 2D-Karte und dem 3D-Globus inklusive Live-Statusbanner (⚡ AKTIVES QSO).", font: .subheadline, color: .secondary)
+                        bullet("Einstellungsbereich Eigenes QTH & Interaktiver QTH Picker: Neuer Einstellungsreiter 'Eigenes QTH (Maidenhead)' (max. 8-Stellen-Präzision) mit Echtzeit-Standortanalyse und nativer interaktiver Karte (InteractiveQTHPickerView) mit Google-Style Drop-Pin.", font: .subheadline, color: .secondary)
+                        bullet("Kompaktmodus Toolbar-Schaltflächen: Alle 6 Icon-Buttons (Logbuch, Ausbreitungskarte, Grid-Map, Normalmodus, Einstellungen, Hilfe) sind jetzt direkt in der Toolbar des Kompaktmodus verfügbar.", font: .subheadline, color: .secondary)
+                        bullet("Kartenstil Dropdown-Menü: Neues kompaktes, kontrastreiches Dropdown-Menü (.ultraThinMaterial Pill) für alle Kartenansichten ohne störende Text-Labels.", font: .subheadline, color: .secondary)
                         bullet("3D Grid-Interaktivität & Spots: Gearbeitete Felder auf dem 3D-Globus sind anklickbar und öffnen das Logbuch-Detailfenster (`WorkedGridDetailView`). Spots werden als 3D-Marker auf dem Globus dargestellt.", font: .subheadline, color: .secondary)
                         bullet("Unabhängige Kartenstile: Kartenstil-Einstellungen (`propagationMapStyle` und `newGridMapStyle`) werden für Ausbreitungskarte und Grid-Karte getrennt gespeichert.", font: .subheadline, color: .secondary)
                         
@@ -927,7 +932,7 @@ struct HelpView: View {
                     .font(.title)
                     .bold()
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("AutoQSO — Automated FT8/FT4 QSO Manager")
+                    Text("AutoQSO — DX-Filter and Automated FT8/FT4 QSO Manager")
                         .font(.headline)
                     Text("Copyright (c) Georg Isenbürger - DJ6GI")
                         .font(.title3)

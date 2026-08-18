@@ -6,7 +6,7 @@
 
 ## 1. Einleitung
 
-AutoQSO ist eine macOS-Anwendung zur Automatisierung von FT8- und FT4-Kontakten in Verbindung mit WSJT-X. Die App überwacht eingehende Decodes per UDP, gleicht diese mit einem lokalen SQLite-Logbuch ab, hebt seltene Most-Wanted-Stationen hervor, leitet Spots weiter und wickelt automatische Anrufe nach frei konfigurierbaren Kriterien ab.
+AutoQSO ist eine macOS-Anwendung für Funkamateure. Die **Hauptfunktion ist der DX-Filter**, der eingehende DX-Spots und Dekodierungen nach flexiblen Kriterien analysiert, farblich klassifiziert und verarbeitet. **Für WSJT-X bietet AutoQSO zusätzlich die automatisierte Auto QSO Sende-Engine**, welche gezielte Anrufe auf FT8- und FT4-Frequenzen vollständig automatisch steuert, gegen das lokale SQLite-Logbuch abgleicht und seltene Most-Wanted-Stationen bevorzugt.
 
 ---
 
@@ -94,8 +94,10 @@ Im Einstellungsreiter **Ansicht** können visuelle Vorlieben konfiguriert werden
 
 Über den Button **Karte ↗** in der Menüleiste/Toolbar (im Bereich FENSTER) kann die **Ausbreitungskarte** in einem eigenständigen, separaten Fenster geöffnet werden:
 - **Karte**: Zeigt eine interaktive Landkarte mit Annotations-Badges der aktiven Länder. Auf den Badges sind die Bänder und die Anzahl der Spots (z.B. `20M:5`) verzeichnet.
+- **Aktiver QSO-Pfad & Live-Banner**: Bei einem aktiven WSJT-X QSO/Anruf wird sowohl auf der 2D-Flachkarte als auch auf dem 3D-Globus eine leuchtend gelbe Großkreis-Verbindungslinie (`MKGeodesicPolyline` / `MapPolyline`) zwischen Ihrem eigenen QTH (grünes 🏠 Symbol) und der Zielstation gezeichnet. Ein Live-Statusbanner oben mittig zeigt Rufton, Ziel-Locator und Entfernung in km an.
 - **Kartenstile & 3D-Globus**: Auswahl zwischen Standard, Satellit, Hybrid und nativer 3D-Globusansicht (Kugeldarstellung). Der Kartenstil lässt sich für Ausbreitungskarte und Grid-Karte unabhängig wählen.
 - **3D Maidenhead Grid & Schattierung**: Im 3D-Globus-Modus werden Maidenhead-Gitterlinien sowie gearbeitete 4-Stellen-Planquadrate als 3D-Geometrie direkt auf die Erdkugel projiziert. Ein Klick auf ein gearbeitetes Feld öffnet das Grid-Logbuchfenster.
+- **Eigenes QTH & Interaktiver QTH Picker**: Im Einstellungsfenster unter *Eigenes QTH (Maidenhead)* lässt sich der eigene Locator präzise bis zu 8 Stellen (z.B. `JO31AA24`) angeben. Ein Klick auf *Interaktive Karte zum Wählen 🗺️* öffnet eine interaktive Zoom-Karte mit dynamischem Maidenhead-Gitter und Google-Style Drop-Pin zum bequemen Wählen des eigenen Standorts per Mausklick.
 - **Datenbasis**: Die Karte aggregiert ausschließlich Spots und Decodes, die die aktiven Filterkriterien erfolgreich durchlaufen haben (d.h. nicht blockiert sind).
 - **Steuerungsoverlay (oben links)**:
   - **Zeitfenster**: Stepper zur Einstellung des Auswertungszeitfensters (5 bis 120 Minuten).

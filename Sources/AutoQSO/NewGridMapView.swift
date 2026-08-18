@@ -192,14 +192,32 @@ struct NewGridMapView: View {
                 }
                 .overlay(alignment: .topTrailing) {
                     HStack(spacing: 6) {
-                        Picker("Kartenstil", selection: $selectedMapStyleRaw) {
+                        Menu {
                             ForEach(MapStyleOption.allCases) { style in
-                                Text(style.rawValue).tag(style.rawValue)
+                                Button(action: {
+                                    selectedMapStyleRaw = style.rawValue
+                                }) {
+                                    HStack {
+                                        Text(style.rawValue)
+                                        if selectedMapStyleRaw == style.rawValue {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
                             }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(MapStyleOption(rawValue: selectedMapStyleRaw)?.rawValue ?? "Standard")
+                                    .font(.system(size: 12, weight: .medium))
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5.5)
+                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
                         }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        .fixedSize()
+                        .menuStyle(.borderlessButton)
                         .help("Kartenstil auswählen")
 
                         Button(action: {

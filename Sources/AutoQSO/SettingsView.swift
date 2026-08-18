@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import Network
 
 // MARK: - Datenstrukturen & Navigation
 
@@ -9,6 +10,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case cluster = "DX Cluster"
     case telnet = "Telnet Server"
     case sync = "Logbuch-Sync"
+    case qth = "Eigenes QTH (Maidenhead)"
     case mostWanted = "Most Wanted & Priorität"
     case storage = "Speicherort & iCloud"
     case options = "Auto Mode Optionen"
@@ -23,6 +25,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .cluster: return "antenna.radiowaves.left.and.right"
         case .telnet: return "terminal"
         case .sync: return "arrow.triangle.2.circlepath"
+        case .qth: return "mappin.and.ellipse"
         case .mostWanted: return "flame.fill"
         case .storage: return "folder.fill"
         case .options: return "slider.horizontal.3"
@@ -40,6 +43,7 @@ struct SettingsView: View {
     @State private var selectedSection: SettingsSection = .udp
     @State private var showResetAlert = false
     @State private var showDeleteLogbookAlert = false
+    @State private var showQTHPickerSheet = false
     
     // MARK: - Persistent gespeicherte Einstellungen (@AppStorage)
     
@@ -138,6 +142,19 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 740, minHeight: 380)
+        .sheet(isPresented: $showQTHPickerSheet) {
+            InteractiveQTHPickerView(myGridLocator: $myGridLocator)
+        }
+    }
+    
+    private func resolutionDescription(for length: Int) -> String {
+        switch length {
+        case 2: return "2-Stellen Field"
+        case 4: return "4-Stellen Square"
+        case 6: return "6-Stellen Subsquare"
+        case 8...: return "8-Stellen Extended Subsquare (Präzise)"
+        default: return "\(length)-Stellen"
+        }
     }
     
     // MARK: - Subviews für Detailbereiche
@@ -457,6 +474,118 @@ struct SettingsView: View {
                 Text("Alle lokal gespeicherten QSOs werden unwiderruflich gelöscht. Dies betrifft nicht deine Logbücher auf LoTW oder QRZ.com.")
             }
             
+        // --- Eigenes QTH (Maidenhead) ---
+        case .qth:
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 8) {
+                    Image(systemName: "mappin.and.ellipse")
+                        .font(.title2)
+                        .foregroundColor(.green)
+                    Text("Eigenes QTH (Maidenhead Locator)")
+                        .font(.title2)
+                        .bold()
+                }
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Maidenhead Locator (max. 8 Zeichen):")
+                        .font(.headline)
+                    
+                    HStack(spacing: 12) {
+                        TextField("z.B. JO31AA00 oder JO31", text: Binding(
+                            get: { myGridLocator },
+                            set: { newValue in
+                                let cleaned = newValue.replacingOccurrences(of: " ", with: "").uppercased()
+                                myGridLocator = String(cleaned.prefix(8))
+                            }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(.body, design: .monospaced))
+                        .frame(maxWidth: 220)
+                        
+                        Button(action: { showQTHPickerSheet = true }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "map.fill")
+                                Text("Interaktive Karte zum Wählen 🗺️")
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.green)
+                    }
+                    
+                    Text("Geben Sie Ihren präzisen Standorts-Locator ein (2- bis 8-Stellen).")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                Divider()
+                
+                // Standort-Analyse & Koordinaten
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Standort-Analyse & Auflösung:")
+                        .font(.headline)
+                    
+                    let cleanGrid = myGridLocator.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+                    if let coords = Maidenhead.locatorToLatLon(cleanGrid) {
+                        HStack(spacing: 16) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Breitengrad (Lat):")
+                                    .font(.caption).foregroundColor(.secondary)
+                                Text(String(format: "%.5f° %@", abs(coords.lat), coords.lat >= 0 ? "N" : "S"))
+                                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Längengrad (Lon):")
+                                    .font(.caption).foregroundColor(.secondary)
+                                Text(String(format: "%.5f° %@", abs(coords.lon), coords.lon >= 0 ? "E" : "W"))
+                                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                            }
+                        }
+                        .padding(10)
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(6)
+                        
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                            Text("Gültiger Locator: \(cleanGrid) (\(resolutionDescription(for: cleanGrid.count)))")
+                                .font(.subheadline)
+                                .bold()
+                        }
+                    } else if !cleanGrid.isEmpty {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text("Ungültiges Locator-Format (z.B. JO31, JO31AA oder JO31AA00 verwenden)")
+                                .font(.subheadline)
+                                .foregroundColor(.orange)
+                        }
+                    }
+                }
+                
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Verwendung in AutoQSO:")
+                        .font(.headline)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(alignment: .top, spacing: 6) {
+                            Image(systemName: "circle.fill").font(.system(size: 5)).padding(.top, 5)
+                            Text("Großkreis-Entfernungsberechnung (km) zu allen empfangenen Stationen und Spots.")
+                        }
+                        HStack(alignment: .top, spacing: 6) {
+                            Image(systemName: "circle.fill").font(.system(size: 5)).padding(.top, 5)
+                            Text("Visualisierung des eigenen Standorts (MY QTH) und der aktiven QSO-Verbindungspfade auf der Ausbreitungskarte (2D & 3D Globus).")
+                        }
+                        HStack(alignment: .top, spacing: 6) {
+                            Image(systemName: "circle.fill").font(.system(size: 5)).padding(.top, 5)
+                            Text("Unterstützt präzise Positionierung bis zu 8-Stellen Subsquare Resolution (ca. 925m × 462m).")
+                        }
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+            }
+
         // --- 5. Most Wanted & Prioritäts-Filter ---
         case .mostWanted:
             VStack(alignment: .leading, spacing: 16) {
@@ -467,9 +596,23 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Eigener Maidenhead Locator (Grid Square):")
                         .font(.headline)
-                    TextField("z.B. JO31 oder JO31AA", text: $myGridLocator)
+                    HStack(spacing: 8) {
+                        TextField("z.B. JO31 oder JO31AA", text: Binding(
+                            get: { myGridLocator },
+                            set: { newValue in
+                                let cleaned = newValue.replacingOccurrences(of: " ", with: "").uppercased()
+                                myGridLocator = String(cleaned.prefix(8))
+                            }
+                        ))
                         .textFieldStyle(.roundedBorder)
+                        .font(.system(.body, design: .monospaced))
                         .frame(maxWidth: 180)
+                        
+                        Button("Details im QTH-Tab ↗") {
+                            selectedSection = .qth
+                        }
+                        .buttonStyle(.borderless)
+                    }
                     Text("Wird für die Entfernungsberechnung (km) zu decodierten Stationen genutzt.")
                         .font(.caption)
                         .foregroundStyle(.secondary)

@@ -101,6 +101,8 @@ class DXClusterClient: ObservableObject {
             return "DNS Resolution Failed (Code \(code)): \(error.localizedDescription)"
         case .tls(let status):
             return "TLS Security Error (\(status)): \(error.localizedDescription)"
+        case .wifiAware(let code):
+            return "WiFi Aware Error (\(code)): \(error.localizedDescription)"
         @unknown default:
             return error.localizedDescription
         }

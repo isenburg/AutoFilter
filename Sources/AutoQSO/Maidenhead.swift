@@ -482,4 +482,47 @@ public struct Maidenhead {
         let c = 2.0 * atan2(sqrt(a), sqrt(1.0 - a))
         return R * c
     }
+
+    public static func greatCirclePath(from start: CLLocationCoordinate2D, to end: CLLocationCoordinate2D, steps: Int = 60) -> [CLLocationCoordinate2D] {
+        let lat1 = start.latitude * .pi / 180.0
+        let lon1 = start.longitude * .pi / 180.0
+        let lat2 = end.latitude * .pi / 180.0
+        let lon2 = end.longitude * .pi / 180.0
+
+        let x1 = cos(lat1) * cos(lon1)
+        let y1 = cos(lat1) * sin(lon1)
+        let z1 = sin(lat1)
+
+        let x2 = cos(lat2) * cos(lon2)
+        let y2 = cos(lat2) * sin(lon2)
+        let z2 = sin(lat2)
+
+        let dot = max(-1.0, min(1.0, x1 * x2 + y1 * y2 + z1 * z2))
+        let omega = acos(dot)
+
+        guard omega > 1e-6 else {
+            return [start, end]
+        }
+
+        let sinOmega = sin(omega)
+        var result: [CLLocationCoordinate2D] = []
+        result.reserveCapacity(steps + 1)
+
+        for i in 0...steps {
+            let f = Double(i) / Double(steps)
+            let a = sin((1.0 - f) * omega) / sinOmega
+            let b = sin(f * omega) / sinOmega
+
+            let x = a * x1 + b * x2
+            let y = a * y1 + b * y2
+            let z = a * z1 + b * z2
+
+            let lat = atan2(z, sqrt(x * x + y * y)) * 180.0 / .pi
+            let lon = atan2(y, x) * 180.0 / .pi
+
+            result.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
+        }
+
+        return result
+    }
 }

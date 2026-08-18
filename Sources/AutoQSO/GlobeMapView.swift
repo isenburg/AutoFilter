@@ -51,6 +51,8 @@ private func parseNSColor(hexString: String, defaultColor: NSColor) -> NSColor {
 
 private func nsColorForBand(_ band: String) -> NSColor {
     switch band.uppercased() {
+    case "MY_QTH": return .systemGreen
+    case "ACTIVE_QSO": return .systemOrange
     case "160M": return NSColor(red: 0.4, green: 0.4, blue: 0.4, alpha: 1.0)
     case "80M":  return NSColor(red: 0.5, green: 0.0, blue: 0.5, alpha: 1.0)
     case "60M":  return NSColor(red: 0.0, green: 0.3, blue: 0.6, alpha: 1.0)
@@ -72,6 +74,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
     var workedGrids: Set<String> = []
     var showWorkedGridShading: Bool = false
     var spotItems: [GlobeSpotItem] = []
+    var activeQSOPath: ActiveQSOPath? = nil
     var onSelectGrid: ((String) -> Void)? = nil
 
     func makeNSView(context: Context) -> MKMapView {
@@ -85,8 +88,8 @@ struct GlobeMapViewContainer: NSViewRepresentable {
         mapView.addGestureRecognizer(clickGesture)
         
         // Initial overlays & annotations
-        context.coordinator.applyOverlays(mapView, showGrid: showGridOverlay, workedGrids: workedGrids, showShading: showWorkedGridShading, region: region)
-        context.coordinator.applyAnnotations(mapView, spotItems: spotItems)
+        context.coordinator.applyOverlays(mapView, showGrid: showGridOverlay, workedGrids: workedGrids, showShading: showWorkedGridShading, activeQSOPath: activeQSOPath, region: region)
+        context.coordinator.applyAnnotations(mapView, spotItems: spotItems, activeQSOPath: activeQSOPath)
         return mapView
     }
 
@@ -102,14 +105,15 @@ struct GlobeMapViewContainer: NSViewRepresentable {
         let overlaysDirty = coord.lastShowGrid != showGridOverlay
             || coord.lastShowShading != showWorkedGridShading
             || coord.lastWorkedGrids != workedGrids
+            || coord.lastActiveQSOPath != activeQSOPath
         
         if overlaysDirty {
-            coord.applyOverlays(mapView, showGrid: showGridOverlay, workedGrids: workedGrids, showShading: showWorkedGridShading, region: region)
+            coord.applyOverlays(mapView, showGrid: showGridOverlay, workedGrids: workedGrids, showShading: showWorkedGridShading, activeQSOPath: activeQSOPath, region: region)
         }
 
-        // Dirty-check annotations: only rebuild if spot items changed
-        if coord.lastSpotItems != spotItems {
-            coord.applyAnnotations(mapView, spotItems: spotItems)
+        // Dirty-check annotations: only rebuild if spot items or activeQSOPath changed
+        if coord.lastSpotItems != spotItems || coord.lastActiveQSOPath != activeQSOPath {
+            coord.applyAnnotations(mapView, spotItems: spotItems, activeQSOPath: activeQSOPath)
         }
     }
 
@@ -191,6 +195,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
 
         // Dirty-flag state for annotations
         var lastSpotItems: [GlobeSpotItem] = []
+        var lastActiveQSOPath: ActiveQSOPath? = nil
 
         // Region debounce
         private var regionDebounceWorkItem: DispatchWorkItem?
@@ -203,7 +208,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
             self.parent = parent
         }
 
-        func applyOverlays(_ mapView: MKMapView, showGrid: Bool, workedGrids: Set<String>, showShading: Bool, region: MKCoordinateRegion) {
+        func applyOverlays(_ mapView: MKMapView, showGrid: Bool, workedGrids: Set<String>, showShading: Bool, activeQSOPath: ActiveQSOPath?, region: MKCoordinateRegion) {
             mapView.removeOverlays(mapView.overlays)
 
             if showShading && !workedGrids.isEmpty {
@@ -216,16 +221,47 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                 mapView.addOverlays(polylines, level: .aboveLabels)
             }
 
+            if let path = activeQSOPath {
+                let pathCoords = Maidenhead.greatCirclePath(from: path.myCoordinate, to: path.targetCoordinate, steps: 60)
+                let polyline = MKPolyline(coordinates: pathCoords, count: pathCoords.count)
+                polyline.title = "ActiveQSOPath"
+                mapView.addOverlay(polyline, level: .aboveLabels)
+            }
+
             lastShowGrid = showGrid
             lastShowShading = showShading
             lastWorkedGrids = workedGrids
+            lastActiveQSOPath = activeQSOPath
         }
 
-        func applyAnnotations(_ mapView: MKMapView, spotItems: [GlobeSpotItem]) {
+        func applyAnnotations(_ mapView: MKMapView, spotItems: [GlobeSpotItem], activeQSOPath: ActiveQSOPath?) {
             mapView.removeAnnotations(mapView.annotations)
-            let annotations = spotItems.map { GlobeSpotAnnotation(item: $0) }
+            var annotations = spotItems.map { GlobeSpotAnnotation(item: $0) }
+            
+            if let path = activeQSOPath {
+                let mySpot = GlobeSpotItem(
+                    id: "MY_QTH",
+                    title: "MY QTH",
+                    subtitle: path.myGrid,
+                    latitude: path.myCoordinate.latitude,
+                    longitude: path.myCoordinate.longitude,
+                    bandName: "MY_QTH"
+                )
+                let targetSpot = GlobeSpotItem(
+                    id: "TARGET_\(path.targetCall)",
+                    title: path.targetCall,
+                    subtitle: path.targetGrid ?? "",
+                    latitude: path.targetCoordinate.latitude,
+                    longitude: path.targetCoordinate.longitude,
+                    bandName: "ACTIVE_QSO"
+                )
+                annotations.append(GlobeSpotAnnotation(item: mySpot))
+                annotations.append(GlobeSpotAnnotation(item: targetSpot))
+            }
+            
             mapView.addAnnotations(annotations)
             lastSpotItems = spotItems
+            lastActiveQSOPath = activeQSOPath
         }
 
         // Debounced region update: only fires after 0.2s of no further region changes
@@ -259,6 +295,13 @@ struct GlobeMapViewContainer: NSViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let polyline = overlay as? MKPolyline, polyline.title == "ActiveQSOPath" {
+                let renderer = MKPolylineRenderer(polyline: polyline)
+                renderer.strokeColor = NSColor.systemYellow
+                renderer.lineWidth = 3.5
+                return renderer
+            }
+
             if let polygon = overlay as? MKPolygon, polygon.title == "WorkedGrid" {
                 let renderer = MKPolygonRenderer(polygon: polygon)
                 let shadeColor = resolveShadeColor()
@@ -287,8 +330,23 @@ struct GlobeMapViewContainer: NSViewRepresentable {
             } else {
                 annotationView?.annotation = spot
             }
-            annotationView?.glyphText = spot.title
-            annotationView?.markerTintColor = nsColorForBand(spot.bandName)
+            
+            if spot.bandName == "MY_QTH" {
+                annotationView?.glyphText = "🏠"
+                annotationView?.markerTintColor = .systemGreen
+                annotationView?.titleVisibility = .visible
+                annotationView?.subtitleVisibility = .adaptive
+            } else if spot.bandName == "ACTIVE_QSO" {
+                annotationView?.glyphText = "⚡"
+                annotationView?.markerTintColor = .systemOrange
+                annotationView?.titleVisibility = .visible
+                annotationView?.subtitleVisibility = .adaptive
+            } else {
+                annotationView?.glyphText = ""
+                annotationView?.markerTintColor = nsColorForBand(spot.bandName)
+                annotationView?.titleVisibility = .visible
+                annotationView?.subtitleVisibility = .adaptive
+            }
             return annotationView
         }
     }

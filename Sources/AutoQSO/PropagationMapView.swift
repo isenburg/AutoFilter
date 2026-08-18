@@ -117,15 +117,18 @@ struct PropagationMapView: View {
 
 
 
+    private func geodesicCoordinates(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) -> [CLLocationCoordinate2D] {
+        return Maidenhead.greatCirclePath(from: from, to: to, steps: 60)
+    }
+
     @ViewBuilder
     private func renderMapView(proxy: MapProxy) -> some View {
         if selectedMapStyle == .globus {
             GlobeMapViewContainer(
                 region: $currentRegion,
                 showGridOverlay: showMaidenheadOverlay,
-                workedGrids: viewModel.worked4CharGrids,
-                showWorkedGridShading: mapCountWorkedBefore,
-                spotItems: cachedGlobeSpotItems
+                spotItems: cachedGlobeSpotItems,
+                activeQSOPath: viewModel.activeQSOPath
             )
             .id("propagation-globe-map-instance")
         } else {
@@ -151,6 +154,35 @@ struct PropagationMapView: View {
                     ))
                     .tint(colorForBandName(cluster.bands.first?.name ?? ""))
                 }
+
+                if let path = viewModel.activeQSOPath {
+                    let pathCoords = geodesicCoordinates(from: path.myCoordinate, to: path.targetCoordinate)
+                    MapPolyline(coordinates: pathCoords)
+                        .stroke(.yellow, lineWidth: 3.5)
+
+                    Annotation("", coordinate: path.myCoordinate) {
+                        Image(systemName: "house.fill")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(5)
+                            .background(Color.green, in: Circle())
+                            .shadow(color: .black.opacity(0.4), radius: 3)
+                    }
+
+                    Annotation("", coordinate: path.targetCoordinate) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "bolt.fill").font(.system(size: 10)).foregroundColor(.yellow)
+                            Text("\(path.targetCall)\(path.targetGrid != nil ? " (\(path.targetGrid!))" : "")")
+                                .font(.system(size: 10, weight: .black, design: .monospaced))
+                                .foregroundColor(.white)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Color.orange.opacity(0.9), in: Capsule())
+                        .overlay(Capsule().stroke(Color.yellow, lineWidth: 1.5))
+                        .shadow(color: .orange.opacity(0.6), radius: 6)
+                    }
+                }
             }
             .id("propagation-map-instance")
             .mapStyle(selectedMapStyle.mapStyle)
@@ -168,6 +200,27 @@ struct PropagationMapView: View {
                     if showMaidenheadOverlay && selectedMapStyle != .globus {
                         MaidenheadGridCanvasView(proxy: proxy, region: currentRegion)
                             .allowsHitTesting(false)
+                    }
+                }
+                .overlay(alignment: .top) {
+                    if let path = viewModel.activeQSOPath {
+                        HStack(spacing: 8) {
+                            Circle().fill(Color.orange).frame(width: 8, height: 8)
+                            Text("⚡ AKTIVES QSO:").font(.caption).bold().foregroundColor(.orange)
+                            Text("\(path.myGrid) ➔ \(path.targetCall)\(path.targetGrid != nil ? " (\(path.targetGrid!))" : "")")
+                                .font(.system(size: 11, weight: .black, design: .monospaced))
+                            if let dist = path.distanceKm {
+                                Text("·  \(Int(round(dist))) km")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .overlay(Capsule().stroke(Color.orange.opacity(0.6), lineWidth: 1))
+                        .shadow(color: .orange.opacity(0.3), radius: 6)
+                        .padding(.top, 8)
                     }
                 }
                 .overlay(alignment: .topLeading) {
@@ -212,14 +265,32 @@ struct PropagationMapView: View {
                 }
                 .overlay(alignment: .topTrailing) {
                     HStack(spacing: 6) {
-                        Picker("Kartenstil", selection: $selectedMapStyleRaw) {
+                        Menu {
                             ForEach(MapStyleOption.allCases) { style in
-                                Text(style.rawValue).tag(style.rawValue)
+                                Button(action: {
+                                    selectedMapStyleRaw = style.rawValue
+                                }) {
+                                    HStack {
+                                        Text(style.rawValue)
+                                        if selectedMapStyleRaw == style.rawValue {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
                             }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(MapStyleOption(rawValue: selectedMapStyleRaw)?.rawValue ?? "Standard")
+                                    .font(.system(size: 12, weight: .medium))
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5.5)
+                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
                         }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        .fixedSize()
+                        .menuStyle(.borderlessButton)
                         .help("Kartenstil auswählen")
 
                         Button(action: {

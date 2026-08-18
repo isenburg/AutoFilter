@@ -966,7 +966,8 @@ struct ContentView: View {
 
     @ViewBuilder
     private var compactToolbarView: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 6) {
+            // WSJTX Auto Transmit
             Button(action: {
                 viewModel.isAutoModeEnabled.toggle()
             }) {
@@ -980,34 +981,148 @@ struct ContentView: View {
             .tint(viewModel.isAutoModeEnabled ? .green : .gray)
             .controlSize(.small)
             
+            NumericTextField("10", value: $retryCooldownMinutes)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 38)
+                .controlSize(.small)
+            
+            // Sort Order
             Button(action: {
-                viewModel.isFiltersEnabled.toggle()
-                viewModel.saveFilters()
-                viewModel.clearBlockedDecodes()
+                isNewestOnTop.toggle()
             }) {
-                HStack(spacing: 4) {
-                    Image(systemName: viewModel.isFiltersEnabled ? "funnel.fill" : "funnel")
-                    Text(viewModel.isFiltersEnabled ? "Filter AN" : "Filter AUS")
-                        .fontWeight(.semibold)
-                }
+                Image(systemName: isNewestOnTop ? "arrow.up" : "arrow.down")
             }
             .buttonStyle(.bordered)
-            .tint(viewModel.isFiltersEnabled ? .accentColor : .secondary)
             .controlSize(.small)
-            .help("Filter anwenden / umgehen")
+            .help(isNewestOnTop ? "Sortierung: Neueste unten" : "Sortierung: Neueste oben")
+            
+            // Pause / Freeze
+            Button(action: {
+                viewModel.isMainTableScrollPaused.toggle()
+            }) {
+                Image(systemName: viewModel.isMainTableScrollPaused ? "play.circle" : "pause.circle")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .foregroundColor(viewModel.isMainTableScrollPaused ? .orange : .primary)
+            .help(viewModel.isMainTableScrollPaused ? "Auto-Scroll fortsetzen" : "Auto-Scroll anhalten")
+            
+            // Filter-Toggle
+            if showOnlyAcceptedSpots {
+                Button(action: {
+                    showOnlyAcceptedSpots.toggle()
+                }) {
+                    Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.blue)
+                .controlSize(.small)
+                .help("Nur gefilterte Spots anzeigen (Aktiv)")
+            } else {
+                Button(action: {
+                    showOnlyAcceptedSpots.toggle()
+                }) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("Alle Spots anzeigen")
+            }
+            
+            // Search field
+            HStack(spacing: 3) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                TextField("Suchen...", text: $viewModel.mainTableSearchText)
+                    .font(.system(size: 10))
+                    .textFieldStyle(.plain)
+                    .frame(width: 75)
+                if !viewModel.mainTableSearchText.isEmpty {
+                    Button(action: { viewModel.mainTableSearchText = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+            .background(Color(NSColor.controlBackgroundColor))
+            .cornerRadius(4)
+            
+            // Clear table
+            Button(action: {
+                viewModel.clearTable()
+            }) {
+                Image(systemName: "trash")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Dekodierte Stationen aus der Tabelle löschen")
+
+            Divider().frame(height: 16)
+
+            // Right Icon Buttons Row (Logbook, Propagation Map, Grid Map, Normal Mode, Settings, Help)
+            Button(action: {
+                openWindow(id: "logbook")
+            }) {
+                Image(systemName: "book")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("LoTW Logbuch öffnen")
             
             Button(action: {
                 openWindow(id: "propagation_map")
             }) {
-                Label("Karte ↗", systemImage: "map")
+                Image(systemName: "map")
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
-            .help("Ausbreitungskarte öffnen")
+            .help("Ausbreitungskarte in eigenem Fenster öffnen")
             
+            Button(action: {
+                openWindow(id: "new_grid_map")
+            }) {
+                Image(systemName: "square.grid.3x3.topleft.filled")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Neue 4-Stellen Grid-Karte in eigenem Fenster öffnen")
+            
+            Button(action: {
+                toggleCompactMode(toCompact: false)
+            }) {
+                Image(systemName: "rectangle.expand.vertical")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Normalen Modus aktivieren")
+            
+            Button(action: {
+                openWindow(id: "settings")
+            }) {
+                Image(systemName: "gearshape")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Einstellungen öffnen")
+            
+            Button(action: {
+                openWindow(id: "help")
+            }) {
+                Image(systemName: "questionmark.circle")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("Hilfe & Info öffnen")
+
             Spacer()
-            
-            HStack(spacing: 8) {
+
+            // Connection & TX Status
+            HStack(spacing: 4) {
                 if !viewModel.server.wsjtxClientId.isEmpty {
                     Circle()
                         .fill(Color.green)
@@ -1049,19 +1164,9 @@ struct ContentView: View {
                         .help("TX AUS")
                 }
             }
-            
-            Divider().frame(height: 16)
-            
-            Button(action: {
-                toggleCompactMode(toCompact: false)
-            }) {
-                Image(systemName: "rectangle.expand.vertical")
-            }
-            .buttonStyle(.plain)
-            .help("Normalen Modus aktivieren")
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
         .background(Color(NSColor.windowBackgroundColor))
     }
 

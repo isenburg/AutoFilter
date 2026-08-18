@@ -1,6 +1,38 @@
 import Foundation
 import Combine
 import SwiftUI
+import MapKit
+
+public struct ActiveQSOPath: Equatable {
+    public let myCall: String
+    public let myGrid: String
+    public let myCoordinate: CLLocationCoordinate2D
+    public let targetCall: String
+    public let targetGrid: String?
+    public let targetCoordinate: CLLocationCoordinate2D
+    public let distanceKm: Double?
+    public let band: String
+
+    public init(myCall: String, myGrid: String, myCoordinate: CLLocationCoordinate2D, targetCall: String, targetGrid: String?, targetCoordinate: CLLocationCoordinate2D, distanceKm: Double?, band: String) {
+        self.myCall = myCall
+        self.myGrid = myGrid
+        self.myCoordinate = myCoordinate
+        self.targetCall = targetCall
+        self.targetGrid = targetGrid
+        self.targetCoordinate = targetCoordinate
+        self.distanceKm = distanceKm
+        self.band = band
+    }
+
+    public static func == (lhs: ActiveQSOPath, rhs: ActiveQSOPath) -> Bool {
+        lhs.targetCall == rhs.targetCall &&
+        lhs.myGrid == rhs.myGrid &&
+        lhs.myCoordinate.latitude == rhs.myCoordinate.latitude &&
+        lhs.myCoordinate.longitude == rhs.myCoordinate.longitude &&
+        lhs.targetCoordinate.latitude == rhs.targetCoordinate.latitude &&
+        lhs.targetCoordinate.longitude == rhs.targetCoordinate.longitude
+    }
+}
 
 struct CountryCluster: Identifiable, Equatable {
     let id: String // Ländername
@@ -326,6 +358,56 @@ class DecodeViewModel: ObservableObject {
 
     var worked4CharGrids: Set<String> {
         lotwManager.workedGridsSet
+    }
+    
+    var activeQSOPath: ActiveQSOPath? {
+        let rawTarget = server.activeDxCall.isEmpty ? currentTargetCall : server.activeDxCall
+        let targetCall = rawTarget.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard !targetCall.isEmpty else { return nil }
+        
+        let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
+        guard let myLatLon = Maidenhead.locatorToLatLon(myGrid) else { return nil }
+        let myCoord = CLLocationCoordinate2D(latitude: myLatLon.lat, longitude: myLatLon.lon)
+        
+        var targetGrid: String? = nil
+        var targetCoord: CLLocationCoordinate2D? = nil
+        
+        let allDecodes = server.decodes + clusterSpots
+        if let matching = allDecodes.first(where: { $0.callsign.uppercased() == targetCall && $0.grid != nil && !($0.grid!.isEmpty) }),
+           let g = matching.grid, g.count >= 4,
+           let ll = Maidenhead.locatorToLatLon(g) {
+            targetGrid = String(g.prefix(6)).uppercased()
+            targetCoord = CLLocationCoordinate2D(latitude: ll.lat, longitude: ll.lon)
+        }
+        
+        if targetCoord == nil {
+            let country = matcher.country(for: targetCall)
+            if let coords = matcher.coordinates(forCountry: country) {
+                targetCoord = CLLocationCoordinate2D(latitude: coords.latitude, longitude: coords.longitude)
+            }
+        }
+        
+        guard let finalTargetCoord = targetCoord else { return nil }
+        
+        let dist: Double?
+        if let tg = targetGrid {
+            dist = Maidenhead.distanceKm(from: myGrid, to: tg)
+        } else {
+            dist = nil
+        }
+        
+        let band = server.decodes.first(where: { $0.callsign.uppercased() == targetCall })?.band ?? ""
+        
+        return ActiveQSOPath(
+            myCall: "MY QTH",
+            myGrid: myGrid,
+            myCoordinate: myCoord,
+            targetCall: targetCall,
+            targetGrid: targetGrid,
+            targetCoordinate: finalTargetCoord,
+            distanceKm: dist,
+            band: band
+        )
     }
     
     func evaluateAutoQSO() {
