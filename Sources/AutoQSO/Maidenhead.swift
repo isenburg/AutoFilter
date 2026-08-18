@@ -9,6 +9,10 @@ public struct MaidenheadGridCanvasView: View {
     @AppStorage("gridOverlayFontSize") private var gridOverlayFontSize = 11.0
     @AppStorage("gridOverlayShowPill") private var gridOverlayShowPill = true
     @AppStorage("showWorkedGridShading") private var showWorkedGridShading = false
+    @AppStorage("gridOverlayTextColor") private var gridOverlayTextColor = ""
+    @AppStorage("gridOverlayLineColor") private var gridOverlayLineColor = ""
+    @AppStorage("gridOverlayBadgeColor") private var gridOverlayBadgeColor = ""
+    @AppStorage("workedGridShadeColor") private var workedGridShadeColorRaw = ""
 
     public init(proxy: MapProxy, region: MKCoordinateRegion, workedGrids: Set<String> = []) {
         self.proxy = proxy
@@ -17,23 +21,19 @@ public struct MaidenheadGridCanvasView: View {
     }
 
     private var gridTextColor: Color {
-        let hex = UserDefaults.standard.string(forKey: "gridOverlayTextColor") ?? ""
-        return hex.isEmpty ? Color(red: 1.0, green: 0.85, blue: 0.2) : Color(hex: hex, defaultColor: Color(red: 1.0, green: 0.85, blue: 0.2))
+        gridOverlayTextColor.isEmpty ? Color(red: 1.0, green: 0.85, blue: 0.2) : Color(hex: gridOverlayTextColor, defaultColor: Color(red: 1.0, green: 0.85, blue: 0.2))
     }
 
     private var gridLineColor: Color {
-        let hex = UserDefaults.standard.string(forKey: "gridOverlayLineColor") ?? ""
-        return hex.isEmpty ? Color.cyan : Color(hex: hex, defaultColor: Color.cyan)
+        gridOverlayLineColor.isEmpty ? Color.cyan : Color(hex: gridOverlayLineColor, defaultColor: Color.cyan)
     }
 
     private var gridBadgeColor: Color {
-        let hex = UserDefaults.standard.string(forKey: "gridOverlayBadgeColor") ?? ""
-        return hex.isEmpty ? Color.black : Color(hex: hex, defaultColor: Color.black)
+        gridOverlayBadgeColor.isEmpty ? Color.black : Color(hex: gridOverlayBadgeColor, defaultColor: Color.black)
     }
 
     private var workedGridShadeColor: Color {
-        let hex = UserDefaults.standard.string(forKey: "workedGridShadeColor") ?? ""
-        return hex.isEmpty ? Color(red: 1.0, green: 0.35, blue: 0.15) : Color(hex: hex, defaultColor: Color(red: 1.0, green: 0.35, blue: 0.15))
+        workedGridShadeColorRaw.isEmpty ? Color(red: 1.0, green: 0.35, blue: 0.15) : Color(hex: workedGridShadeColorRaw, defaultColor: Color(red: 1.0, green: 0.35, blue: 0.15))
     }
 
     private func normalizeLongitude(_ lon: Double) -> Double {
@@ -94,31 +94,42 @@ public struct MaidenheadGridCanvasView: View {
                 }
             }
 
+            // Calculate approximate pixel dimensions for each Maidenhead tier on screen
+            let pxWidth8 = (size.width / lonDelta) * (2.0 / 240.0)
+            let pxHeight8 = (size.height / latDelta) * (1.0 / 240.0)
+
+            let pxWidth6 = (size.width / lonDelta) * (2.0 / 24.0)
+            let pxHeight6 = (size.height / latDelta) * (1.0 / 24.0)
+
+            let pxWidth4 = (size.width / lonDelta) * 2.0
+            let pxHeight4 = (size.height / latDelta) * 1.0
+
             let lonStep: Double
             let latStep: Double
             let labelLength: Int
             let baseFontSize: Double
 
-            if latDelta > 20.0 {
-                lonStep = 20.0
-                latStep = 10.0
-                labelLength = 2
-                baseFontSize = 12
-            } else if latDelta > 2.0 {
-                lonStep = 2.0
-                latStep = 1.0
-                labelLength = 4
-                baseFontSize = 10
-            } else if latDelta > 0.2 {
-                lonStep = 2.0 / 24.0
-                latStep = 1.0 / 24.0
-                labelLength = 6
-                baseFontSize = 9
-            } else {
+            // Choose the finest tier where cells are sufficiently large on screen to avoid crowding
+            if pxWidth8 >= 60 && pxHeight8 >= 40 {
                 lonStep = 2.0 / 240.0
                 latStep = 1.0 / 240.0
                 labelLength = 8
-                baseFontSize = 8
+                baseFontSize = 8.5
+            } else if pxWidth6 >= 60 && pxHeight6 >= 40 {
+                lonStep = 2.0 / 24.0
+                latStep = 1.0 / 24.0
+                labelLength = 6
+                baseFontSize = 9.5
+            } else if pxWidth4 >= 50 && pxHeight4 >= 35 {
+                lonStep = 2.0
+                latStep = 1.0
+                labelLength = 4
+                baseFontSize = 10.5
+            } else {
+                lonStep = 20.0
+                latStep = 10.0
+                labelLength = 2
+                baseFontSize = 12.0
             }
 
             let effectiveFontSize = max(7.0, baseFontSize * (gridOverlayFontSize / 11.0))
@@ -148,8 +159,8 @@ public struct MaidenheadGridCanvasView: View {
                     path.addLine(to: CGPoint(x: size.width + 100, y: ptRef.y))
                     let isMajor = (labelLength == 4 && abs(lat.truncatingRemainder(dividingBy: 10.0)) < 0.0001) ||
                                   (labelLength == 6 && abs(lat.truncatingRemainder(dividingBy: 1.0)) < 0.0001)
-                    let lineColor: Color = isMajor ? lineCol.opacity(0.85) : lineCol.opacity(0.45)
-                    let lineWidth: CGFloat = isMajor ? 1.8 : 1.0
+                    let lineColor: Color = isMajor ? lineCol.opacity(0.85) : lineCol.opacity(0.4)
+                    let lineWidth: CGFloat = isMajor ? 1.5 : 0.8
                     context.stroke(path, with: .color(lineColor), lineWidth: lineWidth)
                 }
                 lat += latStep
@@ -168,8 +179,8 @@ public struct MaidenheadGridCanvasView: View {
                     path.addLine(to: pt2)
                     let isMajor = (labelLength == 4 && abs(normLon.truncatingRemainder(dividingBy: 20.0)) < 0.0001) ||
                                   (labelLength == 6 && abs(normLon.truncatingRemainder(dividingBy: 2.0)) < 0.0001)
-                    let lineColor: Color = isMajor ? lineCol.opacity(0.85) : lineCol.opacity(0.45)
-                    let lineWidth: CGFloat = isMajor ? 1.8 : 1.0
+                    let lineColor: Color = isMajor ? lineCol.opacity(0.85) : lineCol.opacity(0.4)
+                    let lineWidth: CGFloat = isMajor ? 1.5 : 0.8
                     context.stroke(path, with: .color(lineColor), lineWidth: lineWidth)
                 }
                 lon += lonStep
@@ -194,7 +205,7 @@ public struct MaidenheadGridCanvasView: View {
                                 
                                 if gridOverlayShowPill {
                                     let approxWidth = CGFloat(locText.count) * (effectiveFontSize * 0.65) + 8.0
-                                    let approxHeight = effectiveFontSize + 6.0
+                                    let approxHeight = effectiveFontSize + 5.0
                                     let bgRect = CGRect(
                                         x: pt.x - approxWidth / 2.0,
                                         y: pt.y - approxHeight / 2.0,
@@ -202,8 +213,8 @@ public struct MaidenheadGridCanvasView: View {
                                         height: approxHeight
                                     )
                                     let bgPath = Path(roundedRect: bgRect, cornerRadius: 4)
-                                    context.fill(bgPath, with: .color(badgeCol.opacity(0.75)))
-                                    context.stroke(bgPath, with: .color(lineCol.opacity(0.5)), lineWidth: 0.8)
+                                    context.fill(bgPath, with: .color(badgeCol.opacity(0.55)))
+                                    context.stroke(bgPath, with: .color(lineCol.opacity(0.35)), lineWidth: 0.75)
                                 }
                                 
                                 context.draw(resolvedText, at: pt, anchor: .center)
@@ -219,15 +230,19 @@ public struct MaidenheadGridCanvasView: View {
 }
 
 public class MaidenheadGridGenerator {
-    public static func resolutionText(for latDelta: Double) -> String {
-        if latDelta > 20.0 {
-            return "2-Stellen (Field)"
-        } else if latDelta > 2.0 {
-            return "4-Stellen (Square)"
-        } else if latDelta > 0.2 {
+    public static func resolutionText(for latDelta: Double, lonDelta: Double = 1.0, size: CGSize = CGSize(width: 800, height: 600)) -> String {
+        let pxHeight8 = (size.height / latDelta) * (1.0 / 240.0)
+        let pxHeight6 = (size.height / latDelta) * (1.0 / 24.0)
+        let pxHeight4 = (size.height / latDelta) * 1.0
+        
+        if pxHeight8 >= 40 {
+            return "8-Stellen (Extended)"
+        } else if pxHeight6 >= 40 {
             return "6-Stellen (Subsquare)"
+        } else if pxHeight4 >= 35 {
+            return "4-Stellen (Square)"
         } else {
-            return "8-Stellen (Extended Subsquare)"
+            return "2-Stellen (Field)"
         }
     }
 }
@@ -478,6 +493,30 @@ public struct Maidenhead {
         let dLon = (p2.lon - p1.lon) * .pi / 180.0
         let a = sin(dLat / 2.0) * sin(dLat / 2.0) +
                 cos(p1.lat * .pi / 180.0) * cos(p2.lat * .pi / 180.0) *
+                sin(dLon / 2.0) * sin(dLon / 2.0)
+        let c = 2.0 * atan2(sqrt(a), sqrt(1.0 - a))
+        return R * c
+    }
+
+    public static func bearingDeg(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) -> Double {
+        let lat1 = from.latitude * .pi / 180.0
+        let lon1 = from.longitude * .pi / 180.0
+        let lat2 = to.latitude * .pi / 180.0
+        let lon2 = to.longitude * .pi / 180.0
+        let dLon = lon2 - lon1
+        let y = sin(dLon) * cos(lat2)
+        let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
+        let radians = atan2(y, x)
+        let degrees = radians * 180.0 / .pi
+        return (degrees + 360.0).truncatingRemainder(dividingBy: 360.0)
+    }
+
+    public static func distanceKm(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) -> Double {
+        let R = 6371.0
+        let dLat = (to.latitude - from.latitude) * .pi / 180.0
+        let dLon = (to.longitude - from.longitude) * .pi / 180.0
+        let a = sin(dLat / 2.0) * sin(dLat / 2.0) +
+                cos(from.latitude * .pi / 180.0) * cos(to.latitude * .pi / 180.0) *
                 sin(dLon / 2.0) * sin(dLon / 2.0)
         let c = 2.0 * atan2(sqrt(a), sqrt(1.0 - a))
         return R * c

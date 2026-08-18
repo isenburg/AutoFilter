@@ -888,6 +888,24 @@ struct SettingsView: View {
                                 .labelsHidden()
                         }
                     }
+                    
+                    Button("Listen-Ansicht auf Standard zurücksetzen") {
+                        fontSizeTable = 11.0
+                        fontSizeLog = 11.0
+                        UserDefaults.standard.removeObject(forKey: "colorTableStandard")
+                        UserDefaults.standard.removeObject(forKey: "colorTableMostWanted")
+                        UserDefaults.standard.removeObject(forKey: "colorTableWorked")
+                        UserDefaults.standard.removeObject(forKey: "colorTableCQ")
+                        UserDefaults.standard.removeObject(forKey: "colorLogBackground")
+                        UserDefaults.standard.removeObject(forKey: "colorLogSystem")
+                        UserDefaults.standard.removeObject(forKey: "colorLogWsjtxDecode")
+                        UserDefaults.standard.removeObject(forKey: "colorLogWsjtxIncoming")
+                        UserDefaults.standard.removeObject(forKey: "colorLogWsjtxOutgoing")
+                        UserDefaults.standard.removeObject(forKey: "colorLogCluster")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .padding(.top, 6)
                 }
                 
                 Divider()
@@ -932,33 +950,19 @@ struct SettingsView: View {
                     Toggle("Dunkle Lesbarkeits-Badges hinter Schrift anzeigen", isOn: $gridOverlayShowPill)
                         .toggleStyle(.checkbox)
                         .padding(.top, 4)
+                    
+                    Button("Karten-Ansicht auf Standard zurücksetzen") {
+                        gridOverlayFontSize = 11.0
+                        gridOverlayShowPill = true
+                        UserDefaults.standard.removeObject(forKey: "gridOverlayTextColor")
+                        UserDefaults.standard.removeObject(forKey: "gridOverlayLineColor")
+                        UserDefaults.standard.removeObject(forKey: "gridOverlayBadgeColor")
+                        UserDefaults.standard.removeObject(forKey: "workedGridShadeColor")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .padding(.top, 6)
                 }
-                
-                Divider()
-                
-                // Button zum Zurücksetzen aller visuellen Einstellungen
-                Button("Standard-Farben & Größen wiederherstellen") {
-                    fontSizeTable = 11.0
-                    fontSizeLog = 11.0
-                    gridOverlayFontSize = 11.0
-                    gridOverlayShowPill = true
-                    UserDefaults.standard.removeObject(forKey: "gridOverlayTextColor")
-                    UserDefaults.standard.removeObject(forKey: "gridOverlayLineColor")
-                    UserDefaults.standard.removeObject(forKey: "gridOverlayBadgeColor")
-                    UserDefaults.standard.removeObject(forKey: "workedGridShadeColor")
-                    UserDefaults.standard.removeObject(forKey: "colorTableStandard")
-                    UserDefaults.standard.removeObject(forKey: "colorTableMostWanted")
-                    UserDefaults.standard.removeObject(forKey: "colorTableWorked")
-                    UserDefaults.standard.removeObject(forKey: "colorTableCQ")
-                    UserDefaults.standard.removeObject(forKey: "colorLogBackground")
-                    UserDefaults.standard.removeObject(forKey: "colorLogSystem")
-                    UserDefaults.standard.removeObject(forKey: "colorLogWsjtxDecode")
-                    UserDefaults.standard.removeObject(forKey: "colorLogWsjtxIncoming")
-                    UserDefaults.standard.removeObject(forKey: "colorLogWsjtxOutgoing")
-                    UserDefaults.standard.removeObject(forKey: "colorLogCluster")
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
             }
         }
     }

@@ -1239,7 +1239,34 @@ class DecodeViewModel: ObservableObject {
         return true
     }
 
+    // Performance Cache: Memoized evaluation for UI rendering
+    private var decodeEvalCache: [UUID: (isInteresting: Bool, isWorked: Bool, shouldAccept: Bool)] = [:]
+    
+    func clearEvaluationCache() {
+        decodeEvalCache.removeAll(keepingCapacity: true)
+    }
+
+    func evaluateDecodeFast(_ decode: WSJTXDecode) -> (isInteresting: Bool, isWorked: Bool, shouldAccept: Bool) {
+        if let cached = decodeEvalCache[decode.id] {
+            return cached
+        }
+        let accepted = shouldAccept(decode: decode)
+        let worked = lotwManager.hasWorked(callsign: decode.callsign, band: decode.band)
+        let interesting = isAutoQSOInterestingEvaluated(decode: decode, accepted: accepted, worked: worked)
+        let result = (isInteresting: interesting, isWorked: worked, shouldAccept: accepted)
+        if decodeEvalCache.count > 2000 {
+            decodeEvalCache.removeAll(keepingCapacity: true)
+        }
+        decodeEvalCache[decode.id] = result
+        return result
+    }
+
     func isAutoQSOInteresting(decode: WSJTXDecode) -> Bool {
+        let eval = evaluateDecodeFast(decode)
+        return eval.isInteresting
+    }
+
+    private func isAutoQSOInterestingEvaluated(decode: WSJTXDecode, accepted: Bool, worked: Bool) -> Bool {
         let call = decode.callsign.uppercased()
         guard !call.isEmpty else { return false }
         
@@ -1259,7 +1286,7 @@ class DecodeViewModel: ObservableObject {
         }
         
         // 1. Filtered out by DX Filters
-        if !shouldAccept(decode: decode) {
+        if !accepted {
             return false
         }
         
@@ -1267,13 +1294,13 @@ class DecodeViewModel: ObservableObject {
         let onlyMW = UserDefaults.standard.bool(forKey: "onlyMostWanted")
         let maxRank = UserDefaults.standard.integer(forKey: "maxMostWantedRank") > 0 ? UserDefaults.standard.integer(forKey: "maxMostWantedRank") : 100
         if onlyMW {
-            if !MostWantedManager.shared.isMostWanted(callsign: call, maxRank: maxRank) {
+            if !decode.isMostWanted || (decode.mostWantedRank ?? 999) > maxRank {
                 return false
             }
         }
         
         // 3. Worked before on this band
-        if lotwManager.hasWorked(callsign: call, band: decode.band) {
+        if worked {
             return false
         }
         
@@ -1565,6 +1592,7 @@ class DecodeViewModel: ObservableObject {
     }
     
     private func performRecalculations() {
+        clearEvaluationCache()
         recalculatePropagationClusters()
         recalculateMostWantedDecodes()
         recalculateNewGridClusters()

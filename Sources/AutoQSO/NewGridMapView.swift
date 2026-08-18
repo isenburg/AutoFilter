@@ -20,47 +20,31 @@ struct NewGridMapView: View {
     @AppStorage("showBlockedGridSpots") private var showBlockedGridSpots = true
     @AppStorage("showWorkedGridShading") private var showWorkedGridShading = false
     @AppStorage("newGridMapStyle") private var selectedMapStyleRaw: String = MapStyleOption.standard.rawValue
+    @AppStorage("myGridLocator") private var myGridLocator = "JO31"
+    @AppStorage("newGridSidebarCompact") private var isCompactMode = false
 
     private var selectedMapStyle: MapStyleOption {
         MapStyleOption(rawValue: selectedMapStyleRaw) ?? .standard
     }
 
+    private var homeCoordinate: CLLocationCoordinate2D? {
+        if let coord = Maidenhead.locatorToLatLon(myGridLocator) {
+            return CLLocationCoordinate2D(latitude: coord.lat, longitude: coord.lon)
+        }
+        return nil
+    }
+
+    private let availableBands = ["ALL", "160M", "80M", "60M", "40M", "30M", "20M", "17M", "15M", "12M", "10M", "6M"]
+    @State private var selectedBand = "ALL"
     @State private var displayGridClusters: [NewGridCluster] = []
 
-    private var filteredClusters: [NewGridCluster] {
-        let cleanQuery = searchText.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        if cleanQuery.isEmpty {
+    private var bandFilteredClusters: [NewGridCluster] {
+        if selectedBand == "ALL" {
             return displayGridClusters
         }
         return displayGridClusters.filter { cluster in
-            cluster.grid.contains(cleanQuery) ||
-            cluster.country.uppercased().contains(cleanQuery) ||
-            cluster.calls.contains(where: { $0.contains(cleanQuery) })
+            cluster.bands.contains(where: { $0.name.uppercased() == selectedBand.uppercased() })
         }
-    }
-
-    private var sortedClusters: [NewGridCluster] {
-        filteredClusters.sorted {
-            switch sortMode {
-            case 0: // A-Z by Grid
-                return $0.grid < $1.grid
-            case 1: // Spots count
-                return $0.spotCount > $1.spotCount
-            default: // Kontinent
-                if $0.continent == $1.continent { return $0.grid < $1.grid }
-                return $0.continent < $1.continent
-            }
-        }
-    }
-
-    private var clustersByContinent: [(continent: String, clusters: [NewGridCluster])] {
-        let grouped = Dictionary(grouping: sortedClusters) { viewModel.continentName(for: $0.continent) }
-        return grouped.map { (continent: $0.key, clusters: $0.value) }
-            .sorted { a, b in
-                if a.continent == "OTHER" { return false }
-                if b.continent == "OTHER" { return true }
-                return a.continent < b.continent
-            }
     }
 
     var body: some View {
@@ -71,9 +55,20 @@ struct NewGridMapView: View {
 
             // Sidebar Area
             if showList {
-                sidebarSection
-                    .frame(minWidth: 220, idealWidth: 280, maxWidth: 350)
-                    .transition(.move(edge: .trailing))
+                NewGridSidebarView(
+                    clusters: bandFilteredClusters,
+                    fontSizeTable: fontSizeTable,
+                    homeCoordinate: homeCoordinate,
+                    isCompactMode: $isCompactMode,
+                    continentNameProvider: { viewModel.continentName(for: $0) },
+                    onSelectCluster: { cluster in
+                        centerOnCluster(cluster)
+                    },
+                    onClose: { withAnimation { showList = false } }
+                )
+                .equatable()
+                .frame(minWidth: 220, idealWidth: 280, maxWidth: 350)
+                .transition(.move(edge: .trailing))
             } else {
                 Color.clear.frame(width: 0.1)
             }
@@ -115,9 +110,30 @@ struct NewGridMapView: View {
                 }
             )
         }
+        .popover(item: $inspectedGrid) { info in
+            GridDetailInspectorPopover(
+                info: info,
+                homeCoordinate: homeCoordinate,
+                onShowWorkedQSOs: {
+                    selectedWorkedGrid = String(info.grid.prefix(4))
+                },
+                onCenterMap: {
+                    withAnimation {
+                        cameraPosition = .region(MKCoordinateRegion(
+                            center: info.coordinate,
+                            span: MKCoordinateSpan(latitudeDelta: info.is6Char ? 1.5 : 5.0, longitudeDelta: info.is6Char ? 1.5 : 5.0)
+                        ))
+                    }
+                },
+                onOpenQRZ: { call in
+                    openQRZ(for: call)
+                }
+            )
+        }
     }
 
     @State private var selectedWorkedGrid: String? = nil
+    @State private var inspectedGrid: GridInspectorInfo? = nil
     @State private var cachedGlobeSpotItems: [GlobeSpotItem] = []
 
     private struct WorkedGridItem: Identifiable {
@@ -125,7 +141,71 @@ struct NewGridMapView: View {
         var id: String { grid }
     }
 
+    private func inspectCoordinate(_ coord: CLLocationCoordinate2D) {
+        let span = currentRegion.span.latitudeDelta
+        let length = span < 3.0 ? 6 : 4
+        let grid = Maidenhead.latLonToLocator(lat: coord.latitude, lon: coord.longitude, length: length)
+        let grid4 = String(grid.prefix(4))
+        
+        let matchingQSOs = viewModel.lotwManager.logbook.filter {
+            $0.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased().hasPrefix(grid4)
+        }
+        
+        let activeCluster = displayGridClusters.first(where: {
+            $0.grid == grid || $0.grid == grid4
+        })
+        
+        let country = activeCluster?.country ?? (matchingQSOs.first?.dxcc ?? "")
+        let continent = activeCluster?.continent ?? ""
+        
+        inspectedGrid = GridInspectorInfo(
+            grid: grid,
+            coordinate: coord,
+            is6Char: length == 6,
+            country: country.isEmpty ? "DX" : country,
+            continent: continent,
+            isWorked: !matchingQSOs.isEmpty,
+            workedCount: matchingQSOs.count,
+            activeCluster: activeCluster
+        )
+    }
 
+    private func inspectCluster(_ cluster: NewGridCluster) {
+        let coord = CLLocationCoordinate2D(latitude: cluster.latitude, longitude: cluster.longitude)
+        let grid4 = String(cluster.grid.prefix(4))
+        let matchingQSOs = viewModel.lotwManager.logbook.filter {
+            $0.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased().hasPrefix(grid4)
+        }
+        inspectedGrid = GridInspectorInfo(
+            grid: cluster.grid,
+            coordinate: coord,
+            is6Char: cluster.is6Char,
+            country: cluster.country,
+            continent: cluster.continent,
+            isWorked: !matchingQSOs.isEmpty,
+            workedCount: matchingQSOs.count,
+            activeCluster: cluster
+        )
+    }
+
+    private func openQRZ(for callsign: String) {
+        let cleanCall = callsign.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard !cleanCall.isEmpty else { return }
+        
+        let monitor = NWPathMonitor()
+        let queue = DispatchQueue(label: "InternetCheckQueue")
+        monitor.pathUpdateHandler = { path in
+            monitor.cancel()
+            DispatchQueue.main.async {
+                if path.status == .satisfied {
+                    if let url = URL(string: "https://www.qrz.com/db/\(cleanCall)") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            }
+        }
+        monitor.start(queue: queue)
+    }
 
     @ViewBuilder
     private func renderMapView(proxy: MapProxy) -> some View {
@@ -148,7 +228,7 @@ struct NewGridMapView: View {
             .id("new-grid-globe-map-instance")
         } else {
             Map(position: $cameraPosition) {
-                ForEach(displayGridClusters) { cluster in
+                ForEach(bandFilteredClusters) { cluster in
                     Annotation("", coordinate: CLLocationCoordinate2D(
                         latitude: cluster.upperRightLatitude,
                         longitude: cluster.upperRightLongitude
@@ -156,7 +236,7 @@ struct NewGridMapView: View {
                         GridMarkerView(cluster: cluster)
                             .drawingGroup()
                             .onTapGesture {
-                                centerOnCluster(cluster)
+                                inspectCluster(cluster)
                             }
                     }
                 }
@@ -168,13 +248,7 @@ struct NewGridMapView: View {
             }
             .onTapGesture { position in
                 if let coord = proxy.convert(position, from: .local) {
-                    let grid4 = Maidenhead.latLonToLocator(lat: coord.latitude, lon: coord.longitude, length: 4)
-                    let matching = viewModel.lotwManager.logbook.filter {
-                        $0.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased().hasPrefix(grid4)
-                    }
-                    if !matching.isEmpty {
-                        selectedWorkedGrid = grid4
-                    }
+                    inspectCoordinate(coord)
                 }
             }
         }
@@ -186,8 +260,12 @@ struct NewGridMapView: View {
                 renderMapView(proxy: proxy)
                 .overlay {
                     if showMaidenheadOverlay && selectedMapStyle != .globus {
-                        MaidenheadGridCanvasView(proxy: proxy, region: currentRegion, workedGrids: viewModel.worked4CharGrids)
-                            .allowsHitTesting(false)
+                        MaidenheadGridCanvasView(
+                            proxy: proxy,
+                            region: currentRegion,
+                            workedGrids: showWorkedGridShading ? viewModel.worked4CharGrids : []
+                        )
+                        .allowsHitTesting(false)
                     }
                 }
                 .overlay(alignment: .topTrailing) {
@@ -215,7 +293,8 @@ struct NewGridMapView: View {
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 5.5)
-                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
+                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.1), lineWidth: 1))
                         }
                         .menuStyle(.borderlessButton)
                         .help("Kartenstil auswählen")
@@ -228,7 +307,8 @@ struct NewGridMapView: View {
                             Image(systemName: showWorkedGridShading ? "checkmark.square.fill" : "checkmark.square")
                                 .font(.system(size: 13, weight: .semibold))
                                 .padding(6)
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.1), lineWidth: 1))
                                 .foregroundColor(showWorkedGridShading ? .green : .primary)
                         }
                         .buttonStyle(.plain)
@@ -242,7 +322,8 @@ struct NewGridMapView: View {
                             Image(systemName: showMaidenheadOverlay ? "grid.circle.fill" : "grid.circle")
                                 .font(.system(size: 13, weight: .semibold))
                                 .padding(6)
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.1), lineWidth: 1))
                                 .foregroundColor(showMaidenheadOverlay ? .blue : .primary)
                         }
                         .buttonStyle(.plain)
@@ -253,14 +334,16 @@ struct NewGridMapView: View {
                                 Image(systemName: "sidebar.trailing")
                                     .font(.system(size: 13, weight: .semibold))
                                     .padding(6)
-                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
+                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.1), lineWidth: 1))
                             }
                             .buttonStyle(.plain)
                             .help("Liste einblenden")
                         }
                     }
                     .padding(4)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.primary.opacity(0.1), lineWidth: 1))
                     .padding(8)
                 }
                 .overlay(alignment: .topLeading) {
@@ -271,10 +354,10 @@ struct NewGridMapView: View {
                             Text("Neue Maidenhead Grids").font(.caption).bold()
                         }
                         
-                        let count4 = displayGridClusters.filter { !$0.is6Char }.count
-                        let count6 = displayGridClusters.filter { $0.is6Char }.count
+                        let count4 = bandFilteredClusters.filter { !$0.is6Char }.count
+                        let count6 = bandFilteredClusters.filter { $0.is6Char }.count
                         
-                        Text("\(displayGridClusters.count) ungearbeitete Grids")
+                        Text("\(bandFilteredClusters.count) ungearbeitete Grids\(selectedBand == "ALL" ? "" : " (\(selectedBand))")")
                             .font(.system(size: 10, weight: .semibold))
                             .lineLimit(1)
                             .foregroundColor(.secondary)
@@ -293,7 +376,7 @@ struct NewGridMapView: View {
                                 .foregroundColor(.cyan)
                         }
                         
-                        Rectangle().fill(.secondary.opacity(0.3)).frame(height: 1)
+                        Rectangle().fill(.secondary.opacity(0.2)).frame(height: 1)
                         
                         Stepper(value: $mapTimeWindow, in: 5...120, step: 5) {
                             Text("Zeitfenster: \(mapTimeWindow) Min.").font(.caption2).lineLimit(1)
@@ -303,29 +386,139 @@ struct NewGridMapView: View {
                         }
                     }
                     .fixedSize()
-                    .padding(8)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                    .padding(10)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                    .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
                     .padding(8)
                 }
 
-                if showMaidenheadOverlay {
-                    GridOverlaySettingsBar()
-                        .padding(.bottom, 24)
+                VStack(spacing: 6) {
+                    // Band Quick-Filter Pill Bar
+                    HStack(spacing: 4) {
+                        ForEach(availableBands, id: \.self) { band in
+                            Button(action: {
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    selectedBand = band
+                                }
+                            }) {
+                                Text(band)
+                                    .font(.system(size: 9.5, weight: selectedBand == band ? .bold : .medium))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(
+                                        selectedBand == band
+                                        ? (band == "ALL" ? Color.blue : colorForBandName(band))
+                                        : Color.clear,
+                                        in: Capsule()
+                                    )
+                                    .foregroundColor(selectedBand == band ? .white : .primary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(4)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay(Capsule().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                    .shadow(color: .black.opacity(0.1), radius: 3, y: 1)
+
+                    if showMaidenheadOverlay {
+                        GridOverlaySettingsBar()
+                    }
                 }
+                .padding(.bottom, 24)
             }
         }
     }
 
-    private var sidebarSection: some View {
+    private func centerOnCluster(_ cluster: NewGridCluster) {
+        withAnimation {
+            cameraPosition = .region(MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: cluster.latitude, longitude: cluster.longitude),
+                span: MKCoordinateSpan(latitudeDelta: cluster.is6Char ? 2.0 : 8.0, longitudeDelta: cluster.is6Char ? 2.0 : 8.0)
+            ))
+        }
+    }
+}
+
+private struct NewGridSidebarView: View, Equatable {
+    let clusters: [NewGridCluster]
+    let fontSizeTable: Double
+    let homeCoordinate: CLLocationCoordinate2D?
+    @Binding var isCompactMode: Bool
+    let continentNameProvider: (String) -> String
+    let onSelectCluster: (NewGridCluster) -> Void
+    let onClose: () -> Void
+
+    @State private var searchText = ""
+    @State private var sortMode = 0 // 0: Grid (A-Z), 1: Spots, 2: Kontinent
+    @State private var collapsedContinents: Set<String> = []
+
+    static func == (lhs: NewGridSidebarView, rhs: NewGridSidebarView) -> Bool {
+        return lhs.clusters == rhs.clusters &&
+               lhs.fontSizeTable == rhs.fontSizeTable &&
+               lhs.homeCoordinate?.latitude == rhs.homeCoordinate?.latitude &&
+               lhs.homeCoordinate?.longitude == rhs.homeCoordinate?.longitude &&
+               lhs.isCompactMode == rhs.isCompactMode
+    }
+
+    private var filteredClusters: [NewGridCluster] {
+        let cleanQuery = searchText.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if cleanQuery.isEmpty {
+            return clusters
+        }
+        return clusters.filter { cluster in
+            cluster.grid.contains(cleanQuery) ||
+            cluster.country.uppercased().contains(cleanQuery) ||
+            cluster.calls.contains(where: { $0.contains(cleanQuery) })
+        }
+    }
+
+    private var sortedClusters: [NewGridCluster] {
+        filteredClusters.sorted {
+            switch sortMode {
+            case 0: // A-Z by Grid
+                return $0.grid < $1.grid
+            case 1: // Spots count
+                return $0.spotCount > $1.spotCount
+            default: // Kontinent
+                if $0.continent == $1.continent { return $0.grid < $1.grid }
+                return $0.continent < $1.continent
+            }
+        }
+    }
+
+    private var clustersByContinent: [(continent: String, clusters: [NewGridCluster])] {
+        let grouped = Dictionary(grouping: sortedClusters) { continentNameProvider($0.continent) }
+        return grouped.map { (continent: $0.key, clusters: $0.value) }
+            .sorted { a, b in
+                if a.continent == "OTHER" { return false }
+                if b.continent == "OTHER" { return true }
+                return a.continent < b.continent
+            }
+    }
+
+    var body: some View {
         VStack(spacing: 0) {
             HStack {
                 HStack(spacing: 4) {
                     Image(systemName: "mappin.circle.fill")
                         .foregroundColor(.green)
-                    Text("Neue Grids (\(displayGridClusters.count))").font(.headline)
+                    Text("Neue Grids (\(clusters.count))").font(.headline)
                 }
                 Spacer()
-                Button(action: { withAnimation { showList = false } }) {
+
+                Button(action: { isCompactMode.toggle() }) {
+                    Image(systemName: isCompactMode ? "rectangle.grid.1x2" : "list.bullet")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .padding(4)
+                        .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
+                }
+                .buttonStyle(.plain)
+                .help(isCompactMode ? "Erweiterte Detail-Ansicht" : "Kompakte Listen-Ansicht")
+
+                Button(action: onClose) {
                     Image(systemName: "sidebar.trailing")
                 }
                 .buttonStyle(.plain)
@@ -335,7 +528,6 @@ struct NewGridMapView: View {
             .padding(.top, 8)
             .padding(.bottom, 6)
 
-            // Search Bar
             HStack(spacing: 4) {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary)
@@ -368,7 +560,7 @@ struct NewGridMapView: View {
             
             Rectangle().fill(.secondary.opacity(0.2)).frame(height: 1)
 
-            if displayGridClusters.isEmpty {
+            if clusters.isEmpty {
                 Spacer()
                 VStack(spacing: 6) {
                     Image(systemName: "checkmark.seal")
@@ -400,8 +592,13 @@ struct NewGridMapView: View {
                                 )
                             ) {
                                 ForEach(group.clusters) { cluster in
-                                    NewGridListRow(cluster: cluster, fontSize: fontSizeTable) {
-                                        centerOnCluster(cluster)
+                                    NewGridListRow(
+                                        cluster: cluster,
+                                        fontSize: fontSizeTable,
+                                        homeCoordinate: homeCoordinate,
+                                        isCompact: isCompactMode
+                                    ) {
+                                        onSelectCluster(cluster)
                                     }
                                 }
                             } label: {
@@ -422,8 +619,13 @@ struct NewGridMapView: View {
                         }
                     } else {
                         ForEach(sortedClusters) { cluster in
-                            NewGridListRow(cluster: cluster, fontSize: fontSizeTable) {
-                                centerOnCluster(cluster)
+                            NewGridListRow(
+                                cluster: cluster,
+                                fontSize: fontSizeTable,
+                                homeCoordinate: homeCoordinate,
+                                isCompact: isCompactMode
+                            ) {
+                                onSelectCluster(cluster)
                             }
                         }
                     }
@@ -432,19 +634,24 @@ struct NewGridMapView: View {
             }
         }
     }
-
-    private func centerOnCluster(_ cluster: NewGridCluster) {
-        withAnimation {
-            cameraPosition = .region(MKCoordinateRegion(
-                center: CLLocationCoordinate2D(latitude: cluster.latitude, longitude: cluster.longitude),
-                span: MKCoordinateSpan(latitudeDelta: cluster.is6Char ? 2.0 : 8.0, longitudeDelta: cluster.is6Char ? 2.0 : 8.0)
-            ))
-        }
-    }
 }
 
 private struct GridMarkerView: View, Equatable {
     let cluster: NewGridCluster
+
+    private var ageSeconds: TimeInterval {
+        Date().timeIntervalSince(cluster.latestTime)
+    }
+
+    private var isFresh: Bool {
+        ageSeconds < 180 // < 3 Min.
+    }
+
+    private var markerOpacity: Double {
+        if isFresh { return 1.0 }
+        if ageSeconds < 600 { return 0.95 }
+        return 0.75
+    }
 
     var body: some View {
         HStack(spacing: 4) {
@@ -452,6 +659,12 @@ private struct GridMarkerView: View, Equatable {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 9))
                     .foregroundColor(.white)
+            }
+
+            if isFresh {
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: 9))
+                    .foregroundColor(.yellow)
             }
 
             if let firstCall = cluster.calls.first {
@@ -487,26 +700,53 @@ private struct GridMarkerView: View, Equatable {
         }
         .padding(2)
         .background(.ultraThinMaterial, in: Capsule())
-        .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+        .overlay(
+            Capsule().stroke(isFresh ? Color.yellow.opacity(0.8) : Color.clear, lineWidth: 1.5)
+        )
+        .shadow(color: isFresh ? Color.yellow.opacity(0.4) : Color.black.opacity(0.3), radius: isFresh ? 5 : 3, x: 0, y: 1)
+        .opacity(markerOpacity)
     }
 }
 
 private struct NewGridListRow: View, Equatable {
     let cluster: NewGridCluster
     let fontSize: Double
+    let homeCoordinate: CLLocationCoordinate2D?
+    let isCompact: Bool
     let onSelect: () -> Void
 
     static func == (lhs: NewGridListRow, rhs: NewGridListRow) -> Bool {
-        lhs.cluster == rhs.cluster && lhs.fontSize == rhs.fontSize
+        lhs.cluster == rhs.cluster &&
+        lhs.fontSize == rhs.fontSize &&
+        lhs.isCompact == rhs.isCompact &&
+        lhs.homeCoordinate?.latitude == rhs.homeCoordinate?.latitude &&
+        lhs.homeCoordinate?.longitude == rhs.homeCoordinate?.longitude
+    }
+
+    private var ageSeconds: TimeInterval {
+        Date().timeIntervalSince(cluster.latestTime)
+    }
+
+    private var isFresh: Bool {
+        ageSeconds < 180 // < 3 Min.
+    }
+
+    private var headingAndDistance: String? {
+        guard let home = homeCoordinate else { return nil }
+        let target = CLLocationCoordinate2D(latitude: cluster.latitude, longitude: cluster.longitude)
+        let heading = Int(round(Maidenhead.bearingDeg(from: home, to: target)))
+        let dist = Int(round(Maidenhead.distanceKm(from: home, to: target)))
+        return "\(heading)° · \(dist)km"
     }
 
     var body: some View {
         Button(action: onSelect) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
+            if isCompact {
+                // Kompakte Ansicht (1 Zeile)
+                HStack(spacing: 6) {
                     Text(cluster.grid)
-                        .font(.system(size: 12, weight: .black, design: .monospaced))
-                        .padding(.horizontal, 6)
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .padding(.horizontal, 5)
                         .padding(.vertical, 2)
                         .background(
                             cluster.isBlocked
@@ -519,47 +759,316 @@ private struct NewGridListRow: View, Equatable {
                             : (cluster.is6Char ? .blue : .green)
                         )
                         .cornerRadius(4)
-                    
-                    Text(cluster.isBlocked ? "Ausgefiltert" : (cluster.is6Char ? "6-Stellen" : "4-Stellen"))
-                        .font(.system(size: 8, weight: .semibold))
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(cluster.isBlocked ? Color.orange.opacity(0.15) : Color.secondary.opacity(0.15))
-                        .foregroundColor(cluster.isBlocked ? .orange : .secondary)
-                        .cornerRadius(3)
-                    
+
+                    if let beam = headingAndDistance {
+                        Text(beam)
+                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                            .foregroundColor(.secondary)
+                    }
+
                     Text(cluster.country)
-                        .font(.system(size: CGFloat(fontSize), weight: .semibold))
-                    
+                        .font(.system(size: CGFloat(fontSize), weight: .medium))
+                        .lineLimit(1)
+
                     Spacer()
-                    
-                    Text("\(cluster.spotCount) Spot\(cluster.spotCount == 1 ? "" : "s")")
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+
+                    if isFresh {
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 8))
+                            .foregroundColor(.yellow)
+                    }
+
+                    HStack(spacing: 3) {
+                        ForEach(cluster.bands, id: \.name) { band in
+                            Text(band.name)
+                                .font(.system(size: 8, weight: .bold))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(colorForBandName(band.name).opacity(0.25))
+                                .foregroundColor(colorForBandName(band.name))
+                                .cornerRadius(3)
+                        }
+                    }
                 }
-                
-                if !cluster.calls.isEmpty {
-                    Text("Stationen: " + cluster.calls.joined(separator: ", "))
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                }
-                
-                HStack(spacing: 4) {
-                    ForEach(cluster.bands, id: \.name) { band in
-                        Text("\(band.name): \(band.count)")
-                            .font(.system(size: 9, weight: .bold))
+                .padding(.vertical, 3)
+                .opacity(isFresh ? 1.0 : (ageSeconds > 600 ? 0.75 : 0.95))
+            } else {
+                // Detaillierte Ansicht
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(cluster.grid)
+                            .font(.system(size: 12, weight: .black, design: .monospaced))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                cluster.isBlocked
+                                ? Color.orange.opacity(0.2)
+                                : (cluster.is6Char ? Color.blue.opacity(0.2) : Color.green.opacity(0.2))
+                            )
+                            .foregroundColor(
+                                cluster.isBlocked
+                                ? .orange
+                                : (cluster.is6Char ? .blue : .green)
+                            )
+                            .cornerRadius(4)
+                        
+                        Text(cluster.isBlocked ? "Ausgefiltert" : (cluster.is6Char ? "6-Stellen" : "4-Stellen"))
+                            .font(.system(size: 8, weight: .semibold))
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1)
-                            .background(cluster.isBlocked ? Color.orange.opacity(0.15) : Color.blue.opacity(0.15))
-                            .foregroundColor(cluster.isBlocked ? .orange : .blue)
+                            .background(cluster.isBlocked ? Color.orange.opacity(0.15) : Color.secondary.opacity(0.15))
+                            .foregroundColor(cluster.isBlocked ? .orange : .secondary)
                             .cornerRadius(3)
+                        
+                        if isFresh {
+                            HStack(spacing: 2) {
+                                Image(systemName: "bolt.fill").font(.system(size: 7))
+                                Text("NEU").font(.system(size: 8, weight: .black))
+                            }
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.yellow.opacity(0.25))
+                            .foregroundColor(.yellow)
+                            .cornerRadius(3)
+                        }
+
+                        Text(cluster.country)
+                            .font(.system(size: CGFloat(fontSize), weight: .semibold))
+                        
+                        Spacer()
+                        
+                        Text("\(cluster.spotCount) Spot\(cluster.spotCount == 1 ? "" : "s")")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    if let beam = headingAndDistance {
+                        HStack(spacing: 4) {
+                            Image(systemName: "safari")
+                                .font(.system(size: 9))
+                                .foregroundColor(.secondary)
+                            Text("Peilung: \(beam)")
+                                .font(.system(size: 9.5, weight: .medium, design: .monospaced))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    if !cluster.calls.isEmpty {
+                        Text("Stationen: " + cluster.calls.joined(separator: ", "))
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
+                    }
+                    
+                    HStack(spacing: 4) {
+                        ForEach(cluster.bands, id: \.name) { band in
+                            Text("\(band.name): \(band.count)")
+                                .font(.system(size: 9, weight: .bold))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(colorForBandName(band.name).opacity(0.2))
+                                .foregroundColor(colorForBandName(band.name))
+                                .cornerRadius(3)
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+                .opacity(isFresh ? 1.0 : (ageSeconds > 600 ? 0.75 : 0.95))
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct GridInspectorInfo: Identifiable, Equatable {
+    var id: String { grid }
+    let grid: String
+    let coordinate: CLLocationCoordinate2D
+    let is6Char: Bool
+    let country: String
+    let continent: String
+    let isWorked: Bool
+    let workedCount: Int
+    let activeCluster: NewGridCluster?
+    
+    static func == (lhs: GridInspectorInfo, rhs: GridInspectorInfo) -> Bool {
+        lhs.grid == rhs.grid &&
+        lhs.isWorked == rhs.isWorked &&
+        lhs.workedCount == rhs.workedCount &&
+        lhs.activeCluster == rhs.activeCluster
+    }
+}
+
+struct GridDetailInspectorPopover: View {
+    let info: GridInspectorInfo
+    let homeCoordinate: CLLocationCoordinate2D?
+    let onShowWorkedQSOs: () -> Void
+    let onCenterMap: () -> Void
+    let onOpenQRZ: (String) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    private var headingAndDistance: String? {
+        guard let home = homeCoordinate else { return nil }
+        let heading = Int(round(Maidenhead.bearingDeg(from: home, to: info.coordinate)))
+        let dist = Int(round(Maidenhead.distanceKm(from: home, to: info.coordinate)))
+        return "\(heading)° · \(dist) km"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Header
+            HStack(spacing: 8) {
+                Text(info.grid)
+                    .font(.system(size: 16, weight: .black, design: .monospaced))
+                    .foregroundColor(.yellow)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 6))
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.yellow.opacity(0.8), lineWidth: 1.5))
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(info.country)
+                        .font(.headline)
+                        .bold()
+                    if !info.continent.isEmpty {
+                        Text(info.continent)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Spacer()
+                
+                Button(action: { dismiss() }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
+                        .font(.title3)
+                }
+                .buttonStyle(.plain)
+            }
+            
+            Divider()
+            
+            // Status & Peilung
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    if info.isWorked {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                            Text("Gearbeitet (\(info.workedCount) QSO\(info.workedCount == 1 ? "" : "s"))")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.green)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.green.opacity(0.15), in: Capsule())
+                        
+                        Button("QSOs anzeigen") {
+                            dismiss()
+                            onShowWorkedQSOs()
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.mini)
+                    } else {
+                        HStack(spacing: 4) {
+                            Image(systemName: "star.fill")
+                                .foregroundColor(.orange)
+                            Text("Ungearbeitetes Grid")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(.orange)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.orange.opacity(0.15), in: Capsule())
+                    }
+                }
+                
+                if let beam = headingAndDistance {
+                    HStack(spacing: 4) {
+                        Image(systemName: "safari.fill")
+                            .foregroundColor(.blue)
+                            .font(.system(size: 11))
+                        Text("Peilung / Distanz:")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(beam)
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
                     }
                 }
             }
-            .padding(.vertical, 4)
+            
+            // Aktive Spots / Stationen
+            if let cluster = info.activeCluster, !cluster.calls.isEmpty {
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Aktive Stationen (\(cluster.spotCount) Spots):")
+                            .font(.caption)
+                            .bold()
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text("Klick = QRZ.com")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(cluster.calls, id: \.self) { call in
+                                Button(action: { onOpenQRZ(call) }) {
+                                    HStack(spacing: 3) {
+                                        Image(systemName: "globe")
+                                            .font(.system(size: 8))
+                                        Text(call)
+                                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                    }
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(Color.blue.opacity(0.15), in: RoundedRectangle(cornerRadius: 4))
+                                    .foregroundColor(.blue)
+                                }
+                                .buttonStyle(.plain)
+                                .help("QRZ.com für \(call) öffnen")
+                            }
+                        }
+                    }
+                    
+                    HStack(spacing: 4) {
+                        ForEach(cluster.bands, id: \.name) { band in
+                            Text("\(band.name): \(band.count)")
+                                .font(.system(size: 9, weight: .bold))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(colorForBandName(band.name).opacity(0.2))
+                                .foregroundColor(colorForBandName(band.name))
+                                .cornerRadius(3)
+                        }
+                    }
+                }
+            }
+            
+            Divider()
+            
+            HStack {
+                Button(action: {
+                    dismiss()
+                    onCenterMap()
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "scope")
+                        Text("Hierhin zentrieren")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                
+                Spacer()
+            }
         }
-        .buttonStyle(.plain)
+        .padding(14)
+        .frame(width: 320)
     }
 }
 

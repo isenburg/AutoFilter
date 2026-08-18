@@ -24,7 +24,7 @@ struct InteractiveQTHPickerView: View {
         
         let initialRegion = MKCoordinateRegion(
             center: initialCoord,
-            span: MKCoordinateSpan(latitudeDelta: 0.15, longitudeDelta: 0.25)
+            span: MKCoordinateSpan(latitudeDelta: 0.6, longitudeDelta: 0.9)
         )
         
         self._currentRegion = State(initialValue: initialRegion)
@@ -46,7 +46,7 @@ struct InteractiveQTHPickerView: View {
                             .font(.headline)
                             .bold()
                     }
-                    Text("Zoomstufen: Das Maidenhead-Gitter passt sich beim Hineinzoomen automatisch von 2- bis 8-Stellen an.")
+                    Text("Das Maidenhead-Gitter passt sich beim Hineinzoomen automatisch von 2- bis 8-Stellen an.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -85,77 +85,83 @@ struct InteractiveQTHPickerView: View {
             
             // Interactive Map Section
             MapReader { proxy in
-                Map(position: $cameraPosition) {
-                    // Google-style Red Pin Indicator
-                    if let coord = selectedCoordinate {
-                        Annotation(selectedGrid, coordinate: coord) {
-                            VStack(spacing: 0) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "location.fill")
-                                        .font(.system(size: 10))
+                ZStack(alignment: .bottom) {
+                    Map(position: $cameraPosition) {
+                        // Google-style Red Pin Indicator
+                        if let coord = selectedCoordinate {
+                            Annotation(selectedGrid, coordinate: coord) {
+                                VStack(spacing: 0) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "location.fill")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.red)
+                                        Text(selectedGrid)
+                                            .font(.system(size: 11, weight: .black, design: .monospaced))
+                                            .foregroundColor(.white)
+                                    }
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 4)
+                                    .background(Color.red, in: Capsule())
+                                    .shadow(color: .black.opacity(0.5), radius: 5, x: 0, y: 2)
+                                    
+                                    Image(systemName: "triangle.fill")
+                                        .font(.system(size: 8))
                                         .foregroundColor(.red)
-                                    Text(selectedGrid)
-                                        .font(.system(size: 11, weight: .black, design: .monospaced))
-                                        .foregroundColor(.white)
+                                        .rotationEffect(.degrees(180))
+                                        .offset(y: -2)
                                 }
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 4)
-                                .background(Color.red, in: Capsule())
-                                .shadow(color: .black.opacity(0.5), radius: 5, x: 0, y: 2)
-                                
-                                Image(systemName: "triangle.fill")
-                                    .font(.system(size: 8))
-                                    .foregroundColor(.red)
-                                    .rotationEffect(.degrees(180))
-                                    .offset(y: -2)
                             }
                         }
                     }
-                }
-                .mapStyle(mapStyleOption.mapStyle)
-                .onMapCameraChange { context in
-                    currentRegion = context.region
-                }
-                .overlay {
-                    // Dynamic Maidenhead Grid Lines & Subsquare Labels
-                    MaidenheadGridCanvasView(proxy: proxy, region: currentRegion)
-                        .allowsHitTesting(false)
-                }
-                .onTapGesture { position in
-                    if let coord = proxy.convert(position, from: .local) {
-                        selectedCoordinate = coord
-                        selectedGrid = Maidenhead.latLonToLocator(lat: coord.latitude, lon: coord.longitude, length: 8)
+                    .mapStyle(mapStyleOption.mapStyle)
+                    .onMapCameraChange { context in
+                        currentRegion = context.region
                     }
-                }
-                .overlay(alignment: .topTrailing) {
-                    Menu {
-                        ForEach(MapStyleOption.allCases) { style in
-                            Button(action: {
-                                mapStyleOption = style
-                            }) {
-                                HStack {
-                                    Text(style.rawValue)
-                                    if mapStyleOption == style {
-                                        Image(systemName: "checkmark")
+                    .overlay {
+                        // Dynamic Maidenhead Grid Lines & Subsquare Labels
+                        MaidenheadGridCanvasView(proxy: proxy, region: currentRegion)
+                            .allowsHitTesting(false)
+                    }
+                    .onTapGesture { position in
+                        if let coord = proxy.convert(position, from: .local) {
+                            selectedCoordinate = coord
+                            selectedGrid = Maidenhead.latLonToLocator(lat: coord.latitude, lon: coord.longitude, length: 8)
+                        }
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        Menu {
+                            ForEach(MapStyleOption.allCases) { style in
+                                Button(action: {
+                                    mapStyleOption = style
+                                }) {
+                                    HStack {
+                                        Text(style.rawValue)
+                                        if mapStyleOption == style {
+                                            Image(systemName: "checkmark")
+                                        }
                                     }
                                 }
                             }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(mapStyleOption.rawValue)
+                                    .font(.system(size: 12, weight: .medium))
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 5.5)
+                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.1), lineWidth: 1))
                         }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(mapStyleOption.rawValue)
-                                .font(.system(size: 12, weight: .medium))
-                            Image(systemName: "chevron.up.chevron.down")
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(.secondary)
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5.5)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
+                        .menuStyle(.borderlessButton)
+                        .help("Kartenstil auswählen")
+                        .padding(10)
                     }
-                    .menuStyle(.borderlessButton)
-                    .help("Kartenstil auswählen")
-                    .padding(10)
+
+                    GridOverlaySettingsBar()
+                        .padding(.bottom, 20)
                 }
             }
         }

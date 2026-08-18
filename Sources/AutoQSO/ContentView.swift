@@ -31,6 +31,11 @@ struct ContentView: View {
     @AppStorage("logConsoleHeight") private var logConsoleHeight = 150.0
     @AppStorage("fontSizeTable") private var fontSizeTable = 11.0
     @AppStorage("fontSizeLog") private var fontSizeLog = 11.0
+    @AppStorage("colorTableStandard") private var colorTableStandard = ""
+    @AppStorage("colorTableCQ") private var colorTableCQ = ""
+    @AppStorage("colorTableWorked") private var colorTableWorked = ""
+    @AppStorage("colorTableMostWanted") private var colorTableMostWanted = ""
+    @AppStorage("highlightMostWanted") private var highlightMostWanted = true
     @AppStorage("wsjtxShowDecodes") private var wsjtxShowDecodes = true
     @AppStorage("wsjtxShowIncoming") private var wsjtxShowIncoming = true
     @AppStorage("wsjtxShowOutgoing") private var wsjtxShowOutgoing = true
@@ -1438,35 +1443,43 @@ struct ContentView: View {
         NSWorkspace.shared.open(url)
     }
     
+    private var standardColor: Color {
+        colorTableStandard.isEmpty ? .primary : Color(hex: colorTableStandard)
+    }
+    private var cqColor: Color {
+        colorTableCQ.isEmpty ? .green : Color(hex: colorTableCQ)
+    }
+    private var workedColor: Color {
+        colorTableWorked.isEmpty ? .red.opacity(0.5) : Color(hex: colorTableWorked)
+    }
+    private var mostWantedColor: Color {
+        colorTableMostWanted.isEmpty ? .red : Color(hex: colorTableMostWanted)
+    }
+    
     private func rowColor(for decode: WSJTXDecode) -> Color {
         let call = decode.callsign
         if call.isEmpty {
-            let hex = UserDefaults.standard.string(forKey: "colorTableStandard") ?? ""
-            return hex.isEmpty ? .primary : Color(hex: hex)
+            return standardColor
         }
         
-        if viewModel.isAutoQSOInteresting(decode: decode) {
-            let hex = UserDefaults.standard.string(forKey: "colorTableCQ") ?? ""
-            return hex.isEmpty ? .green : Color(hex: hex)
+        let eval = viewModel.evaluateDecodeFast(decode)
+        if eval.isInteresting {
+            return cqColor
         }
         
-        if viewModel.lotwManager.hasWorked(callsign: call, band: decode.band) {
-            let hex = UserDefaults.standard.string(forKey: "colorTableWorked") ?? ""
-            return hex.isEmpty ? .red.opacity(0.5) : Color(hex: hex)
+        if eval.isWorked {
+            return workedColor
         }
         
-        if !viewModel.shouldAccept(decode: decode) {
+        if !eval.shouldAccept {
             return .gray.opacity(0.6)
         }
         
-        let highlightMW = UserDefaults.standard.object(forKey: "highlightMostWanted") as? Bool ?? true
-        if highlightMW && MostWantedManager.shared.isMostWanted(callsign: call) {
-            let hex = UserDefaults.standard.string(forKey: "colorTableMostWanted") ?? ""
-            return hex.isEmpty ? .red : Color(hex: hex)
+        if highlightMostWanted && decode.isMostWanted {
+            return mostWantedColor
         }
         
-        let hex = UserDefaults.standard.string(forKey: "colorTableStandard") ?? ""
-        return hex.isEmpty ? .primary : Color(hex: hex)
+        return standardColor
     }
     
     private func formatTime(_ ms: UInt32) -> String {

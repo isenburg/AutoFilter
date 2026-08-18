@@ -81,9 +81,15 @@ struct PropagationMapView: View {
 
             // Sidebar Area
             if showList {
-                sidebarSection
-                    .frame(minWidth: 200, idealWidth: 260, maxWidth: 320)
-                    .transition(.move(edge: .trailing))
+                PropagationSidebarView(
+                    clusters: displayClusters,
+                    fontSizeTable: fontSizeTable,
+                    continentNameProvider: { viewModel.continentName(for: $0) },
+                    onClose: { withAnimation { showList = false } }
+                )
+                .equatable()
+                .frame(minWidth: 200, idealWidth: 260, maxWidth: 320)
+                .transition(.move(edge: .trailing))
             } else {
                 Color.clear.frame(width: 0.1)
             }
@@ -114,8 +120,6 @@ struct PropagationMapView: View {
             }
         }
     }
-
-
 
     private func geodesicCoordinates(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) -> [CLLocationCoordinate2D] {
         return Maidenhead.greatCirclePath(from: from, to: to, steps: 60)
@@ -225,9 +229,9 @@ struct PropagationMapView: View {
                 }
                 .overlay(alignment: .topLeading) {
                     VStack(alignment: .leading, spacing: 8) {
-                        VStack(alignment: .leading, spacing: 3) {
+                        VStack(alignment: .leading, spacing: 4) {
                             Text("\(displayClusters.count) Länder").font(.caption).bold().lineLimit(1)
-                            Rectangle().fill(.secondary.opacity(0.3)).frame(height: 1)
+                            Rectangle().fill(.secondary.opacity(0.2)).frame(height: 1)
                             
                             Stepper(value: $mapTimeWindow, in: 5...120, step: 5) {
                                 Text("Fenster: \(mapTimeWindow) Min.").font(.caption2).lineLimit(1)
@@ -236,7 +240,7 @@ struct PropagationMapView: View {
                                 viewModel.updatePropagationClusters()
                             }
                             
-                            Rectangle().fill(.secondary.opacity(0.3)).frame(height: 1)
+                            Rectangle().fill(.secondary.opacity(0.2)).frame(height: 1)
                             
                             Toggle("Gearbeitete mitzählen", isOn: $mapCountWorkedBefore)
                                 .font(.system(size: 9))
@@ -247,14 +251,16 @@ struct PropagationMapView: View {
                                     viewModel.updatePropagationClusters()
                                 }
                             
-                            Rectangle().fill(.secondary.opacity(0.3)).frame(height: 1)
+                            Rectangle().fill(.secondary.opacity(0.2)).frame(height: 1)
                             
                             StatRow(label: "Empf.", value: "\(viewModel.totalReceived)", rate: "\(spotsPerHour.received)/h")
                             StatRow(label: "Durchg.", value: "\(viewModel.totalForwarded)", rate: "\(spotsPerHour.filtered)/h", color: .green)
                         }
                         .fixedSize()
-                        .padding(8)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                        .padding(10)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                        .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
 
                         if showPropagationChart {
                             PropagationChartView(viewModel: viewModel)
@@ -288,7 +294,8 @@ struct PropagationMapView: View {
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 5.5)
-                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
+                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.1), lineWidth: 1))
                         }
                         .menuStyle(.borderlessButton)
                         .help("Kartenstil auswählen")
@@ -301,7 +308,8 @@ struct PropagationMapView: View {
                             Image(systemName: showPropagationChart ? "chart.bar.fill" : "chart.bar.xaxis")
                                 .font(.system(size: 13, weight: .semibold))
                                 .padding(6)
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.1), lineWidth: 1))
                                 .foregroundColor(showPropagationChart ? .orange : .primary)
                         }
                         .buttonStyle(.plain)
@@ -315,7 +323,8 @@ struct PropagationMapView: View {
                             Image(systemName: showMaidenheadOverlay ? "grid.circle.fill" : "grid.circle")
                                 .font(.system(size: 13, weight: .semibold))
                                 .padding(6)
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.1), lineWidth: 1))
                                 .foregroundColor(showMaidenheadOverlay ? .blue : .primary)
                         }
                         .buttonStyle(.plain)
@@ -326,14 +335,16 @@ struct PropagationMapView: View {
                                 Image(systemName: "sidebar.trailing")
                                     .font(.system(size: 13, weight: .semibold))
                                     .padding(6)
-                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
+                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.1), lineWidth: 1))
                             }
                             .buttonStyle(.plain)
                             .help("Liste einblenden")
                         }
                     }
                     .padding(4)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.primary.opacity(0.1), lineWidth: 1))
                     .padding(8)
                 }
 
@@ -352,18 +363,58 @@ struct PropagationMapView: View {
                     }
                     .padding(6)
                     .background(.ultraThinMaterial, in: Capsule())
+                    .overlay(Capsule().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                    .shadow(color: .black.opacity(0.1), radius: 3, y: 1)
                 }
                 .padding(.bottom, 24)
             }
         }
     }
+}
 
-    private var sidebarSection: some View {
+private struct PropagationSidebarView: View, Equatable {
+    let clusters: [CountryCluster]
+    let fontSizeTable: Double
+    let continentNameProvider: (String) -> String
+    let onClose: () -> Void
+
+    @State private var sortMode = 0 // 0: Continent, 1: A–Z, 2: Spots
+    @State private var expandedContinents: Set<String> = ["EUROPE", "NORTH AMERICA", "ASIA", "SOUTH AMERICA", "AFRICA", "OCEANIA", "ANTARCTICA", "OTHER"]
+
+    static func == (lhs: PropagationSidebarView, rhs: PropagationSidebarView) -> Bool {
+        return lhs.clusters == rhs.clusters && lhs.fontSizeTable == rhs.fontSizeTable
+    }
+
+    private var sortedClusters: [CountryCluster] {
+        clusters.sorted {
+            switch sortMode {
+            case 0:
+                if $0.continent == $1.continent { return $0.country < $1.country }
+                return $0.continent < $1.continent
+            case 1:
+                return $0.country < $1.country
+            default:
+                return $0.spotCount > $1.spotCount
+            }
+        }
+    }
+
+    private var clustersByContinent: [(continent: String, clusters: [CountryCluster])] {
+        let grouped = Dictionary(grouping: sortedClusters) { continentNameProvider($0.continent) }
+        return grouped.map { (continent: $0.key, clusters: $0.value) }
+            .sorted { a, b in
+                if a.continent == "OTHER" { return false }
+                if b.continent == "OTHER" { return true }
+                return a.continent < b.continent
+            }
+    }
+
+    var body: some View {
         VStack(spacing: 0) {
             HStack {
                 Text("Aktive Länder").font(.headline)
                 Spacer()
-                Button(action: { withAnimation { showList = false } }) {
+                Button(action: onClose) {
                     Image(systemName: "sidebar.trailing")
                 }
                 .buttonStyle(.plain)
@@ -384,7 +435,7 @@ struct PropagationMapView: View {
             
             Rectangle().fill(.secondary.opacity(0.2)).frame(height: 1)
 
-            if displayClusters.isEmpty {
+            if clusters.isEmpty {
                 Spacer()
                 Text("Noch keine Spots").foregroundColor(.secondary)
                 Spacer()

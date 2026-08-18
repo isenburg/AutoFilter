@@ -294,6 +294,11 @@ struct HelpView: View {
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
                     bullet("**Ungearbeitete Maidenhead Grids**: Visualisiert gezielt noch ungearbeitete 4-Stellen (`JO31`) und 6-Stellen (`JO31AA`) Maidenhead-Lokaltore auf der Weltkarte.")
+                    bullet("**Interaktiver Grid-Inspector (Klick auf Grid)**: Ein Klick auf ein beliebiges Grid-Feld oder Marker-Badge auf der Karte öffnet ein Info-Popover mit Status (gearbeitet/ungearbeitet), Peilung & Distanz, Band-Aufteilung, Liste aller aktiven Stationen inklusive Direktaufruf von QRZ.com und Zentrier-Schaltfläche.")
+                    bullet("**Band-Schnellfilter**: Schwebende Pill-Leiste (`ALL`, `160M`–`6M`), um die Karte und Seitenleiste mit einem Klick auf das gewünschte Band zu filtern.")
+                    bullet("**Peilung & Distanz**: Anzeige von Azimut und Großkreis-Entfernung bezogen auf das eigene Heimat-QTH (`🧭 285° · 4.210 km`) direkt in jeder Zeile.")
+                    bullet("**Spot-Frische & Age-Decay**: Brandneue Spots (< 3 Min.) werden durch ein leuchtendes `⚡ NEU`-Badge und Umrandung hervorgehoben; ältere Spots (> 10 Min.) blenden dezent ab.")
+                    bullet("**Kompakt- / Detail-Umschalter**: Schaltfläche in der Sidebar-Kopfleiste zum Wechseln zwischen einer kompakten 1-Zeilen-Übersicht und einer ausführlichen Detailkarte mit allen Rufzeichen.")
                     bullet("**Farbkodierung**: 4-Stellen Grids werden grün hervorgehoben, 6-Stellen Grids blau.")
                     bullet("**Echtzeit-Suchleiste**: Schnellsuche nach Grid-Locatoren oder Rufzeichen in der rechten Seitenleiste.")
                     bullet("**Fokussierung**: Klick auf eine Zeile oder ein Marker-Badge zentriert die Karte direkt auf den ausgewählten Locator.")
@@ -304,8 +309,8 @@ struct HelpView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     bullet("**Lückenlose Kartenabdeckung**: Hardwarebeschleunigtes Canvas-Gitter im GridTracker-Stil über der gesamten Karte.")
                     bullet("**Standardmäßig aktiv**: In der Grid-Map beim Öffnen automatisch eingeschaltet (über das Grid-Icon `grid.circle` in der oberen rechten Ecke umschaltbar).")
-                    bullet("**Zoomabhängige Auflösung**: Automatischer Wechsel von 2-Stellen (`JO`), 4-Stellen (`JO31`), 6-Stellen (`JO31AA`) bis hin zu 8-Stellen Resolution (`JO31AA11`).")
-                    bullet("**Lesbarkeits-Badges**: Dunkle Unterlegungen hinter den Schriftzügen sorgen für optimale Lesbarkeit über blauen Ozeanen und Landmassen.")
+                    bullet("**Pixel-dynamische Auflösung**: Automatischer, bildschirmgrößenabhängiger Wechsel von 2-Stellen (`JO`), 4-Stellen (`JO31`), 6-Stellen (`JO31AA`) bis hin zu 8-Stellen Resolution (`JO31AA11`). Verhindert Überlappungen und gewährleistet immer freie Sicht auf Straßen und Satellitenbilder.")
+                    bullet("**Dezente Lesbarkeits-Badges**: Transparente Unterlegungen (`opacity: 0.55`) sorgen für optimale Lesbarkeit, ohne die Karte zu verdecken.")
                     bullet("**Gearbeitete Grid-Schattierung**: Über das Häkchen-Icon (`checkmark.square`) lassen sich bereits gearbeitete 4-Stellen Grids aus dem Logbuch auf der Karte farbig schattieren. Die Schattierungsfarbe ist in den Einstellungen und in der unteren Leiste anpassbar (Standard: Rot-Orange `#FF5926`).")
                     bullet("**Klick auf gearbeitetes Grid**: Ein Klick auf ein schattiertes/gearbeitetes Grid-Feld öffnet ein Detailfenster (**WorkedGridDetailView**) mit allen im Logbuch enthaltenen QSOs für diesen Maidenhead-Locator inklusive Such- und Filterfunktion.")
                     bullet("**Doppelklick für QRZ.com**: Ein Doppelklick auf eine Station im Grid-Logbuchfenster öffnet direkt deren QRZ.com-Seite im Browser. Vor dem Öffnen wird automatisch geprüft, ob eine aktive Internetverbindung besteht; ansonsten erscheint ein nativer Fehlerhinweis.")
@@ -407,16 +412,14 @@ struct HelpView: View {
                     bullet("**Schriftgrößen**: Stufenlose Regelung der Tabellen- und Protokoll-Schriftgrößen (8 pt bis 20 pt).")
                     bullet("**Farbanpassungen Haupttabelle**: Individuelle Farbwahl für Standard-Text, Most Wanted (🔥), CQ-Aufrufe und bereits gearbeitete Stationen.")
                     bullet("**Farbanpassungen Log-Konsole**: Einstellbare Farben für Konsolen-Hintergrund, System-Logs, WSJT-X Dekodierungen, eingehenden/ausgehenden Traffic und Cluster-Spots.")
+                    bullet("**Unabhängiges Zurücksetzen**: Eigener Button 'Listen-Ansicht auf Standard zurücksetzen' zur Wiederherstellung der Tabellen- und Logfarben.")
                     
                     Text("3. Landkarten-Ansicht (Maidenhead Grid-Overlay):")
                         .font(.headline)
                     bullet("**Gitter-Schriftgröße**: Slider zur Skalierung der Locator-Beschriftungen (8 pt bis 22 pt).")
-                    bullet("**Farb-Customizing**: Separate Farbwahl für Gitter-Beschriftungen, Gitterlinien und Badge-Hintergründe.")
+                    bullet("**Farb-Customizing**: Separate Farbwahl für Gitter-Beschriftungen, Gitterlinien, Badge-Hintergründe und gearbeitete Grids.")
                     bullet("**Lesbarkeits-Badges**: Ein- und Ausschalten der dunklen Hintergründe hinter Locator-Texten.")
-                    
-                    Text("4. Standard-Farben & Größen wiederherstellen:")
-                        .font(.headline)
-                    bullet("Setzt mit einem Klick alle Farben, Schriftgrößen und Badge-Einstellungen auf das bewährte Werks-Standard-Schema zurück.")
+                    bullet("**Unabhängiges Zurücksetzen**: Eigener Button 'Karten-Ansicht auf Standard zurücksetzen' für alle Karteneinstellungen.")
                 }
                 .padding()
                 .background(Color.blue.opacity(0.08))
@@ -449,48 +452,46 @@ struct HelpView: View {
                         Text("Support-E-Mail senden")
                     }
                     .font(.headline)
+                    .foregroundColor(.white)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
+                    .background(Color.accentColor)
+                    .cornerRadius(8)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .padding(.top, 6)
-                
-                Text("Hinweis: Es öffnet sich Ihr bevorzugtes E-Mail-Programm mit einer vorbereiteten Nachricht, die Sie vor dem Absenden überprüfen können.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                .buttonStyle(.plain)
             }
             
         case .disclaimer:
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.orange)
-                        .font(.title2)
-                    Text("Rechtlicher Hinweis & Haftungsausschluss")
-                        .font(.title2)
-                        .bold()
-                        .foregroundColor(.orange)
-                }
+                Text("Rechtlicher Hinweis & Haftungsausschluss")
+                    .font(.title2)
+                    .bold()
+                
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Aufsichtspflicht & Amateurfunkrecht:")
+                    Text("Nutzung auf eigene Verantwortung:")
                         .font(.headline)
-                    VStack(alignment: .leading, spacing: 8) {
-                        numberedItem("1.", "**Stationskontrolle**: Der lizenzierte Funkamateur ist für alle von seiner Station ausgesendeten Signale gemäß den nationalen Fernmeldegesetzen (z.B. TKG/AFuG in Deutschland, BNetzA, FCC) voll verantwortlich.")
-                        numberedItem("2.", "**Beaufsichtigter Betrieb**: Der automatische Sendebetrieb muss stets beaufsichtigt werden.")
-                        numberedItem("3.", "**Gewährleistungsausschluss**: Die Software wird 'OHNE JEDE GEWÄHRLEISTUNG' zur Verfügung gestellt.")
-                        numberedItem("4.", "**Haftungsbeschränkung**: Der Autor (Georg Isenbürger - DJ6GI) übernimmt keinerlei Haftung für Schäden, Ordnungswidrigkeiten oder Folgeschäden.")
-                    }
+                    Text("Die Nutzung von AutoQSO und insbesondere der automatisierten Sendefunktion (**Auto QSO für WSJT-X**) erfolgt ausschließlich auf eigene Gefahr und Verantwortung des jeweiligen lizenzierten Funkamateurs.")
+                        .font(.body)
+                    
+                    Text("Einhaltung der Amateurfunkbestimmungen:")
+                        .font(.headline)
+                    Text("Der Betreiber ist verpflichtet, die geltenden Gesetze, Bestimmungen der Bundesnetzagentur (bzw. der zuständigen nationalen Fernmeldebehörde) sowie die IARU-Bandpläne einzuhalten. Eine ständige Beaufsichtigung der Sendestation durch den Funkamateur ist sicherzustellen.")
+                        .font(.body)
+                    
+                    Text("Haftungsausschluss:")
+                        .font(.headline)
+                    Text("Der Entwickler übernimmt keinerlei Haftung für direkte oder indirekte Schäden, Frequenzstörungen, Fehlbedienungen, Bandplanverletzungen oder sonstige Nachteile, die aus der Nutzung der Software resultieren.")
+                        .font(.body)
                 }
                 .padding()
-                .background(Color.orange.opacity(0.1))
+                .background(Color.red.opacity(0.08))
                 .cornerRadius(8)
             }
             
         case .changelog:
             VStack(alignment: .leading, spacing: 16) {
-                Text("Changelog")
-                    .font(.title)
+                Text("Versionshistorie (Changelog)")
+                    .font(.title2)
                     .bold()
                 
                 // Version 3.3.2
@@ -511,16 +512,31 @@ struct HelpView: View {
                             .cornerRadius(4)
                     }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("🐞 Fehlerbehebungen & Optimierungen")
+                        Text("✨ Neue Funktionen & Verbesserungen")
                             .font(.subheadline)
                             .bold()
-                        bullet("Fehler und Leistungsverbesserung: Behebung des UI-Hangs beim Verschieben und Umsortieren von Spalten in der Haupttabelle sowie Optimierung der Tabellen-Struktur.", font: .subheadline, color: .secondary)
+                        bullet("Interaktiver Grid-Inspector: Ein Klick auf ein beliebiges Grid-Feld auf der Karte öffnet ein Detail-Popover mit Status (gearbeitet/ungearbeitet), Peilung/Distanz, aktiven Stationen und QRZ.com-Aufruf.", font: .subheadline, color: .secondary)
+                        bullet("Band-Schnellfilter auf Grid-Map: Horizontale Filter-Pill-Leiste (`ALL`, `160M`–`6M`) zum sofortigen Umschalten der angezeigten Grids und Map-Marker nach dem aktiven Band.", font: .subheadline, color: .secondary)
+                        bullet("Peilung & Distanz (Beam Heading / Distance): Anzeige von Azimut und Großkreis-Entfernung bezogen auf das eigene Heimat-QTH (`🧭 285° · 4.210 km`) direkt in jeder Grid-Zeile.", font: .subheadline, color: .secondary)
+                        bullet("Spot-Frische & Age-Decay: Brandneue Spots (< 3 Min.) werden mit `⚡ NEU`-Badge und leuchtender Umrandung hervorgehoben; ältere Spots (> 10 Min.) blenden dezent ab.", font: .subheadline, color: .secondary)
+                        bullet("Kompakt- / Detail-Umschalter: Umschaltbare Grid-Sidebar zwischen einer platzsparenden 1-Zeilen-Übersicht und einer ausführlichen Detailansicht mit Stationen und Zeiten.", font: .subheadline, color: .secondary)
+                        bullet("Pixel-dynamische Maidenhead-Zoomstufen: Das Maidenhead-Gitter berechnet die tatsächliche Pixelgröße der Zellen; Umschaltung auf feinere Stufen erfolgt erst bei ausreichender Pixelbreite (kein Zupflastern der Karte).", font: .subheadline, color: .secondary)
+                        bullet("Getrennte Reset-Buttons: Unabhängige Werkseinstellungs-Buttons für Listen-Ansicht und Karten-Ansicht in den Einstellungen.", font: .subheadline, color: .secondary)
+                        bullet("Cluster Spots in Haupttabelle: Vollständige Anzeige und Farbkodierung von DX Cluster Spots in der Haupttabelle mit Spotter-Spalte und Spotter-Filterung.", font: .subheadline, color: .secondary)
+                        
+                        Text("🐞 Fehlerbehebungen & Leistungsverbesserungen")
+                            .font(.subheadline)
+                            .bold()
+                            .padding(.top, 4)
+                        bullet("Behebung des UI-Hangs beim Spaltenverschieben: Korrektur der SwiftUI-Tabellenstruktur zur Beseitigung von Deadlocks beim Umordnen von Spalten.", font: .subheadline, color: .secondary)
+                        bullet("Schnelles Tabellen-Rendering: O(1) Cache-Evaluierung für Zellenfarben beseitigt Ruckeln beim schnellen Scrollen.", font: .subheadline, color: .secondary)
+                        bullet("Karten-Performance: Entkopplung der Map-Sidebars via EquatableView (keine Re-Layouts bei Pan/Zoom) und Beseitigung synchroner I/O im Canvas-Rendering.", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.green.opacity(0.08))
+                .background(Color.blue.opacity(0.05))
                 .cornerRadius(8)
                 
                 Divider()
