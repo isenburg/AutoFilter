@@ -11,6 +11,7 @@ struct ContentView: View {
     @AppStorage("retryCooldownMinutes") private var retryCooldownMinutes: Int = 10
     @AppStorage("mostWantedPanelHeight") private var mostWantedPanelHeight: Double = 120.0
     @AppStorage("decode_column_customization") private var decodeColumnCustomization: TableColumnCustomization<WSJTXDecode>
+    @AppStorage("compact_decode_column_customization") private var compactDecodeColumnCustomization: TableColumnCustomization<WSJTXDecode>
     
     @State private var tableSelection: WSJTXDecode.ID? = nil
     
@@ -692,37 +693,29 @@ struct ContentView: View {
                         .width(min: 65, ideal: 85, max: 120)
                         .customizationID("distance")
                         
-                        Group {
-                            TableColumn("SNR") { decode in
-                                snrCell(for: decode)
-                            }
-                            .width(min: 40, ideal: 55, max: 80)
-                            .customizationID("snr")
-                            
-                            TableColumn("DT") { decode in
-                                dtCell(for: decode)
-                            }
-                            .width(min: 40, ideal: 55, max: 80)
-                            .customizationID("dt")
-                            
-                            TableColumn("HF Freq") { decode in
-                                hfFreqCell(for: decode)
-                            }
-                            .width(min: 90, ideal: 110, max: 160)
-                            .customizationID("hfFreq")
-                            
-                            TableColumn("Audio (Hz)") { decode in
-                                audioFreqCell(for: decode)
-                            }
-                            .width(min: 60, ideal: 75, max: 110)
-                            .customizationID("audioFreq")
-                            
-                            TableColumn("Nachricht") { decode in
-                                messageCell(for: decode)
-                            }
-                            .width(min: 120, ideal: 260, max: 2000)
-                            .customizationID("message")
+                        TableColumn("SNR") { decode in
+                            snrCell(for: decode)
                         }
+                        .width(min: 40, ideal: 55, max: 80)
+                        .customizationID("snr")
+                        
+                        TableColumn("DT") { decode in
+                            dtCell(for: decode)
+                        }
+                        .width(min: 40, ideal: 55, max: 80)
+                        .customizationID("dt")
+                        
+                        TableColumn("HF (Audio)") { decode in
+                            frequencyCell(for: decode)
+                        }
+                        .width(min: 100, ideal: 130, max: 180)
+                        .customizationID("frequency")
+                        
+                        TableColumn("Nachricht") { decode in
+                            messageCell(for: decode)
+                        }
+                        .width(min: 120, ideal: 260, max: 2000)
+                        .customizationID("message")
                     }
                     .layoutPriority(1)
                     
@@ -915,7 +908,7 @@ struct ContentView: View {
         }
         
         VSplitView {
-            Table(displayDecodes, selection: $tableSelection, columnCustomization: $decodeColumnCustomization) {
+            Table(displayDecodes, selection: $tableSelection, columnCustomization: $compactDecodeColumnCustomization) {
                 TableColumn("Zeit") { decode in
                     timeCell(for: decode)
                 }
@@ -1404,13 +1397,15 @@ struct ContentView: View {
     }
     
     @ViewBuilder
-    private func hfFreqCell(for decode: WSJTXDecode) -> some View {
-        cellText(decode.formattedHfFrequency, decode: decode)
-    }
-    
-    @ViewBuilder
-    private func audioFreqCell(for decode: WSJTXDecode) -> some View {
-        cellText("\(decode.deltaFrequency)", decode: decode)
+    private func frequencyCell(for decode: WSJTXDecode) -> some View {
+        HStack(spacing: 3) {
+            cellText(decode.formattedHfFrequency, decode: decode)
+            if decode.deltaFrequency > 0 {
+                Text("(+\(decode.deltaFrequency)Hz)")
+                    .font(.system(size: max(8, CGFloat(fontSizeTable) - 2), design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
     
     @ViewBuilder

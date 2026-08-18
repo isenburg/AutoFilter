@@ -493,10 +493,10 @@ struct HelpView: View {
                     .font(.title)
                     .bold()
                 
-                // Version 3.3.1
+                // Version 3.3.2
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 3.3.1")
+                        Text("Version 3.3.2")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -509,6 +509,28 @@ struct HelpView: View {
                             .background(Color.green)
                             .foregroundColor(.white)
                             .cornerRadius(4)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("🐞 Fehlerbehebungen & Optimierungen")
+                            .font(.subheadline)
+                            .bold()
+                        bullet("Fehler und Leistungsverbesserung: Behebung des UI-Hangs beim Verschieben und Umsortieren von Spalten in der Haupttabelle sowie Optimierung der Tabellen-Struktur.", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+                
+                Divider()
+                
+                // Version 3.3.1
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 3.3.1")
+                            .font(.headline)
+                            .bold()
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("✨ Neue Funktionen & Verbesserungen")
