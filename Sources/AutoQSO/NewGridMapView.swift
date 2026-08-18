@@ -19,6 +19,11 @@ struct NewGridMapView: View {
     @AppStorage("fontSizeTable") private var fontSizeTable = 11.0
     @AppStorage("showBlockedGridSpots") private var showBlockedGridSpots = true
     @AppStorage("showWorkedGridShading") private var showWorkedGridShading = false
+    @AppStorage("newGridMapStyle") private var selectedMapStyleRaw: String = MapStyleOption.standard.rawValue
+
+    private var selectedMapStyle: MapStyleOption {
+        MapStyleOption(rawValue: selectedMapStyleRaw) ?? .standard
+    }
 
     @State private var displayGridClusters: [NewGridCluster] = []
 
@@ -86,6 +91,18 @@ struct NewGridMapView: View {
         }
         .onChange(of: viewModel.newGridClusters) { _, newClusters in
             displayGridClusters = newClusters
+            cachedGlobeSpotItems = newClusters.map { cluster in
+                let band = cluster.bands.first?.name ?? ""
+                let sub = cluster.bands.map { "\($0.name):\($0.count)" }.joined(separator: " ")
+                return GlobeSpotItem(
+                    id: cluster.grid,
+                    title: cluster.grid,
+                    subtitle: "\(cluster.country) (\(sub))",
+                    latitude: cluster.upperRightLatitude,
+                    longitude: cluster.upperRightLongitude,
+                    bandName: band
+                )
+            }
         }
         .sheet(item: Binding(
             get: { selectedWorkedGrid.map { WorkedGridItem(grid: $0) } },
@@ -101,62 +118,99 @@ struct NewGridMapView: View {
     }
 
     @State private var selectedWorkedGrid: String? = nil
+    @State private var cachedGlobeSpotItems: [GlobeSpotItem] = []
 
     private struct WorkedGridItem: Identifiable {
         let grid: String
         var id: String { grid }
     }
 
+
+
+    @ViewBuilder
+    private func renderMapView(proxy: MapProxy) -> some View {
+        if selectedMapStyle == .globus {
+            GlobeMapViewContainer(
+                region: $currentRegion,
+                showGridOverlay: showMaidenheadOverlay,
+                workedGrids: viewModel.worked4CharGrids,
+                showWorkedGridShading: showWorkedGridShading,
+                spotItems: cachedGlobeSpotItems,
+                onSelectGrid: { grid4 in
+                    let matching = viewModel.lotwManager.logbook.filter {
+                        $0.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased().hasPrefix(grid4)
+                    }
+                    if !matching.isEmpty {
+                        selectedWorkedGrid = grid4
+                    }
+                }
+            )
+            .id("new-grid-globe-map-instance")
+        } else {
+            Map(position: $cameraPosition) {
+                ForEach(displayGridClusters) { cluster in
+                    Annotation("", coordinate: CLLocationCoordinate2D(
+                        latitude: cluster.upperRightLatitude,
+                        longitude: cluster.upperRightLongitude
+                    )) {
+                        GridMarkerView(cluster: cluster)
+                            .drawingGroup()
+                            .onTapGesture {
+                                centerOnCluster(cluster)
+                            }
+                    }
+                }
+            }
+            .id("new-grid-map-instance")
+            .mapStyle(selectedMapStyle.mapStyle)
+            .onMapCameraChange { context in
+                currentRegion = context.region
+            }
+            .onTapGesture { position in
+                if let coord = proxy.convert(position, from: .local) {
+                    let grid4 = Maidenhead.latLonToLocator(lat: coord.latitude, lon: coord.longitude, length: 4)
+                    let matching = viewModel.lotwManager.logbook.filter {
+                        $0.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased().hasPrefix(grid4)
+                    }
+                    if !matching.isEmpty {
+                        selectedWorkedGrid = grid4
+                    }
+                }
+            }
+        }
+    }
+
     private var mapSection: some View {
         MapReader { proxy in
             ZStack(alignment: .bottom) {
-                Map(position: $cameraPosition) {
-                    ForEach(displayGridClusters) { cluster in
-                        Annotation("", coordinate: CLLocationCoordinate2D(
-                            latitude: cluster.upperRightLatitude,
-                            longitude: cluster.upperRightLongitude
-                        )) {
-                            GridMarkerView(cluster: cluster)
-                                .drawingGroup()
-                                .onTapGesture {
-                                    centerOnCluster(cluster)
-                                }
-                        }
-                    }
-                }
-                .id("new-grid-map-instance")
-                .mapStyle(.standard(elevation: .flat))
-                .onMapCameraChange(frequency: .continuous) { context in
-                    currentRegion = context.region
-                }
-                .onTapGesture { position in
-                    if let coord = proxy.convert(position, from: .local) {
-                        let grid4 = Maidenhead.latLonToLocator(lat: coord.latitude, lon: coord.longitude, length: 4)
-                        let matching = viewModel.lotwManager.logbook.filter {
-                            $0.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased().hasPrefix(grid4)
-                        }
-                        if !matching.isEmpty {
-                            selectedWorkedGrid = grid4
-                        }
-                    }
-                }
+                renderMapView(proxy: proxy)
                 .overlay {
-                    if showMaidenheadOverlay {
+                    if showMaidenheadOverlay && selectedMapStyle != .globus {
                         MaidenheadGridCanvasView(proxy: proxy, region: currentRegion, workedGrids: viewModel.worked4CharGrids)
                             .allowsHitTesting(false)
                     }
                 }
                 .overlay(alignment: .topTrailing) {
                     HStack(spacing: 6) {
+                        Picker("Kartenstil", selection: $selectedMapStyleRaw) {
+                            ForEach(MapStyleOption.allCases) { style in
+                                Text(style.rawValue).tag(style.rawValue)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .fixedSize()
+                        .help("Kartenstil auswählen")
+
                         Button(action: {
                             withAnimation {
                                 showWorkedGridShading.toggle()
                             }
                         }) {
                             Image(systemName: showWorkedGridShading ? "checkmark.square.fill" : "checkmark.square")
-                                .font(.title3)
+                                .font(.system(size: 13, weight: .semibold))
                                 .padding(6)
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
                                 .foregroundColor(showWorkedGridShading ? .green : .primary)
                         }
                         .buttonStyle(.plain)
@@ -168,9 +222,9 @@ struct NewGridMapView: View {
                             }
                         }) {
                             Image(systemName: showMaidenheadOverlay ? "grid.circle.fill" : "grid.circle")
-                                .font(.title3)
+                                .font(.system(size: 13, weight: .semibold))
                                 .padding(6)
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
                                 .foregroundColor(showMaidenheadOverlay ? .blue : .primary)
                         }
                         .buttonStyle(.plain)
@@ -179,14 +233,16 @@ struct NewGridMapView: View {
                         if !showList {
                             Button(action: { withAnimation { showList = true } }) {
                                 Image(systemName: "sidebar.trailing")
-                                    .font(.title3)
+                                    .font(.system(size: 13, weight: .semibold))
                                     .padding(6)
-                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
                             }
                             .buttonStyle(.plain)
                             .help("Liste einblenden")
                         }
                     }
+                    .padding(4)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                     .padding(8)
                 }
                 .overlay(alignment: .topLeading) {
@@ -202,24 +258,27 @@ struct NewGridMapView: View {
                         
                         Text("\(displayGridClusters.count) ungearbeitete Grids")
                             .font(.system(size: 10, weight: .semibold))
+                            .lineLimit(1)
                             .foregroundColor(.secondary)
                         
                         if count4 > 0 || count6 > 0 {
                             Text("4-Stellen: \(count4)  ·  6-Stellen: \(count6)")
                                 .font(.system(size: 9))
+                                .lineLimit(1)
                                 .foregroundColor(.secondary)
                         }
                         
                         if showMaidenheadOverlay {
                             Text("Grid Overlay: \(MaidenheadGridGenerator.resolutionText(for: currentRegion.span.latitudeDelta))")
                                 .font(.system(size: 9, weight: .bold))
+                                .lineLimit(1)
                                 .foregroundColor(.cyan)
                         }
                         
                         Rectangle().fill(.secondary.opacity(0.3)).frame(height: 1)
                         
                         Stepper(value: $mapTimeWindow, in: 5...120, step: 5) {
-                            Text("Zeitfenster: \(mapTimeWindow) Min.").font(.caption2)
+                            Text("Zeitfenster: \(mapTimeWindow) Min.").font(.caption2).lineLimit(1)
                         }
                         .onChange(of: mapTimeWindow) { _, _ in
                             viewModel.updatePropagationClusters()
@@ -233,7 +292,7 @@ struct NewGridMapView: View {
 
                 if showMaidenheadOverlay {
                     GridOverlaySettingsBar()
-                        .padding(.bottom, 16)
+                        .padding(.bottom, 24)
                 }
             }
         }
@@ -323,7 +382,7 @@ struct NewGridMapView: View {
                                 )
                             ) {
                                 ForEach(group.clusters) { cluster in
-                                    NewGridListRow(cluster: cluster) {
+                                    NewGridListRow(cluster: cluster, fontSize: fontSizeTable) {
                                         centerOnCluster(cluster)
                                     }
                                 }
@@ -345,7 +404,7 @@ struct NewGridMapView: View {
                         }
                     } else {
                         ForEach(sortedClusters) { cluster in
-                            NewGridListRow(cluster: cluster) {
+                            NewGridListRow(cluster: cluster, fontSize: fontSizeTable) {
                                 centerOnCluster(cluster)
                             }
                         }
@@ -366,7 +425,7 @@ struct NewGridMapView: View {
     }
 }
 
-private struct GridMarkerView: View {
+private struct GridMarkerView: View, Equatable {
     let cluster: NewGridCluster
 
     var body: some View {
@@ -414,10 +473,14 @@ private struct GridMarkerView: View {
     }
 }
 
-private struct NewGridListRow: View {
+private struct NewGridListRow: View, Equatable {
     let cluster: NewGridCluster
+    let fontSize: Double
     let onSelect: () -> Void
-    @AppStorage("fontSizeTable") private var fontSizeTable = 11.0
+
+    static func == (lhs: NewGridListRow, rhs: NewGridListRow) -> Bool {
+        lhs.cluster == rhs.cluster && lhs.fontSize == rhs.fontSize
+    }
 
     var body: some View {
         Button(action: onSelect) {
@@ -448,7 +511,7 @@ private struct NewGridListRow: View {
                         .cornerRadius(3)
                     
                     Text(cluster.country)
-                        .font(.system(size: CGFloat(fontSizeTable), weight: .semibold))
+                        .font(.system(size: CGFloat(fontSize), weight: .semibold))
                     
                     Spacer()
                     

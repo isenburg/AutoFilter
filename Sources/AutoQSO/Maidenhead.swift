@@ -36,6 +36,13 @@ public struct MaidenheadGridCanvasView: View {
         return hex.isEmpty ? Color(red: 1.0, green: 0.35, blue: 0.15) : Color(hex: hex, defaultColor: Color(red: 1.0, green: 0.35, blue: 0.15))
     }
 
+    private func normalizeLongitude(_ lon: Double) -> Double {
+        var l = lon.truncatingRemainder(dividingBy: 360.0)
+        if l > 180.0 { l -= 360.0 }
+        if l <= -180.0 { l += 360.0 }
+        return l
+    }
+
     public var body: some View {
         Canvas { context, size in
             let latDelta = region.span.latitudeDelta
@@ -45,8 +52,19 @@ public struct MaidenheadGridCanvasView: View {
             // 0. Draw Worked Grid Shading (Layer 0 - Bottom)
             if showWorkedGridShading && !workedGrids.isEmpty {
                 let shadeCol = workedGridShadeColor.opacity(0.35)
+                // Pre-compute visible lat/lon bounds to skip grids outside viewport before expensive proxy.convert()
+                let center = region.center
+                let viewMinLat = center.latitude - latDelta * 0.9
+                let viewMaxLat = center.latitude + latDelta * 0.9
+                let viewMinLon = center.longitude - lonDelta * 0.9
+                let viewMaxLon = center.longitude + lonDelta * 0.9
+                
                 for grid4 in workedGrids {
                     if let box = Maidenhead.grid4BoundingBox(grid4) {
+                        // Quick reject: skip grids entirely outside the visible viewport
+                        if box.maxLat < viewMinLat || box.minLat > viewMaxLat { continue }
+                        if box.maxLon < viewMinLon || box.minLon > viewMaxLon { continue }
+                        
                         let pTL = CLLocationCoordinate2D(latitude: box.maxLat, longitude: box.minLon)
                         let pTR = CLLocationCoordinate2D(latitude: box.maxLat, longitude: box.maxLon)
                         let pBR = CLLocationCoordinate2D(latitude: box.minLat, longitude: box.maxLon)
@@ -57,27 +75,19 @@ public struct MaidenheadGridCanvasView: View {
                            let ptBR = proxy.convert(pBR, to: .local),
                            let ptBL = proxy.convert(pBL, to: .local) {
                             
-                            // Nur im/am sichtbaren Bereich zeichnen
-                            let margin: CGFloat = 100
-                            if (ptTL.x >= -margin || ptTR.x >= -margin || ptBL.x >= -margin || ptBR.x >= -margin) &&
-                               (ptTL.x <= size.width + margin || ptTR.x <= size.width + margin || ptBL.x <= size.width + margin || ptBR.x <= size.width + margin) &&
-                               (ptTL.y >= -margin || ptTR.y >= -margin || ptBL.y >= -margin || ptBR.y >= -margin) &&
-                               (ptTL.y <= size.height + margin || ptTR.y <= size.height + margin || ptBL.y <= size.height + margin || ptBR.y <= size.height + margin) {
+                            let polyWidth = max(abs(ptTR.x - ptTL.x), abs(ptBR.x - ptBL.x))
+                            let polyHeight = max(abs(ptBL.y - ptTL.y), abs(ptBR.y - ptTR.y))
+                            
+                            // Verhindert Projektions-Streifen (Wrap-Around über die Datumsgrenze/Projektionsränder)
+                            if polyWidth < size.width * 0.35 && polyHeight < size.height * 0.35 {
+                                var polyPath = Path()
+                                polyPath.move(to: ptTL)
+                                polyPath.addLine(to: ptTR)
+                                polyPath.addLine(to: ptBR)
+                                polyPath.addLine(to: ptBL)
+                                polyPath.closeSubpath()
                                 
-                                let polyWidth = max(abs(ptTR.x - ptTL.x), abs(ptBR.x - ptBL.x))
-                                let polyHeight = max(abs(ptBL.y - ptTL.y), abs(ptBR.y - ptTR.y))
-                                
-                                // Verhindert Projektions-Streifen (Wrap-Around über die Datumsgrenze/Projektionsränder)
-                                if polyWidth < size.width * 0.35 && polyHeight < size.height * 0.35 {
-                                    var polyPath = Path()
-                                    polyPath.move(to: ptTL)
-                                    polyPath.addLine(to: ptTR)
-                                    polyPath.addLine(to: ptBR)
-                                    polyPath.addLine(to: ptBL)
-                                    polyPath.closeSubpath()
-                                    
-                                    context.fill(polyPath, with: .color(shadeCol))
-                                }
+                                context.fill(polyPath, with: .color(shadeCol))
                             }
                         }
                     }
@@ -117,26 +127,25 @@ public struct MaidenheadGridCanvasView: View {
             let badgeCol = gridBadgeColor
 
             let center = region.center
-            let minLat = max(-85.0, center.latitude - latDelta * 0.75)
-            let maxLat = min(85.0, center.latitude + latDelta * 0.75)
-            let minLon = max(-180.0, center.longitude - lonDelta * 0.75)
-            let maxLon = min(180.0, center.longitude + lonDelta * 0.75)
+            let minLat = max(-85.0, center.latitude - latDelta * 0.85)
+            let maxLat = min(85.0, center.latitude + latDelta * 0.85)
+            let rawMinLon = center.longitude - lonDelta * 0.85
+            let rawMaxLon = center.longitude + lonDelta * 0.85
 
             let startLat = floor(minLat / latStep) * latStep
             let endLat = ceil(maxLat / latStep) * latStep
-            let startLon = floor(minLon / lonStep) * lonStep
-            let endLon = ceil(maxLon / lonStep) * lonStep
+            let startLon = floor(rawMinLon / lonStep) * lonStep
+            let endLon = ceil(rawMaxLon / lonStep) * lonStep
 
             // 1. Draw Latitude Lines (horizontal)
             var lat = startLat
             while lat <= endLat {
-                let p1 = CLLocationCoordinate2D(latitude: lat, longitude: max(-180.0, minLon - lonStep))
-                let p2 = CLLocationCoordinate2D(latitude: lat, longitude: min(180.0, maxLon + lonStep))
-                if let pt1 = proxy.convert(p1, to: .local),
-                   let pt2 = proxy.convert(p2, to: .local) {
+                let normCenterLon = normalizeLongitude(center.longitude)
+                let pRef = CLLocationCoordinate2D(latitude: lat, longitude: normCenterLon)
+                if let ptRef = proxy.convert(pRef, to: .local) {
                     var path = Path()
-                    path.move(to: pt1)
-                    path.addLine(to: pt2)
+                    path.move(to: CGPoint(x: -100, y: ptRef.y))
+                    path.addLine(to: CGPoint(x: size.width + 100, y: ptRef.y))
                     let isMajor = (labelLength == 4 && abs(lat.truncatingRemainder(dividingBy: 10.0)) < 0.0001) ||
                                   (labelLength == 6 && abs(lat.truncatingRemainder(dividingBy: 1.0)) < 0.0001)
                     let lineColor: Color = isMajor ? lineCol.opacity(0.85) : lineCol.opacity(0.45)
@@ -149,15 +158,16 @@ public struct MaidenheadGridCanvasView: View {
             // 2. Draw Longitude Lines (vertical)
             var lon = startLon
             while lon <= endLon {
-                let p1 = CLLocationCoordinate2D(latitude: max(-85.0, minLat - latStep), longitude: lon)
-                let p2 = CLLocationCoordinate2D(latitude: min(85.0, maxLat + latStep), longitude: lon)
+                let normLon = normalizeLongitude(lon)
+                let p1 = CLLocationCoordinate2D(latitude: max(-85.0, minLat - latStep), longitude: normLon)
+                let p2 = CLLocationCoordinate2D(latitude: min(85.0, maxLat + latStep), longitude: normLon)
                 if let pt1 = proxy.convert(p1, to: .local),
                    let pt2 = proxy.convert(p2, to: .local) {
                     var path = Path()
                     path.move(to: pt1)
                     path.addLine(to: pt2)
-                    let isMajor = (labelLength == 4 && abs(lon.truncatingRemainder(dividingBy: 20.0)) < 0.0001) ||
-                                  (labelLength == 6 && abs(lon.truncatingRemainder(dividingBy: 2.0)) < 0.0001)
+                    let isMajor = (labelLength == 4 && abs(normLon.truncatingRemainder(dividingBy: 20.0)) < 0.0001) ||
+                                  (labelLength == 6 && abs(normLon.truncatingRemainder(dividingBy: 2.0)) < 0.0001)
                     let lineColor: Color = isMajor ? lineCol.opacity(0.85) : lineCol.opacity(0.45)
                     let lineWidth: CGFloat = isMajor ? 1.8 : 1.0
                     context.stroke(path, with: .color(lineColor), lineWidth: lineWidth)
@@ -172,11 +182,12 @@ public struct MaidenheadGridCanvasView: View {
                 while currentLon < endLon {
                     let cLat = currentLat + latStep * 0.5
                     let cLon = currentLon + lonStep * 0.5
-                    if cLat >= -85.0 && cLat <= 85.0 && cLon >= -180.0 && cLon <= 180.0 {
-                        let coord = CLLocationCoordinate2D(latitude: cLat, longitude: cLon)
+                    let normCLon = normalizeLongitude(cLon)
+                    if cLat >= -85.0 && cLat <= 85.0 {
+                        let coord = CLLocationCoordinate2D(latitude: cLat, longitude: normCLon)
                         if let pt = proxy.convert(coord, to: .local) {
                             if pt.x >= -30 && pt.x <= size.width + 30 && pt.y >= -20 && pt.y <= size.height + 20 {
-                                let locText = Maidenhead.latLonToLocator(lat: cLat, lon: cLon, length: labelLength)
+                                let locText = Maidenhead.latLonToLocator(lat: cLat, lon: normCLon, length: labelLength)
                                 let resolvedText = Text(locText)
                                     .font(.system(size: effectiveFontSize, weight: .black, design: .monospaced))
                                     .foregroundColor(textCol)

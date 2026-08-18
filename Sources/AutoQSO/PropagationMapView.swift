@@ -12,8 +12,14 @@ struct PropagationMapView: View {
     @AppStorage("mapTimeWindow") private var mapTimeWindow = 30
     @AppStorage("mapCountWorkedBefore") private var mapCountWorkedBefore = false
     @AppStorage("fontSizeTable") private var fontSizeTable = 11.0
+    @AppStorage("propagationMapStyle") private var selectedMapStyleRaw: String = MapStyleOption.standard.rawValue
+
+    private var selectedMapStyle: MapStyleOption {
+        MapStyleOption(rawValue: selectedMapStyleRaw) ?? .standard
+    }
 
     @State private var displayClusters: [CountryCluster] = []
+    @State private var cachedGlobeSpotItems: [GlobeSpotItem] = []
     @State private var showMaidenheadOverlay = false
     @State private var showPropagationChart = false
     @State private var currentRegion = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 48.0, longitude: 10.0), span: MKCoordinateSpan(latitudeDelta: 30.0, longitudeDelta: 40.0))
@@ -94,42 +100,72 @@ struct PropagationMapView: View {
         }
         .onChange(of: viewModel.propagationClusters) { _, newClusters in
             displayClusters = newClusters
+            cachedGlobeSpotItems = newClusters.map { cluster in
+                let band = cluster.bands.first?.name ?? ""
+                let sub = cluster.bands.map { "\($0.name):\($0.count)" }.joined(separator: " ")
+                return GlobeSpotItem(
+                    id: cluster.country,
+                    title: cluster.country,
+                    subtitle: "\(cluster.spotCount) Spots (\(sub))",
+                    latitude: cluster.latitude,
+                    longitude: cluster.longitude,
+                    bandName: band
+                )
+            }
+        }
+    }
+
+
+
+    @ViewBuilder
+    private func renderMapView(proxy: MapProxy) -> some View {
+        if selectedMapStyle == .globus {
+            GlobeMapViewContainer(
+                region: $currentRegion,
+                showGridOverlay: showMaidenheadOverlay,
+                workedGrids: viewModel.worked4CharGrids,
+                showWorkedGridShading: mapCountWorkedBefore,
+                spotItems: cachedGlobeSpotItems
+            )
+            .id("propagation-globe-map-instance")
+        } else {
+            Map {
+                let topCount = min(displayClusters.count, 20)
+                let detailClusters = displayClusters.prefix(topCount)
+                let backgroundClusters = displayClusters.dropFirst(topCount)
+
+                ForEach(detailClusters) { cluster in
+                    Annotation("", coordinate: CLLocationCoordinate2D(
+                        latitude: cluster.latitude,
+                        longitude: cluster.longitude
+                    )) {
+                        CountryMarkerView(cluster: cluster, fontSize: fontSizeTable)
+                            .drawingGroup()
+                    }
+                }
+
+                ForEach(backgroundClusters) { cluster in
+                    Marker(cluster.country, coordinate: CLLocationCoordinate2D(
+                        latitude: cluster.latitude,
+                        longitude: cluster.longitude
+                    ))
+                    .tint(colorForBandName(cluster.bands.first?.name ?? ""))
+                }
+            }
+            .id("propagation-map-instance")
+            .mapStyle(selectedMapStyle.mapStyle)
+            .onMapCameraChange { context in
+                currentRegion = context.region
+            }
         }
     }
 
     private var mapSection: some View {
         MapReader { proxy in
             ZStack(alignment: .bottom) {
-                Map {
-                    let topCount = min(displayClusters.count, 20)
-                    let detailClusters = displayClusters.prefix(topCount)
-                    let backgroundClusters = displayClusters.dropFirst(topCount)
-
-                    ForEach(detailClusters) { cluster in
-                        Annotation("", coordinate: CLLocationCoordinate2D(
-                            latitude: cluster.latitude,
-                            longitude: cluster.longitude
-                        )) {
-                            CountryMarkerView(cluster: cluster)
-                                .drawingGroup()
-                        }
-                    }
-
-                    ForEach(backgroundClusters) { cluster in
-                        Marker(cluster.country, coordinate: CLLocationCoordinate2D(
-                            latitude: cluster.latitude,
-                            longitude: cluster.longitude
-                        ))
-                        .tint(colorForBandName(cluster.bands.first?.name ?? ""))
-                    }
-                }
-                .id("propagation-map-instance")
-                .mapStyle(.standard(elevation: .flat))
-                .onMapCameraChange(frequency: .continuous) { context in
-                    currentRegion = context.region
-                }
+                renderMapView(proxy: proxy)
                 .overlay {
-                    if showMaidenheadOverlay {
+                    if showMaidenheadOverlay && selectedMapStyle != .globus {
                         MaidenheadGridCanvasView(proxy: proxy, region: currentRegion)
                             .allowsHitTesting(false)
                     }
@@ -137,11 +173,11 @@ struct PropagationMapView: View {
                 .overlay(alignment: .topLeading) {
                     VStack(alignment: .leading, spacing: 8) {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("\(displayClusters.count) Länder").font(.caption).bold()
+                            Text("\(displayClusters.count) Länder").font(.caption).bold().lineLimit(1)
                             Rectangle().fill(.secondary.opacity(0.3)).frame(height: 1)
                             
                             Stepper(value: $mapTimeWindow, in: 5...120, step: 5) {
-                                Text("Fenster: \(mapTimeWindow) Min.").font(.caption2)
+                                Text("Fenster: \(mapTimeWindow) Min.").font(.caption2).lineLimit(1)
                             }
                             .onChange(of: mapTimeWindow) { _, _ in
                                 viewModel.updatePropagationClusters()
@@ -151,6 +187,7 @@ struct PropagationMapView: View {
                             
                             Toggle("Gearbeitete mitzählen", isOn: $mapCountWorkedBefore)
                                 .font(.system(size: 9))
+                                .lineLimit(1)
                                 .toggleStyle(.checkbox)
                                 .controlSize(.small)
                                 .onChange(of: mapCountWorkedBefore) { _, _ in
@@ -175,15 +212,25 @@ struct PropagationMapView: View {
                 }
                 .overlay(alignment: .topTrailing) {
                     HStack(spacing: 6) {
+                        Picker("Kartenstil", selection: $selectedMapStyleRaw) {
+                            ForEach(MapStyleOption.allCases) { style in
+                                Text(style.rawValue).tag(style.rawValue)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .fixedSize()
+                        .help("Kartenstil auswählen")
+
                         Button(action: {
                             withAnimation {
                                 showPropagationChart.toggle()
                             }
                         }) {
                             Image(systemName: showPropagationChart ? "chart.bar.fill" : "chart.bar.xaxis")
-                                .font(.title3)
+                                .font(.system(size: 13, weight: .semibold))
                                 .padding(6)
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
                                 .foregroundColor(showPropagationChart ? .orange : .primary)
                         }
                         .buttonStyle(.plain)
@@ -195,9 +242,9 @@ struct PropagationMapView: View {
                             }
                         }) {
                             Image(systemName: showMaidenheadOverlay ? "grid.circle.fill" : "grid.circle")
-                                .font(.title3)
+                                .font(.system(size: 13, weight: .semibold))
                                 .padding(6)
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
                                 .foregroundColor(showMaidenheadOverlay ? .blue : .primary)
                         }
                         .buttonStyle(.plain)
@@ -206,14 +253,16 @@ struct PropagationMapView: View {
                         if !showList {
                             Button(action: { withAnimation { showList = true } }) {
                                 Image(systemName: "sidebar.trailing")
-                                    .font(.title3)
+                                    .font(.system(size: 13, weight: .semibold))
                                     .padding(6)
-                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
                             }
                             .buttonStyle(.plain)
                             .help("Liste einblenden")
                         }
                     }
+                    .padding(4)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                     .padding(8)
                 }
 
@@ -233,7 +282,7 @@ struct PropagationMapView: View {
                     .padding(6)
                     .background(.ultraThinMaterial, in: Capsule())
                 }
-                .padding(.bottom, 16)
+                .padding(.bottom, 24)
             }
         }
     }
@@ -300,14 +349,14 @@ struct PropagationMapView: View {
                             ) {
                                 if isExpanded {
                                     ForEach(group.clusters) { cluster in
-                                        CountryListRow(cluster: cluster)
+                                        CountryListRow(cluster: cluster, fontSize: fontSizeTable)
                                     }
                                 }
                             }
                         }
                     } else {
                         ForEach(sortedClusters) { cluster in
-                            CountryListRow(cluster: cluster)
+                            CountryListRow(cluster: cluster, fontSize: fontSizeTable)
                         }
                     }
                 }
@@ -347,16 +396,16 @@ func colorForBandName(_ name: String) -> Color {
     }
 }
 
-private struct CountryMarkerView: View {
+private struct CountryMarkerView: View, Equatable {
     let cluster: CountryCluster
-    @AppStorage("fontSizeTable") private var fontSizeTable = 11.0
+    let fontSize: Double
 
     var body: some View {
         VStack(spacing: 2) {
             HStack(spacing: 3) {
                 ForEach(cluster.bands, id: \.name) { band in
                     Text("\(band.name):\(band.count)")
-                        .font(.system(size: CGFloat(max(6, fontSizeTable - 3)), weight: .bold, design: .monospaced))
+                        .font(.system(size: CGFloat(max(6, fontSize - 3)), weight: .bold, design: .monospaced))
                         .foregroundColor(.white)
                         .padding(.horizontal, 3)
                         .padding(.vertical, 1)
@@ -369,25 +418,25 @@ private struct CountryMarkerView: View {
     }
 }
 
-private struct CountryListRow: View {
+private struct CountryListRow: View, Equatable {
     let cluster: CountryCluster
-    @AppStorage("fontSizeTable") private var fontSizeTable = 11.0
+    let fontSize: Double
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(cluster.country)
-                    .font(.system(size: CGFloat(fontSizeTable), weight: .bold))
+                    .font(.system(size: CGFloat(fontSize), weight: .bold))
                 Spacer()
                 Text("\(cluster.spotCount)")
-                    .font(.system(size: CGFloat(max(8, fontSizeTable - 2))))
+                    .font(.system(size: CGFloat(max(8, fontSize - 2))))
                     .foregroundColor(.secondary)
             }
             HStack(spacing: 4) {
                 ForEach(cluster.bands, id: \.name) { band in
                     let bColor = colorForBandName(band.name)
                     Text("\(band.name) (\(band.count))")
-                        .font(.system(size: CGFloat(max(6, fontSizeTable - 3)), weight: .bold))
+                        .font(.system(size: CGFloat(max(6, fontSize - 3)), weight: .bold))
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
                         .background(bColor.opacity(0.2))
@@ -408,10 +457,10 @@ private struct StatRow: View {
     
     var body: some View {
         HStack {
-            Text(label + ":").font(.system(size: 10)).foregroundColor(.secondary).frame(width: 40, alignment: .leading)
+            Text(label + ":").font(.system(size: 10)).foregroundColor(.secondary).lineLimit(1).frame(width: 52, alignment: .leading)
             Text(value).font(.system(size: 10, weight: .bold)).foregroundColor(color)
             Spacer()
-            Text(rate).font(.system(size: 9)).foregroundColor(.secondary)
+            Text(rate).font(.system(size: 9)).lineLimit(1).foregroundColor(.secondary)
         }
     }
 }

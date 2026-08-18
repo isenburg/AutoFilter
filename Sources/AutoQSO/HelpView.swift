@@ -492,10 +492,10 @@ struct HelpView: View {
                     .font(.title)
                     .bold()
                 
-                // Version 3.3.0
+                // Version 3.3.1
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 3.3.0")
+                        Text("Version 3.3.1")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -508,6 +508,39 @@ struct HelpView: View {
                             .background(Color.green)
                             .foregroundColor(.white)
                             .cornerRadius(4)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("✨ Neue Funktionen & Verbesserungen")
+                            .font(.subheadline)
+                            .bold()
+                        bullet("Schattierung gearbeiteter Grids: Umschaltbare farbige Unterlegung (`checkmark.square`) aller im Logbuch vorhandenen 4-Stellen-Grids auf der Maidenhead Grid-Map mit anpassbarem Farbton (Standard: `#FF5926` Rot-Orange).", font: .subheadline, color: .secondary)
+                        bullet("Interaktives Grid-Logbuchfenster: Einzelklick auf ein beliebiges gearbeitetes Grid-Feld auf der Karte öffnet ein Detailfenster (WorkedGridDetailView) mit allen im Logbuch gespeicherten QSOs für diesen Maidenhead-Locator inklusive Such- und Filterfunktion.", font: .subheadline, color: .secondary)
+                        bullet("Doppelklick QRZ.com-Aufruf: Doppelklick auf eine Station im Grid-Logbuchfenster öffnet direkt deren QRZ.com-Detailseite im Browser. Vorab wird automatisch geprüft, ob eine aktive Internetverbindung besteht (NWPathMonitor); ansonsten erscheint ein Fehlerhinweis.", font: .subheadline, color: .secondary)
+                        bullet("Vollständiger Logbuch-Sync (ab 1900): QRZ.com und LoTW Sync laden bei Bedarf das gesamte Logbuch ab 1900 herunter. Intelligentes SQLite-Upsert (ON CONFLICT DO UPDATE) reichert bestehende QSOs nachträglich mit fehlenden Grid-Locatoren an, ohne Duplikate zu erzeugen.", font: .subheadline, color: .secondary)
+                        
+                        Text("🐞 Fehlerbehebungen & Optimierungen")
+                            .font(.subheadline)
+                            .bold()
+                            .padding(.top, 4)
+                        bullet("Cluster-Befehle ohne Unterbrechung: Beim Senden von Befehlen an den DX Cluster im ClusterSendDialog bleibt das Live-Scrollen der Spot- und Logliste aktiv (isLogScrollPaused wird nicht mehr ungewollt aktiviert).", font: .subheadline, color: .secondary)
+                        bullet("Schutz vor Doppel-Anrufen: Automatische Cooldown-Sperre (blacklistedCalls) beim Empfang von 73/RR73-Signalen sowie beim QSO-Loggen verhindert ein versehentliches zweites Anrufen derselben Station.", font: .subheadline, color: .secondary)
+                        bullet("Karten-Projektionsstreifen beseitigt: Wrap-Around-Filterung im Canvas-Renderer verhindert visuelle Querstufen über die Datumsgrenze und Projektionsränder.", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+                
+                Divider()
+                
+                // Version 3.3.0
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 3.3.0")
+                            .font(.headline)
+                            .bold()
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("✨ Neue Funktionen & Verbesserungen")

@@ -90,15 +90,22 @@ public let APP_VERSION = "$VERSION"
 public let APP_BUILD_NUMBER = $BUILD
 EOF
 
-# ── 3. Changelog aus Git-Commits ─────────────────────────────
-info "Erzeuge Changelog aus Git-Commits..."
-LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-if [ -n "$LAST_TAG" ]; then
-    CHANGELOG=$(git log "${LAST_TAG}..HEAD" --pretty=format:"- %s" --no-merges 2>/dev/null)
+# ── 3. Changelog aus Git-Commits oder Parameter ────────────────
+MANUAL_CHANGES="${1:-}"
+
+if [ -n "$MANUAL_CHANGES" ]; then
+    info "Verwende manuell übergebene Release-Notes..."
+    CHANGELOG="$MANUAL_CHANGES"
 else
-    CHANGELOG=$(git log --pretty=format:"- %s" --no-merges -20 2>/dev/null)
+    info "Erzeuge Changelog aus Git-Commits..."
+    LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+    if [ -n "$LAST_TAG" ]; then
+        CHANGELOG=$(git log "${LAST_TAG}..HEAD" --pretty=format:"- %s" --no-merges 2>/dev/null)
+    else
+        CHANGELOG=$(git log --pretty=format:"- %s" --no-merges -20 2>/dev/null)
+    fi
+    [ -n "$CHANGELOG" ] || CHANGELOG="- Release v$VERSION (Build $BUILD)"
 fi
-[ -n "$CHANGELOG" ] || CHANGELOG="- Release v$VERSION (Build $BUILD)"
 
 # ── 4. Release kompilieren ───────────────────────────────────
 info "Kompiliere Release-Version..."
@@ -132,7 +139,10 @@ cat > "$BUNDLE/Contents/Info.plist" <<PLIST
     <string>Copyright © 2024–2026 Georg Isenbürger · DJ6GI</string>
 </dict></plist>
 PLIST
-success ".app Bundle erstellt"
+
+info "Signiere .app Bundle ad-hoc für lokalen Start..."
+codesign --force --deep --sign - "$BUNDLE"
+success ".app Bundle erstellt & ad-hoc signiert"
 
 # ── 6. .dmg erstellen ────────────────────────────────────────
 info "Erstelle .dmg..."
@@ -144,11 +154,87 @@ rm -f "$DMG_PATH" "$DMG_LATEST"
 STAGING=$(mktemp -d)
 cp -R "$BUNDLE" "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
+
+# README für DMG erstellen (Deutsch & Englisch)
+cat > "$STAGING/README.txt" << 'README_EOF'
+================================================================================
+  AutoQSO – macOS Anleitungs-Hinweis / Installation & Launch Guide
+================================================================================
+
+--------------------------------------------------------------------------------
+DEUTSCH / GERMAN: Wie starte ich AutoQSO unter macOS?
+--------------------------------------------------------------------------------
+
+Da AutoQSO ad-hoc signiert ist (ohne kostenpflichtiges Apple-Entwickler-
+Zertifikat), stuft macOS Gatekeeper die App beim ersten Ausführen evtl. als
+"unbekannter Entwickler" oder "beschädigt" ein.
+
+SCHRITTE ZUR INSTALLATION UND ZUM START:
+
+1. Kopiermodus:
+   Ziehen Sie `AutoQSO.app` in den Ordner `Applications` (Programme).
+
+2. Empfohlene Methode (Terminal):
+   Öffnen Sie das Terminal (Programme > Dienstprogramme > Terminal) und führen Sie
+   folgenden Befehl aus, um das Quarantäne-Attribut zu entfernen:
+
+     xattr -cr /Applications/AutoQSO.app
+
+   Danach können Sie AutoQSO ganz normal aus dem Programme-Ordner starten.
+
+3. Alternative Methode (ohne Terminal):
+   - Machen Sie im Finder einen Rechtsklick (oder Ctrl+Klick) auf `AutoQSO.app`
+     im Programme-Ordner und wählen Sie "Öffnen".
+   - Klicken Sie im angezeigten Dialog erneut auf "Öffnen".
+   - Falls blockiert: Öffnen Sie `Systemeinstellungen` > `Datenschutz & Sicherheit`,
+     scrollen Sie nach unten zu `Sicherheit` und klicken Sie auf "Dennoch öffnen".
+
+4. Lokale Entwicklung / Eigenes Kompilieren:
+   Um die App lokal ohne Fehlermeldung auszuführen, muss das .app Bundle signiert sein:
+
+     codesign --force --deep --sign - /pfad/zu/AutoQSO.app
+
+
+--------------------------------------------------------------------------------
+ENGLISH: How to run AutoQSO on macOS?
+--------------------------------------------------------------------------------
+
+Since AutoQSO is distributed with ad-hoc code signing (without a paid Apple
+Developer ID certificate), macOS Gatekeeper might block the app on first launch,
+displaying a warning that it is from an "unidentified developer" or "damaged".
+
+STEPS TO INSTALL AND RUN:
+
+1. Copying the App:
+   Drag `AutoQSO.app` into the `Applications` folder shortcut.
+
+2. Recommended Method (Terminal):
+   Open Terminal (Applications > Utilities > Terminal) and run the following
+   command to strip the quarantine attribute:
+
+     xattr -cr /Applications/AutoQSO.app
+
+   After running this, launch AutoQSO normally from your Applications folder.
+
+3. Alternative Method (UI):
+   - Right-click (or Ctrl+Click) `AutoQSO.app` in `/Applications` and select "Open".
+   - Click "Open" in the pop-up confirmation dialog.
+   - If still blocked: Open `System Settings` > `Privacy & Security`, scroll down
+     to `Security`, and click "Open Anyway".
+
+4. Local Builds & Code Signing:
+   To run locally built binaries, ensure the bundle is ad-hoc signed:
+
+     codesign --force --deep --sign - /path/to/AutoQSO.app
+
+================================================================================
+README_EOF
+
 hdiutil create -volname "$APP_NAME v$VERSION" -srcfolder "$STAGING" \
     -ov -format UDZO "$DMG_PATH" > /dev/null
 rm -rf "$STAGING"
 cp "$DMG_PATH" "$DMG_LATEST"
-success "DMG: $DMG_NAME"
+success "DMG: $DMG_NAME (inkl. README.txt)"
 
 # ── 7. Git commit & Tag & Push ───────────────────────────────
 info "Git Commit, Tag & Push..."

@@ -1,0 +1,15 @@
+# TOKEN OPTIMIZATION & SCOPE RULES
+ 
+[CONTEXT & HISTORY]
+- Minimize history processing.
+- Focus strictly on explicitly referenced files (@file) or current diffs.
+- Do NOT re-read full conversation history or scan unreferenced project files for localized edits.
+- For scope-limited requests (e.g., UI tweaks, single component edits), read only target files.
+ 
+[RESPONSES & OUTPUT]
+- Be ultra-concise. Skip intro, outro, explanations, and full-file rewrites.
+- Return ONLY modified functions, code snippets, or unified diffs unless a full rewrite is requested.
+- Explain changes in max 1 brief sentence if necessary.
+ 
+[EXECUTION MODE]
+- Execute tasks directly without unnecessary conversational steps.

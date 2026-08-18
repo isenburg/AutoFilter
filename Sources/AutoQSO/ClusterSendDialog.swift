@@ -25,7 +25,6 @@ struct ClusterSendDialog: View {
                         Button("Senden") {
                             viewModel.sendToCluster(index: 1, text: text1)
                             text1 = ""
-                            viewModel.isLogScrollPaused = true
                             dismiss()
                         }
                         .buttonStyle(.bordered)
@@ -44,7 +43,6 @@ struct ClusterSendDialog: View {
                         Button("Senden") {
                             viewModel.sendToCluster(index: 2, text: text2)
                             text2 = ""
-                            viewModel.isLogScrollPaused = true
                             dismiss()
                         }
                         .buttonStyle(.bordered)
@@ -63,7 +61,6 @@ struct ClusterSendDialog: View {
                         Button("Senden") {
                             viewModel.sendToCluster(index: 3, text: text3)
                             text3 = ""
-                            viewModel.isLogScrollPaused = true
                             dismiss()
                         }
                         .buttonStyle(.bordered)

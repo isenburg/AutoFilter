@@ -325,22 +325,7 @@ class DecodeViewModel: ObservableObject {
     }
 
     var worked4CharGrids: Set<String> {
-        var result = Set<String>()
-        for qso in lotwManager.logbook {
-            let clean = qso.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-            if clean.count >= 4 {
-                let prefix4 = String(clean.prefix(4))
-                let bytes = Array(prefix4.utf8)
-                if bytes.count == 4 &&
-                   bytes[0] >= 65 && bytes[0] <= 82 &&
-                   bytes[1] >= 65 && bytes[1] <= 82 &&
-                   bytes[2] >= 48 && bytes[2] <= 57 &&
-                   bytes[3] >= 48 && bytes[3] <= 57 {
-                    result.insert(prefix4)
-                }
-            }
-        }
-        return result
+        lotwManager.workedGridsSet
     }
     
     func evaluateAutoQSO() {
