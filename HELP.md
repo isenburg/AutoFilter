@@ -4,9 +4,17 @@
 
 ---
 
-## 1. Einleitung
+## 1. Einleitung & Installation
 
 AutoQSO ist eine macOS-Anwendung für Funkamateure. Die **Hauptfunktion ist der DX-Filter**, der eingehende DX-Spots und Dekodierungen nach flexiblen Kriterien analysiert, farblich klassifiziert und verarbeitet. **Für WSJT-X bietet AutoQSO zusätzlich die automatisierte Auto QSO Sende-Engine**, welche gezielte Anrufe auf FT8- und FT4-Frequenzen vollständig automatisch steuert, gegen das lokale SQLite-Logbuch abgleicht und seltene Most-Wanted-Stationen bevorzugt.
+
+### Interaktiver Installer & macOS Gatekeeper Lösung
+Da AutoQSO ad-hoc signiert ist (ohne kostenpflichtiges Apple-Entwickler-Zertifikat), stuft macOS Gatekeeper die App beim ersten Download evtl. als „unbekannter Entwickler“ oder „beschädigt“ ein.
+
+**Installation per Doppelklick (Empfohlen):**
+1. Öffnen Sie die heruntergeladene **`AutoQSO-vX.X.X.dmg`** Datei.
+2. Starten Sie per Doppelklick das Skript **`Install AutoQSO.command`**.
+3. Wählen Sie interaktiv Ihren Zielordner (`/Applications`, `~/Applications` oder manueller Ordner-Dialog). Das Skript kopiert AutoQSO, entfernt das Quarantäne-Attribut (`xattr -cr`) automatisch und startet die App ohne Fehlermeldung.
 
 ---
 
