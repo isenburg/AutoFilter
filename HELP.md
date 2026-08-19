@@ -26,9 +26,9 @@ Da AutoQSO ad-hoc signiert ist (ohne kostenpflichtiges Apple-Entwickler-Zertifik
 Für den erfolgreichen Betrieb von AutoQSO sind lediglich vier grundlegende Einstellungen erforderlich:
 
 1. **Eigenes Rufzeichen & Grid-Locator (Heimat-QTH)**
-   - *Zweck*: Automatische Entfernungs- und Peilungsberechnung sowie Zentrierung auf der Ausbreitungskarte und dem 3D-Globus.
-   - *Einstellung*: **Einstellungen (⚙️) -> Eigenes QTH (Maidenhead)** öffnen und Locator eingeben (z. B. `JO31AA24`) oder *Interaktive Karte zum Wählen 🗺️* nutzen.
-   - *Details*: Siehe Abschnitt [9. Ausbreitungskarte](#9-ausbreitungskarte-propagation-map).
+   - *Eigenes Rufzeichen*: Wird unter **Einstellungen (⚙️) -> Telnet Server** (*Rufzeichen für Login*) eingestellt (relevant für Cluster-Verbindungen und den lokalen Telnet-Server).
+   - *Grid-Locator*: Wird unter **Einstellungen (⚙️) -> Eigenes QTH (Maidenhead)** eingegeben (z. B. `JO31AA24` oder per interaktivem Karten-Picker 🗺️).
+   - *Details*: Siehe Abschnitt [6. Telnet Server](#6-telnet-server) und [10. Ausbreitungskarte](#10-ausbreitungskarte-propagation-map).
 
 2. **WSJT-X UDP-Verbindung (Empfang & Auto Transmit)**
    - *Zweck*: Empfang von FT8/FT4 Dekodierungen und automatische Antwortkommandos.

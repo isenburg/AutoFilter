@@ -180,16 +180,25 @@ struct HelpView: View {
                     .buttonStyle(.borderedProminent)
                 }
                 
-                // 1. Eigenes QTH & Rufzeichen
+                // 1. Eigenes Rufzeichen & QTH
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Label("1. Eigenes Rufzeichen & Grid-Locator (Heimat-QTH)", systemImage: "location.circle.fill")
                             .font(.headline)
                         Spacer()
+                        Button(action: { openSettings(to: .telnet) }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "gearshape")
+                                Text("Rufzeichen (Telnet)")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        
                         Button(action: { openSettings(to: .qth) }) {
                             HStack(spacing: 4) {
                                 Image(systemName: "gearshape")
-                                Text("QTH-Einstellungen")
+                                Text("QTH-Locator")
                             }
                         }
                         .buttonStyle(.bordered)
@@ -201,9 +210,9 @@ struct HelpView: View {
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                     }
-                    Text("• **Zweck**: Ermöglicht die automatische Entfernungs- und Peilungsberechnung zu Gegenstationen sowie die zentrierte Darstellung auf der Ausbreitungskarte und dem 3D-Globus.")
+                    Text("• **Eigenes Rufzeichen**: Trage dein Rufzeichen unter **Einstellungen (⚙️) -> Telnet Server** (*Rufzeichen für Login*) ein. Es wird für Cluster-Verbindungen und den integrierten Telnet-Server genutzt.")
                         .font(.subheadline)
-                    Text("• **Einstellung**: Öffne **Einstellungen (⚙️) -> Eigenes QTH (Maidenhead)** und trage deinen 4- bis 8-stelligen Locator ein (z. B. `JO31AA24`), oder nutze die Schaltfläche *Interaktive Karte zum Wählen 🗺️* mit Google-Style Drop-Pin.")
+                    Text("• **Grid-Locator (Heimat-QTH)**: Öffne **Einstellungen (⚙️) -> Eigenes QTH (Maidenhead)** und trage deinen 4- bis 8-stelligen Locator ein (z. B. `JO31AA24`), oder nutze die interaktive Karte mit Drop-Pin (🗺️). Dies ermöglicht die präzise Entfernungs- und Peilungsberechnung zu allen Stationen.")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
