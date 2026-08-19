@@ -689,10 +689,10 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                // Version 3.4.0
+                // Version 3.4.1
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 3.4.0")
+                        Text("Version 3.4.1")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -705,6 +705,34 @@ struct HelpView: View {
                             .background(Color.green)
                             .foregroundColor(.white)
                             .cornerRadius(4)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("✨ Neue Funktionen & Verbesserungen")
+                            .font(.subheadline)
+                            .bold()
+                        bullet("Intelligente 5-Minuten-Zeitfenster-Deduplizierung: Erkennt und verhindert doppelte QSOs durch Start- und Endzeit-Abweichungen (`TIME_ON` vs. `TIME_OFF`) zwischen WSJT-X, RUMlogNG, QRZ.com und LoTW zuverlässig in der SQLite-Datenbank.", font: .subheadline, color: .secondary)
+                        bullet("Automatische Logbuch-Bereinigung: Beim Programmstart werden bestehende doppelte Einträge automatisch fusioniert (fehlende Grid- und DXCC-Informationen ergänzt) und bereinigt.", font: .subheadline, color: .secondary)
+                        bullet("WSJT-X Doppel-Meldungs-Filter: Intelligentes Debouncing verhindert das parallele doppelte Eintragen von QSOs, wenn WSJT-X zeitgleich `loggedAdif`- und `qsoLogged`-UDP-Pakete sendet.", font: .subheadline, color: .secondary)
+                        bullet("Präzise Popover-Verankerung auf der Grid-Karte: Das Grid-Inspector-Popover verankert sich jetzt als Karten-Annotation direkt an der exakten Zentrumskoordinate des angeklickten Planquadrats mit zielgenau ausgerichteter Sprechblase.", font: .subheadline, color: .secondary)
+                        bullet("Dauerhafte Verfügbarkeit der Grid-Karte: Die 2D-Kartenansicht, das Maidenhead-Gitter und der Inspector bleiben auch bei 0 neuen DX-Grids im aktuellen Zeitfenster uneingeschränkt sichtbar und interaktiv bedienbar.", font: .subheadline, color: .secondary)
+                        bullet("Automatische Länderauflösung im Grid-Inspector: Rufzeichen gearbeiteter Grids werden automatisch über den Prefix-Matcher in lesbare Ländernamen (statt numerischer DXCC-IDs) aufgelöst.", font: .subheadline, color: .secondary)
+                        bullet("Aufgeräumte Toolbar: Das Textfeld für die Minutensperre wurde aus der Haupt-Toolbar entfernt und wird nun übersichtlich in den Einstellungen (WSJT-X) verwaltet.", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+                
+                Divider()
+                
+                // Version 3.4.0
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 3.4.0")
+                            .font(.headline)
+                            .bold()
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("✨ Neue Funktionen & Verbesserungen")
@@ -727,7 +755,7 @@ struct HelpView: View {
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.green.opacity(0.08))
+                .background(Color.blue.opacity(0.05))
                 .cornerRadius(8)
                 
                 Divider()

@@ -110,26 +110,6 @@ struct NewGridMapView: View {
                 }
             )
         }
-        .popover(item: $inspectedGrid) { info in
-            GridDetailInspectorPopover(
-                info: info,
-                homeCoordinate: homeCoordinate,
-                onShowWorkedQSOs: {
-                    selectedWorkedGrid = String(info.grid.prefix(4))
-                },
-                onCenterMap: {
-                    withAnimation {
-                        cameraPosition = .region(MKCoordinateRegion(
-                            center: info.coordinate,
-                            span: MKCoordinateSpan(latitudeDelta: info.is6Char ? 1.5 : 5.0, longitudeDelta: info.is6Char ? 1.5 : 5.0)
-                        ))
-                    }
-                },
-                onOpenQRZ: { call in
-                    openQRZ(for: call)
-                }
-            )
-        }
     }
 
     @State private var selectedWorkedGrid: String? = nil
@@ -147,6 +127,9 @@ struct NewGridMapView: View {
         let grid = Maidenhead.latLonToLocator(lat: coord.latitude, lon: coord.longitude, length: length)
         let grid4 = String(grid.prefix(4))
         
+        let center = Maidenhead.locatorToLatLon(grid)
+        let gridCenterCoord = center.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) } ?? coord
+        
         let matchingQSOs = viewModel.lotwManager.logbook.filter {
             $0.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased().hasPrefix(grid4)
         }
@@ -155,14 +138,33 @@ struct NewGridMapView: View {
             $0.grid == grid || $0.grid == grid4
         })
         
-        let country = activeCluster?.country ?? (matchingQSOs.first?.dxcc ?? "")
-        let continent = activeCluster?.continent ?? ""
+        var country = activeCluster?.country ?? ""
+        var continent = activeCluster?.continent ?? ""
+        
+        if country.isEmpty || country == "DX", let firstCall = matchingQSOs.first?.callsign, !firstCall.isEmpty {
+            let matchedCountry = PrefixMatcher.shared.country(for: firstCall)
+            if matchedCountry != "OTHER" && !matchedCountry.isEmpty {
+                country = matchedCountry
+            }
+            let matchedContinent = PrefixMatcher.shared.continent(for: firstCall)
+            if matchedContinent != "OTHER" && !matchedContinent.isEmpty {
+                continent = matchedContinent
+            }
+        }
+        
+        if country.isEmpty {
+            if let dxccId = matchingQSOs.first?.dxcc, !dxccId.isEmpty {
+                country = "DXCC \(dxccId)"
+            } else {
+                country = "DX"
+            }
+        }
         
         inspectedGrid = GridInspectorInfo(
             grid: grid,
-            coordinate: coord,
+            coordinate: gridCenterCoord,
             is6Char: length == 6,
-            country: country.isEmpty ? "DX" : country,
+            country: country,
             continent: continent,
             isWorked: !matchingQSOs.isEmpty,
             workedCount: matchingQSOs.count,
@@ -237,6 +239,41 @@ struct NewGridMapView: View {
                             .drawingGroup()
                             .onTapGesture {
                                 inspectCluster(cluster)
+                            }
+                    }
+                }
+                
+                if let info = inspectedGrid {
+                    Annotation("", coordinate: info.coordinate) {
+                        Circle()
+                            .fill(Color.yellow.opacity(0.15))
+                            .frame(width: 14, height: 14)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.yellow, lineWidth: 2)
+                            )
+                            .popover(isPresented: Binding(
+                                get: { inspectedGrid != nil },
+                                set: { if !$0 { inspectedGrid = nil } }
+                            )) {
+                                GridDetailInspectorPopover(
+                                    info: info,
+                                    homeCoordinate: homeCoordinate,
+                                    onShowWorkedQSOs: {
+                                        selectedWorkedGrid = String(info.grid.prefix(4))
+                                    },
+                                    onCenterMap: {
+                                        withAnimation {
+                                            cameraPosition = .region(MKCoordinateRegion(
+                                                center: info.coordinate,
+                                                span: MKCoordinateSpan(latitudeDelta: info.is6Char ? 1.5 : 5.0, longitudeDelta: info.is6Char ? 1.5 : 5.0)
+                                            ))
+                                        }
+                                    },
+                                    onOpenQRZ: { call in
+                                        openQRZ(for: call)
+                                    }
+                                )
                             }
                     }
                 }

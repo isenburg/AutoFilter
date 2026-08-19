@@ -17,6 +17,7 @@ class WSJTXServer: ObservableObject {
     private var readSource: DispatchSourceRead?
     @Published var wsjtxClientId: String = ""
     private var lastWSJTClientAddr: sockaddr_in?
+    private var recentlyLoggedCalls = [String: Date]()
     
     private var currentPort: UInt16 = 0
     private var currentAddress: String = ""
@@ -309,6 +310,9 @@ class WSJTXServer: ObservableObject {
                 let entries = ADIFParser.parseQSOs(from: adifText)
                 self.logRaw(.incoming, "Logged ADIF: client=\(clientId), entries=\(entries.count)")
                 print("WSJT-X Logged ADIF empfangen (\(entries.count) QSOs)")
+                for entry in entries {
+                    self.recentlyLoggedCalls[entry.callsign.uppercased()] = Date()
+                }
                 DispatchQueue.main.async {
                     self.onQSOLogged?(entries)
                 }
@@ -319,6 +323,14 @@ class WSJTXServer: ObservableObject {
                let _ = reader.readString(), // grid
                let freq = reader.readUInt64(), // freq
                let mode = reader.readString() {
+                
+                let callUpper = dxCall.uppercased()
+                if let lastTime = self.recentlyLoggedCalls[callUpper], Date().timeIntervalSince(lastTime) < 15.0 {
+                    self.logRaw(.incoming, "Ignored duplicate qsoLogged for \(dxCall) (already processed via loggedAdif)")
+                    print("WSJT-X duplicate qsoLogged für \(dxCall) ignoriert (bereits via loggedAdif erfasst)")
+                    return
+                }
+                self.recentlyLoggedCalls[callUpper] = Date()
                 
                 let actualFreq = freq > 0 ? freq : self.currentDialFrequency
                 let actualBand = WSJTXDecode.bandFromFrequency(actualFreq)

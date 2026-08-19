@@ -175,27 +175,17 @@ struct ContentView: View {
             // 2. CENTER: AutoQSO / WSJTX Auto Transmit, Logbook, Sortierung, and standard window buttons (all centered on one single line!)
             HStack(alignment: .center, spacing: 12) {
                 // WSJTX Auto Mode Section (AutoQSO)
-                HStack(spacing: 6) {
-                    Button(action: {
-                        viewModel.isAutoModeEnabled.toggle()
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: viewModel.isAutoModeEnabled ? "play.circle.fill" : "play.circle")
-                            Text(viewModel.isAutoModeEnabled ? "Auto ON" : "Auto OFF")
-                                .fontWeight(.bold)
-                        }
+                Button(action: {
+                    viewModel.isAutoModeEnabled.toggle()
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: viewModel.isAutoModeEnabled ? "play.circle.fill" : "play.circle")
+                        Text(viewModel.isAutoModeEnabled ? "Auto ON" : "Auto OFF")
+                            .fontWeight(.bold)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(viewModel.isAutoModeEnabled ? .green : .gray)
-                    
-                    NumericTextField("10", value: $retryCooldownMinutes)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 45)
-                    
-                    Text("Min. Sperre")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
                 }
+                .buttonStyle(.borderedProminent)
+                .tint(viewModel.isAutoModeEnabled ? .green : .gray)
                 
                 // Sort Order & Pause Section
                 Button(action: {
