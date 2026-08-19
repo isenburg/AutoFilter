@@ -87,6 +87,13 @@ struct GlobeMapViewContainer: NSViewRepresentable {
         let clickGesture = NSClickGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleMapTap(_:)))
         mapView.addGestureRecognizer(clickGesture)
         
+        if let path = activeQSOPath {
+            let qsoRegion = PropagationMapView.centerRegionForQSO(from: path.myCoordinate, to: path.targetCoordinate)
+            mapView.region = qsoRegion
+        } else {
+            mapView.region = region
+        }
+        
         // Initial overlays & annotations
         context.coordinator.applyOverlays(mapView, showGrid: showGridOverlay, workedGrids: workedGrids, showShading: showWorkedGridShading, activeQSOPath: activeQSOPath, region: region)
         context.coordinator.applyAnnotations(mapView, spotItems: spotItems, activeQSOPath: activeQSOPath)
@@ -99,6 +106,12 @@ struct GlobeMapViewContainer: NSViewRepresentable {
         if !(mapView.preferredConfiguration is MKHybridMapConfiguration) {
             let config = MKHybridMapConfiguration(elevationStyle: .realistic)
             mapView.preferredConfiguration = config
+        }
+
+        // Auto-center on active QSO path when it starts or changes
+        if coord.lastActiveQSOPath != activeQSOPath, let path = activeQSOPath {
+            let qsoRegion = PropagationMapView.centerRegionForQSO(from: path.myCoordinate, to: path.targetCoordinate)
+            mapView.setRegion(qsoRegion, animated: true)
         }
 
         // Dirty-check overlays: only rebuild if inputs changed

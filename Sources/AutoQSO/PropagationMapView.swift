@@ -23,6 +23,44 @@ struct PropagationMapView: View {
     @State private var showMaidenheadOverlay = false
     @State private var showPropagationChart = false
     @State private var currentRegion = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 48.0, longitude: 10.0), span: MKCoordinateSpan(latitudeDelta: 30.0, longitudeDelta: 40.0))
+    @State private var cameraPosition: MapCameraPosition = .region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 48.0, longitude: 10.0), span: MKCoordinateSpan(latitudeDelta: 30.0, longitudeDelta: 40.0)))
+
+    static func centerRegionForQSO(from coord1: CLLocationCoordinate2D, to coord2: CLLocationCoordinate2D) -> MKCoordinateRegion {
+        let greatCircleCoords = Maidenhead.greatCirclePath(from: coord1, to: coord2, steps: 30)
+        let midIdx = max(0, greatCircleCoords.count / 2)
+        let midCoord = greatCircleCoords.indices.contains(midIdx) ? greatCircleCoords[midIdx] : CLLocationCoordinate2D(
+            latitude: (coord1.latitude + coord2.latitude) / 2.0,
+            longitude: (coord1.longitude + coord2.longitude) / 2.0
+        )
+        
+        var minLat = min(coord1.latitude, coord2.latitude)
+        var maxLat = max(coord1.latitude, coord2.latitude)
+        var minLon = min(coord1.longitude, coord2.longitude)
+        var maxLon = max(coord1.longitude, coord2.longitude)
+        
+        for c in greatCircleCoords {
+            minLat = min(minLat, c.latitude)
+            maxLat = max(maxLat, c.latitude)
+            minLon = min(minLon, c.longitude)
+            maxLon = max(maxLon, c.longitude)
+        }
+        
+        let latDelta = max(abs(maxLat - minLat) * 1.5, 30.0)
+        let lonDelta = max(abs(maxLon - minLon) * 1.5, 45.0)
+        
+        return MKCoordinateRegion(
+            center: midCoord,
+            span: MKCoordinateSpan(latitudeDelta: min(latDelta, 140.0), longitudeDelta: min(lonDelta, 240.0))
+        )
+    }
+
+    private func centerOnActiveQSO(_ path: ActiveQSOPath) {
+        let qsoRegion = PropagationMapView.centerRegionForQSO(from: path.myCoordinate, to: path.targetCoordinate)
+        withAnimation(.easeInOut(duration: 0.8)) {
+            currentRegion = qsoRegion
+            cameraPosition = .region(qsoRegion)
+        }
+    }
 
     struct BandLegendInfo: Hashable {
         let name: String
@@ -100,9 +138,17 @@ struct PropagationMapView: View {
             }
             displayClusters = viewModel.propagationClusters
             viewModel.updatePropagationClusters()
+            if let path = viewModel.activeQSOPath {
+                centerOnActiveQSO(path)
+            }
         }
         .onDisappear {
             refreshTimer?.invalidate(); refreshTimer = nil
+        }
+        .onChange(of: viewModel.activeQSOPath) { _, newPath in
+            if let path = newPath {
+                centerOnActiveQSO(path)
+            }
         }
         .onChange(of: viewModel.propagationClusters) { _, newClusters in
             displayClusters = newClusters
@@ -136,7 +182,7 @@ struct PropagationMapView: View {
             )
             .id("propagation-globe-map-instance")
         } else {
-            Map {
+            Map(position: $cameraPosition) {
                 let topCount = min(displayClusters.count, 20)
                 let detailClusters = displayClusters.prefix(topCount)
                 let backgroundClusters = displayClusters.dropFirst(topCount)
@@ -208,23 +254,31 @@ struct PropagationMapView: View {
                 }
                 .overlay(alignment: .top) {
                     if let path = viewModel.activeQSOPath {
-                        HStack(spacing: 8) {
-                            Circle().fill(Color.orange).frame(width: 8, height: 8)
-                            Text("⚡ AKTIVES QSO:").font(.caption).bold().foregroundColor(.orange)
-                            Text("\(path.myGrid) ➔ \(path.targetCall)\(path.targetGrid != nil ? " (\(path.targetGrid!))" : "")")
-                                .font(.system(size: 11, weight: .black, design: .monospaced))
-                            if let dist = path.distanceKm {
-                                Text("·  \(Int(round(dist))) km")
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .foregroundColor(.secondary)
+                        Button(action: {
+                            centerOnActiveQSO(path)
+                        }) {
+                            HStack(spacing: 8) {
+                                Circle().fill(Color.orange).frame(width: 8, height: 8)
+                                Text("⚡ AKTIVES QSO:").font(.caption).bold().foregroundColor(.orange)
+                                Text("\(path.myGrid) ➔ \(path.targetCall)\(path.targetGrid != nil ? " (\(path.targetGrid!))" : "")")
+                                    .font(.system(size: 11, weight: .black, design: .monospaced))
+                                if let dist = path.distanceKm {
+                                    Text("·  \(Int(round(dist))) km")
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundColor(.secondary)
+                                }
+                                Image(systemName: "scope")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.orange)
                             }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(.ultraThinMaterial, in: Capsule())
+                            .overlay(Capsule().stroke(Color.orange.opacity(0.6), lineWidth: 1))
+                            .shadow(color: .orange.opacity(0.3), radius: 6)
+                            .padding(.top, 8)
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .overlay(Capsule().stroke(Color.orange.opacity(0.6), lineWidth: 1))
-                        .shadow(color: .orange.opacity(0.3), radius: 6)
-                        .padding(.top, 8)
+                        .buttonStyle(.plain)
                     }
                 }
                 .overlay(alignment: .topLeading) {

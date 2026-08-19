@@ -87,10 +87,35 @@ public struct PropagationChartItem: Identifiable, Equatable {
     }
 }
 
+public enum LogbookProvider: String, CaseIterable, Identifiable {
+    case rumlog = "RUMlogNG"
+    case lotw = "LoTW"
+    case qrz = "QRZ.com"
+    
+    public var id: String { rawValue }
+    
+    public var displayName: String {
+        switch self {
+        case .rumlog: return "RUMlogNG (macOS)"
+        case .lotw: return "ARRL LoTW"
+        case .qrz: return "QRZ.com"
+        }
+    }
+    
+    public var iconName: String {
+        switch self {
+        case .rumlog: return "macbook.and.iphone"
+        case .lotw: return "globe.americas.fill"
+        case .qrz: return "antenna.radiowaves.left.and.right"
+        }
+    }
+}
+
 class DecodeViewModel: ObservableObject {
     @Published var server = WSJTXServer()
     @Published var lotwManager = LoTWManager()
     @Published var qrzManager = QRZManager()
+    @Published var rumlogManager = RUMlogManager()
     @Published var selectedCallsign: String = ""
     @Published var isAutoModeEnabled: Bool = false {
         didSet {
@@ -192,7 +217,7 @@ class DecodeViewModel: ObservableObject {
     @Published var isLogScrollPaused: Bool = false {
         didSet {
             if isLogScrollPaused {
-                frozenSystemLogs = (logHistory + lotwManager.logHistory + qrzManager.logHistory).sorted()
+                frozenSystemLogs = (logHistory + lotwManager.logHistory + qrzManager.logHistory + rumlogManager.logHistory).sorted()
                 frozenWSJTXLogs = wsjtxRawLogs
                 frozenClusterLogs = clusterRawLogs
             } else {
@@ -315,6 +340,14 @@ class DecodeViewModel: ObservableObject {
             }
             .store(in: &cancellables)
             
+        rumlogManager.objectWillChange
+            .sink { [weak self] _ in
+                DispatchQueue.main.async {
+                    self?.objectWillChange.send()
+                }
+            }
+            .store(in: &cancellables)
+            
         server.onQSOLogged = { [weak self] newEntries in
             guard let self = self else { return }
             self.lotwManager.mergeEntries(newEntries)
@@ -333,10 +366,24 @@ class DecodeViewModel: ObservableObject {
                 }
             }
             
-            // Auto-trigger QRZ Sync on successful QSO
-            let qrzKey = UserDefaults.standard.string(forKey: "qrzApiKey") ?? ""
-            if !qrzKey.isEmpty {
-                self.syncQRZ(apiKey: qrzKey)
+            // Auto-trigger Logbook Sync depending on active logbook provider
+            let providerRaw = UserDefaults.standard.string(forKey: "activeLogbookProvider") ?? LogbookProvider.rumlog.rawValue
+            let provider = LogbookProvider(rawValue: providerRaw) ?? .rumlog
+            
+            switch provider {
+            case .rumlog:
+                self.syncRUMLog(fullSync: false)
+            case .qrz:
+                let qrzKey = UserDefaults.standard.string(forKey: "qrzApiKey") ?? ""
+                if !qrzKey.isEmpty {
+                    self.syncQRZ(apiKey: qrzKey, fullSync: false)
+                }
+            case .lotw:
+                let user = UserDefaults.standard.string(forKey: "lotwUsername") ?? ""
+                let pass = UserDefaults.standard.string(forKey: "lotwPassword") ?? ""
+                if !user.isEmpty && !pass.isEmpty {
+                    self.lotwManager.downloadLoTW(username: user, password: pass, fullSync: false)
+                }
             }
         }
         
@@ -631,6 +678,12 @@ class DecodeViewModel: ObservableObject {
     func syncQRZ(apiKey: String, fullSync: Bool = true) {
         qrzManager.downloadQRZ(apiKey: apiKey, fullSync: fullSync) { [weak self] qrzEntries in
             self?.lotwManager.mergeEntries(qrzEntries)
+        }
+    }
+    
+    func syncRUMLog(fullSync: Bool = true) {
+        rumlogManager.syncRUMlog(fullSync: fullSync) { [weak self] rumlogEntries in
+            self?.lotwManager.mergeEntries(rumlogEntries)
         }
     }
     

@@ -133,6 +133,7 @@ struct LogsConsoleView: View {
                         viewModel.logHistory.removeAll()
                         viewModel.lotwManager.logHistory.removeAll()
                         viewModel.qrzManager.logHistory.removeAll()
+                        viewModel.rumlogManager.logHistory.removeAll()
                     } else if consoleTab == 1 {
                         viewModel.wsjtxRawLogs.removeAll()
                     } else {
@@ -205,7 +206,7 @@ struct LogsConsoleView: View {
         if viewModel.isLogScrollPaused, let frozen = viewModel.frozenSystemLogs {
             rawLogs = frozen
         } else {
-            rawLogs = (viewModel.logHistory + viewModel.lotwManager.logHistory + viewModel.qrzManager.logHistory).sorted()
+            rawLogs = (viewModel.logHistory + viewModel.lotwManager.logHistory + viewModel.qrzManager.logHistory + viewModel.rumlogManager.logHistory).sorted()
         }
         
         let query = viewModel.logConsoleSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()

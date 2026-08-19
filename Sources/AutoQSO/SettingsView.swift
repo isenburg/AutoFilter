@@ -54,6 +54,7 @@ struct SettingsView: View {
     @AppStorage("udpBridgePort") private var udpBridgePort = 0
     
     // Logbuch & Dienst-Zugangsdaten
+    @AppStorage("activeLogbookProvider") private var activeLogbookProvider: String = LogbookProvider.rumlog.rawValue
     @AppStorage("lotwUsername") private var lotwUsername = ""
     @AppStorage("lotwPassword") private var lotwPassword = ""
     @AppStorage("qrzApiKey") private var qrzApiKey = ""
@@ -379,70 +380,164 @@ struct SettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     
-                    // LoTW Abgleich
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Logbook of The World (LoTW)")
+                        Text("Aktive Logbuch-Quelle")
                             .font(.title2)
                             .bold()
                         
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Benutzername / Callsign:")
-                                .font(.headline)
-                            TextField("Benutzername", text: $lotwUsername)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(maxWidth: 240)
-                        }
+                        Text("Wähle deine primäre Logbuch-Quelle für den automatischen Abgleich gearbeiteter Stationen und Grids:")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                         
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Passwort:")
-                                .font(.headline)
-                            SecureField("Passwort", text: $lotwPassword)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(maxWidth: 240)
-                        }
-                        
-                        HStack(spacing: 8) {
-                            Button("LoTW Logbuch Synchronisieren (Vollständig ab 1900)") {
-                                viewModel.lotwManager.downloadLoTW(username: lotwUsername, password: lotwPassword, fullSync: true)
+                        Picker("Logbuch-Quelle", selection: $activeLogbookProvider) {
+                            ForEach(LogbookProvider.allCases) { provider in
+                                Label(provider.displayName, systemImage: provider.iconName).tag(provider.rawValue)
                             }
-                            .disabled(lotwUsername.isEmpty || lotwPassword.isEmpty || viewModel.lotwManager.isDownloading)
-                            .buttonStyle(.borderedProminent)
                         }
-                        .padding(.top, 4)
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: 480)
                     }
                     
                     Divider()
                     
-                    // QRZ.com API
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("QRZ.com API Konfiguration")
-                            .font(.title2)
-                            .bold()
-                        
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("QRZ API Key:")
-                                .font(.headline)
-                            SecureField("API Key", text: $qrzApiKey)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(maxWidth: 280)
-                        }
-                        
-                        HStack(spacing: 8) {
-                            Button("QRZ.com Logbuch Synchronisieren (Vollständig ab 1900)") {
-                                viewModel.syncQRZ(apiKey: qrzApiKey, fullSync: true)
+                    switch LogbookProvider(rawValue: activeLogbookProvider) ?? .rumlog {
+                    case .rumlog:
+                        // RUMlogNG macOS Integration
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Image(systemName: "macbook.and.iphone")
+                                    .font(.title2)
+                                    .foregroundColor(.accentColor)
+                                Text("RUMlogNG (macOS App)")
+                                    .font(.title2)
+                                    .bold()
                             }
-                            .disabled(qrzApiKey.isEmpty || viewModel.qrzManager.isDownloading)
-                            .buttonStyle(.borderedProminent)
+                            
+                            Text("Synchronisiert alle QSOs über die native macOS AppleScript-Schnittstelle direkt aus deiner lokal laufenden RUMlogNG-Anwendung.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            
+                            HStack(spacing: 12) {
+                                Button(action: {
+                                    viewModel.syncRUMLog(fullSync: false)
+                                }) {
+                                    HStack(spacing: 6) {
+                                        if viewModel.rumlogManager.isDownloading {
+                                            ProgressView().controlSize(.small)
+                                        } else {
+                                            Image(systemName: "arrow.triangle.2.circlepath")
+                                        }
+                                        Text("Inkrementeller Sync (Seit letztem Mal)")
+                                    }
+                                }
+                                .disabled(viewModel.rumlogManager.isDownloading)
+                                .buttonStyle(.borderedProminent)
+                                
+                                Button("Vollständiger Sync (ab 1900)") {
+                                    viewModel.syncRUMLog(fullSync: true)
+                                }
+                                .disabled(viewModel.rumlogManager.isDownloading)
+                                .buttonStyle(.bordered)
+                            }
+                            .padding(.top, 4)
+                            
+                            if let error = viewModel.rumlogManager.errorMessage {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(error)
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                    
+                                    if error.contains("Berechtigung") || error.contains("Automation") {
+                                        Button(action: {
+                                            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation") {
+                                                NSWorkspace.shared.open(url)
+                                            }
+                                        }) {
+                                            Label("Systemeinstellungen (Automation) öffnen...", systemImage: "lock.shield")
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                    }
+                                }
+                                .padding(.top, 4)
+                            }
                         }
-                        .padding(.top, 4)
+                        
+                    case .lotw:
+                        // LoTW Abgleich
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Image(systemName: "globe.americas.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.accentColor)
+                                Text("Logbook of The World (LoTW)")
+                                    .font(.title2)
+                                    .bold()
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Benutzername / Callsign:")
+                                    .font(.headline)
+                                TextField("Benutzername", text: $lotwUsername)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(maxWidth: 240)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Passwort:")
+                                    .font(.headline)
+                                SecureField("Passwort", text: $lotwPassword)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(maxWidth: 240)
+                            }
+                            
+                            HStack(spacing: 8) {
+                                Button("LoTW Logbuch Synchronisieren (Vollständig ab 1900)") {
+                                    viewModel.lotwManager.downloadLoTW(username: lotwUsername, password: lotwPassword, fullSync: true)
+                                }
+                                .disabled(lotwUsername.isEmpty || lotwPassword.isEmpty || viewModel.lotwManager.isDownloading)
+                                .buttonStyle(.borderedProminent)
+                            }
+                            .padding(.top, 4)
+                        }
+                        
+                    case .qrz:
+                        // QRZ.com API
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Image(systemName: "antenna.radiowaves.left.and.right")
+                                    .font(.title2)
+                                    .foregroundColor(.accentColor)
+                                Text("QRZ.com Logbuch")
+                                    .font(.title2)
+                                    .bold()
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("QRZ API Key:")
+                                    .font(.headline)
+                                SecureField("API Key", text: $qrzApiKey)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(maxWidth: 280)
+                            }
+                            
+                            HStack(spacing: 8) {
+                                Button("QRZ.com Logbuch Synchronisieren (Vollständig ab 1900)") {
+                                    viewModel.syncQRZ(apiKey: qrzApiKey, fullSync: true)
+                                }
+                                .disabled(qrzApiKey.isEmpty || viewModel.qrzManager.isDownloading)
+                                .buttonStyle(.borderedProminent)
+                            }
+                            .padding(.top, 4)
+                        }
                     }
                     
                     Divider()
                     
                     // Manueller ADIF-Datei Import
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("ADIF-Datei importieren")
-                            .font(.title2)
+                        Text("Manueller ADIF-Datei Import")
+                            .font(.title3)
                             .bold()
                         
                         Text("Importiere QSOs aus einer lokalen .adi oder .adif Datei direkt in die SQLite-Datenbank.")
@@ -460,7 +555,7 @@ struct SettingsView: View {
                     // Lokale Datenbank zurücksetzen
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Lokales Logbuch löschen")
-                            .font(.title2)
+                            .font(.title3)
                             .bold()
                         
                         Text("Achtung: Dies löscht unwiderruflich alle lokal gespeicherten QSOs aus der SQLite-Datenbank.")

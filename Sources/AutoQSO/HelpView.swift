@@ -256,7 +256,7 @@ struct HelpView: View {
                 // 3. Logbuch-Sync
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Label("3. Logbuch-Synchronisation (LoTW / QRZ.com / ADIF)", systemImage: "book.closed.fill")
+                        Label("3. Logbuch-Synchronisation (RUMlogNG / LoTW / QRZ.com / ADIF)", systemImage: "book.closed.fill")
                             .font(.headline)
                         Spacer()
                         Button(action: { openSettings(to: .sync) }) {
@@ -276,7 +276,7 @@ struct HelpView: View {
                     }
                     Text("• **Zweck**: Gleicht eingehende Stationen in Echtzeit mit bereits getätigten QSOs auf dem Band ab, verhindert Doppel-QSOs und markiert ungearbeitete Länder/Grids farbig.")
                         .font(.subheadline)
-                    Text("• **Einstellung**: Öffne **Einstellungen (⚙️) -> Logbuch-Sync**, gib deine Zugangsdaten für LoTW oder QRZ.com ein und starte den Sync (oder lade ein bestehendes Logbuch über *ADIF Datei hochladen* hoch).")
+                    Text("• **Einstellung**: Öffne **Einstellungen (⚙️) -> Logbuch-Sync**, wähle deine Quelle (**RUMlogNG**, **LoTW** oder **QRZ.com**) und starte den Sync (oder lade ein bestehendes Logbuch über *ADIF-Datei importieren* hoch).")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -537,22 +537,30 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
+                Text("Logbuch-Quellen (Umschaltbar):")
+                    .font(.headline)
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet("**RUMlogNG (macOS App)**: Direkte 1-Klick-Synchronisation über die native AppleScript-Schnittstelle von RUMlogNG (`ReadAdif`). RUMlogNG muss lediglich geöffnet sein.")
+                    bullet("**ARRL LoTW**: Automatischer Download deiner bestätigten und hochgeladenen QSOs vom ARRL Logbook of The World.")
+                    bullet("**QRZ.com**: API-basierter Abgleich deiner QSOs über deinen QRZ.com API Key.")
+                }
+                
                 Text("Vollständiger Sync & Inkrementeller Sync:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**Vollständiger Sync (ab 1900)**: Lädt das gesamte Logbuch ab `1900-01-01` von QRZ.com oder LoTW herunter.")
+                    bullet("**Vollständiger Sync (ab 1900)**: Lädt das gesamte Logbuch ab `1900-01-01` herunter bzw. aus RUMlogNG.")
                     bullet("**Intelligentes SQLite-Upsert**: Bei bestehenden Einträgen werden fehlende Attribute (wie z. B. Grid-Locatoren) automatisch ergänzt, ohne doppelte QSOs zu erzeugen (`ON CONFLICT DO UPDATE`).")
                     bullet("**Inkrementeller Sync**: Synchronisiert automatisch nur neuere QSOs ab dem Datum des letzten Logbucheintrags.")
                 }
                 
                 Text("ADIF-Datei importieren:")
                     .font(.headline)
-                bullet("Über den Button '**ADIF Datei hochladen**' kannst du bestehende Logbücher im `.adi` / `.adif` Format in deine lokale SQLite-Datenbank einspielen. Duplikate werden anhand des eindeutigen Schlüssels (Call, Band, Mode, Zeit) automatisch aussortiert.")
+                bullet("Über den Button '**ADIF-Datei auswählen & importieren...**' kannst du bestehende Logbücher im `.adi` / `.adif` Format in deine lokale SQLite-Datenbank einspielen. Duplikate werden anhand des eindeutigen Schlüssels (Call, Band, Mode, Zeit) automatisch aussortiert.")
                 
                 Text("Logbuch leeren / Löschen:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**Löschen (🗑️)**: QSOs können einzeln oder über Mehrfachauswahl gelöscht werden.")
+                    bullet("**Löschen (🗑️)**: QSOs können im Logbuch-Fenster einzeln oder über Mehrfachauswahl gelöscht werden.")
                     bullet("**Logbuch löschen**: Der Button in den Einstellungen entfernt alle lokalen QSOs aus der Datenbank nach Bestätigung eines Sicherheitsdialogs.")
                 }
             }
@@ -681,10 +689,10 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                // Version 3.3.2
+                // Version 3.4.0
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 3.3.2")
+                        Text("Version 3.4.0")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -697,6 +705,39 @@ struct HelpView: View {
                             .background(Color.green)
                             .foregroundColor(.white)
                             .cornerRadius(4)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("✨ Neue Funktionen & Verbesserungen")
+                            .font(.subheadline)
+                            .bold()
+                        bullet("RUMlogNG AppleScript-Integration: Direkte 1-Klick-Synchronisation des Logbuchs aus der laufenden macOS App RUMlogNG über die native AppleScript-Schnittstelle (`ReadAdif`) – sowohl inkrementell als auch vollständig ab 1900.", font: .subheadline, color: .secondary)
+                        bullet("Umschaltbare Logbuch-Quellen: Flexibler Segmented-Picker in den Einstellungen zum Umschalten zwischen RUMlogNG, ARRL LoTW und QRZ.com inklusive automatischem Post-QSO-Sync für die aktive Quelle.", font: .subheadline, color: .secondary)
+                        bullet("Aktives QSO auf Ausbreitungskarte zentriert: Automatische Zentrierung und optimale Skalierung des Großkreis-Pfads (Great Circle) auf 2D-Karte und 3D-Globus bei jedem aktiven QSO, inklusive 1-Klick Re-Zentrierung über den Status-Banner.", font: .subheadline, color: .secondary)
+                        bullet("Dual-Installer Release-DMG: Bereitstellung von nativer GUI-Installer-App (`AutoQSO Installer.app`) und Terminal-Installationsskript (`Install AutoQSO.command`) im Release-Image.", font: .subheadline, color: .secondary)
+                        bullet("Quickstart Direktsprung-Routing: Direkte Sprungbuttons aus den 4 Quickstart-Schritten zu den jeweiligen Einstellungs-Tabs (Rufzeichen/Telnet, QTH-Locator, UDP-Server, Logbuch-Sync).", font: .subheadline, color: .secondary)
+                        
+                        Text("🐞 Fehlerbehebungen & Leistungsverbesserungen")
+                            .font(.subheadline)
+                            .bold()
+                            .padding(.top, 4)
+                        bullet("Crash-Fix Auto-Scroll: Behebung eines Out-of-Bounds-Absturzes beim automatischen Tabellen-Scrollen durch Umstellung auf asynchrones Viewport-Scrolling (`clipView.scroll(to:)`).", font: .subheadline, color: .secondary)
+                        bullet("macOS Automation-Permissions: `NSAppleEventsUsageDescription` und automatisches Ad-hoc-Codesigning in allen Build-Skripten integriert.", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+                
+                Divider()
+                
+                // Version 3.3.2
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 3.3.2")
+                            .font(.headline)
+                            .bold()
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("✨ Neue Funktionen & Verbesserungen")
@@ -724,7 +765,7 @@ struct HelpView: View {
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.green.opacity(0.08))
+                .background(Color.blue.opacity(0.05))
                 .cornerRadius(8)
                 
                 Divider()

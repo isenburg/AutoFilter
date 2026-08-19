@@ -38,10 +38,10 @@ Für den erfolgreichen Betrieb von AutoQSO sind lediglich vier grundlegende Eins
      - `UDP Server Address: 224.0.0.1` (oder `127.0.0.1`), `UDP Server Port: 2237`
    - *Details*: Siehe Abschnitt [3. WSJTX Auto Transmit](#3-wsjtx-auto-transmit--tabellen-steuerung).
 
-3. **Logbuch-Synchronisation (LoTW / QRZ.com / ADIF)**
+3. **Logbuch-Synchronisation (RUMlogNG / LoTW / QRZ.com / ADIF)**
    - *Zweck*: Echtzeit-Abgleich gegen bereits getätigte QSOs, Vermeidung von Doppel-QSOs, Markierung neuer Grids/Länder.
-   - *Einstellung*: **Einstellungen (⚙️) -> Logbuch-Sync** öffnen, Zugangsdaten eintragen und Sync starten (oder ADIF-Datei importieren).
-   - *Details*: Siehe Abschnitt [7. Logbuch-Sync & ADIF-Import](#7-logbuch-sync--adif-import).
+   - *Einstellung*: **Einstellungen (⚙️) -> Logbuch-Sync** öffnen, Quelle auswählen (**RUMlogNG**, **LoTW** oder **QRZ.com**) und Sync starten (oder ADIF-Datei importieren).
+   - *Details*: Siehe Abschnitt [6. Logbuch-Sync & ADIF-Import](#6-logbuch-sync--adif-import).
 
 4. **DX Cluster (Optional, empfohlen)**
    - *Zweck*: Paralleler Empfang von DX-Spots über bis zu 3 Verbindungen (C1, C2, C3).
@@ -60,7 +60,35 @@ Der Hauptschalter in der oberen Menüleiste wurde in **WSJTX Auto Transmit** umb
 
 ---
 
-## 3. Most Wanted & Entfernungspriorisierung
+## 4. Übersicht der Hauptfunktionen
+
+- **DX-Filter**: Intelligente Echtzeit-Auswertung und Farbklassifizierung eingehender FT8/FT4-Spots und Cluster-Meldungen.
+- **WSJT-X Auto Transmit**: Automatisches Antworten auf CQ- und 73-Rufe für gewünschte oder seltene Stationen.
+- **Integrierter Telnet-Server**: Lokaler Cluster-Server zur Weiterleitung gefilterter Spots an Logging-Programme wie RUMlogNG oder MacLoggerDX.
+- **Ausbreitungskarte & 3D-Globus**: Visuelle Darstellung aktiver QSOs mit Großkreis-Pfad und Maidenhead-Grid-Overlays.
+
+---
+
+## 5. DX Cluster Manager & Spot-Verarbeitung
+
+Der DX-Cluster-Manager ermöglicht den gleichzeitigen Empfang von DX-Spots über bis zu drei unabhängige Telnet-Verbindungen:
+- **3 parallele Verbindungen (C1, C2, C3)**: Beliebige Server aus der Liste zuweisen oder deaktivieren.
+- **Cluster-Verwaltung**: Eigene Cluster-Server hinzufügen, bearbeiten oder löschen.
+- **Telnet-Log-Konsole**: Eigene Rohdaten-Konsole für eingehende Telnet-Meldungen mit direkter Befehlszeile.
+
+---
+
+## 6. Logbuch-Sync & ADIF-Import
+
+Sämtliche Logbuch-Optionen wurden im Einstellungsreiter **Logbuch-Sync** konsolidiert. Du kannst über die Quellen-Auswahl flexibel zwischen drei Anbindungen wechseln:
+- **RUMlogNG (macOS App)**: 1-Klick-Synchronisation über die native macOS AppleScript-Schnittstelle von RUMlogNG (`ReadAdif`). RUMlogNG muss lediglich geöffnet sein.
+- **LoTW & QRZ.com**: Eingabe der Zugangsdaten und Abgleich (Vollständig ab 1900 oder inkrementell).
+- **ADIF-Datei importieren**: Du kannst deine QSOs aus Drittprogrammen über eine ADIF-Datei (`.adi` oder `.adif`) importieren. AutoQSO liest die Datei ein, filtert Duplikate heraus und fügt neue QSOs in die lokale SQLite-Datenbank ein.
+- **Logbuch löschen**: Löscht alle lokalen QSOs aus der SQLite-Datenbank nach einer Sicherheitsabfrage.
+
+---
+
+## 7. Most Wanted & Entfernungspriorisierung
 
 - **Top 100 Most Wanted DXCC**: Integrierte Club Log Most Wanted Liste (z.B. P5, KH3, KH7K, Bouvet, etc.).
 - **Rote Hervorhebung (🔥)**: Ungearbeitete Most Wanted Stationen werden in der Decodier-Tabelle knallrot mit Rang-Badge markiert (z.B. `🔥 #1`).
