@@ -515,6 +515,7 @@ struct HelpView: View {
                         Text("✨ Neue Funktionen & Verbesserungen")
                             .font(.subheadline)
                             .bold()
+                        bullet("Nativer macOS GUI-Installer: Grafische Installer-App (`AutoQSO Installer.app`) direkt im `.dmg` ersetzt das Terminal-Skript. Bietet komfortable Zielordner-Auswahl, Gatekeeper-Quarantäne-Entfernung (`xattr -cr`), Code-Signatur-Auffrischung und Sofortstart.", font: .subheadline, color: .secondary)
                         bullet("Interaktiver Grid-Inspector: Ein Klick auf ein beliebiges Grid-Feld auf der Karte öffnet ein Detail-Popover mit Status (gearbeitet/ungearbeitet), Peilung/Distanz, aktiven Stationen und QRZ.com-Aufruf.", font: .subheadline, color: .secondary)
                         bullet("Band-Schnellfilter auf Grid-Map: Horizontale Filter-Pill-Leiste (`ALL`, `160M`–`6M`) zum sofortigen Umschalten der angezeigten Grids und Map-Marker nach dem aktiven Band.", font: .subheadline, color: .secondary)
                         bullet("Peilung & Distanz (Beam Heading / Distance): Anzeige von Azimut und Großkreis-Entfernung bezogen auf das eigene Heimat-QTH (`🧭 285° · 4.210 km`) direkt in jeder Grid-Zeile.", font: .subheadline, color: .secondary)
