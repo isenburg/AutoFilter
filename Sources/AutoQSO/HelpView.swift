@@ -3,6 +3,7 @@ import AppKit
 
 enum HelpSection: String, CaseIterable, Identifiable {
     case overview = "Übersicht"
+    case quickstart = "Quickstart"
     case toolbar = "Toolbar & Bedienung"
     case wsjtx = "WSJT-X Setup"
     case triggers = "Auto QSO Triggers"
@@ -23,6 +24,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .overview: return "info.circle"
+        case .quickstart: return "bolt.circle"
         case .toolbar: return "command"
         case .wsjtx: return "antenna.radiowaves.left.and.right"
         case .triggers: return "bolt.horizontal"
@@ -42,21 +44,23 @@ enum HelpSection: String, CaseIterable, Identifiable {
 }
 
 struct HelpView: View {
+    @Environment(\.openWindow) private var openWindow
     @State private var selectedSection: HelpSection = .overview
+    
+    private func openSettings(to section: SettingsSection? = nil) {
+        if let section = section {
+            UserDefaults.standard.set(section.rawValue, forKey: "settingsSelectedSection")
+            NotificationCenter.default.post(name: NSNotification.Name("OpenSettingsSection"), object: section.rawValue)
+        }
+        openWindow(id: "settings")
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        NotificationCenter.default.post(name: NSNotification.Name("OpenSettingsWindow"), object: nil)
+    }
     
     var body: some View {
         HStack(spacing: 0) {
             // Non-collapsible Left Sidebar
-            
             VStack(alignment: .leading, spacing: 6) {
-             /*
-                Text("Hilfe Themen")
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.top, 12)
-             */
                 List(HelpSection.allCases, selection: $selectedSection) { section in
                     HStack(spacing: 8) {
                         Image(systemName: section.icon)
@@ -112,6 +116,30 @@ struct HelpView: View {
                 Text("AutoQSO ist eine macOS-Anwendung für Funkamateure. Die **Hauptfunktion ist der DX-Filter** zur intelligenten Auswertung, Klassifizierung und Filterung von Spots und Dekodierungen. **Für WSJT-X steht die automatisierte Auto QSO Sende-Engine** zur Verfügung.")
                     .font(.body)
                 
+                // Quickstart Callout
+                HStack(spacing: 12) {
+                    Image(systemName: "bolt.circle.fill")
+                        .font(.title)
+                        .foregroundColor(.accentColor)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Neu bei AutoQSO? Schnellstart in 4 Schritten:")
+                            .font(.headline)
+                        Text("Erfahre, welche Mindesteinstellungen (Rufzeichen, QTH, WSJT-X, Logbuch) du für den Betrieb benötigst.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Button("Quickstart öffnen") {
+                        selectedSection = .quickstart
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+                .padding(12)
+                .background(Color.accentColor.opacity(0.1))
+                .cornerRadius(8)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.accentColor.opacity(0.3), lineWidth: 1))
+                
                 Text("Hauptfunktionen:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 6) {
@@ -131,12 +159,162 @@ struct HelpView: View {
                 }
             }
             
+        case .quickstart:
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Quickstart – Mindesteinstellungen")
+                            .font(.title2)
+                            .bold()
+                        Text("Vier grundlegende Schritte zum sofortigen Funkbetrieb mit AutoQSO.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Button(action: { openSettings() }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "gearshape.fill")
+                            Text("Einstellungen öffnen ⚙️")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                
+                // 1. Eigenes QTH & Rufzeichen
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Label("1. Eigenes Rufzeichen & Grid-Locator (Heimat-QTH)", systemImage: "location.circle.fill")
+                            .font(.headline)
+                        Spacer()
+                        Button(action: { openSettings(to: .qth) }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "gearshape")
+                                Text("QTH-Einstellungen")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        
+                        Button("Hilfe") {
+                            selectedSection = .propagationMap
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    Text("• **Zweck**: Ermöglicht die automatische Entfernungs- und Peilungsberechnung zu Gegenstationen sowie die zentrierte Darstellung auf der Ausbreitungskarte und dem 3D-Globus.")
+                        .font(.subheadline)
+                    Text("• **Einstellung**: Öffne **Einstellungen (⚙️) -> Eigenes QTH (Maidenhead)** und trage deinen 4- bis 8-stelligen Locator ein (z. B. `JO31AA24`), oder nutze die Schaltfläche *Interaktive Karte zum Wählen 🗺️* mit Google-Style Drop-Pin.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding(12)
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(8)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.15), lineWidth: 1))
+                
+                // 2. WSJT-X Setup
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Label("2. WSJT-X UDP-Verbindung (Empfang & Auto Transmit)", systemImage: "antenna.radiowaves.left.and.right")
+                            .font(.headline)
+                        Spacer()
+                        Button(action: { openSettings(to: .udp) }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "gearshape")
+                                Text("UDP-Einstellungen")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        
+                        Button("WSJT-X Anleitung") {
+                            selectedSection = .wsjtx
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    Text("• **Zweck**: Empfängt Live-Dekodierungen (FT8/FT4) und sendet automatische Antwortkommandos (Auto QSO).")
+                        .font(.subheadline)
+                    Text("• **Einstellung in WSJT-X**: Öffne in WSJT-X **Settings -> Reporting** und aktiviere:\n  1. `Prompt me to log QSO` [x]\n  2. `Accept UDP requests` [x]\n  3. `UDP Server Address: 224.0.0.1` (Multicast) oder `127.0.0.1` (Unicast)\n  4. `UDP Server Port: 2237`")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding(12)
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(8)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.15), lineWidth: 1))
+                
+                // 3. Logbuch-Sync
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Label("3. Logbuch-Synchronisation (LoTW / QRZ.com / ADIF)", systemImage: "book.closed.fill")
+                            .font(.headline)
+                        Spacer()
+                        Button(action: { openSettings(to: .sync) }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "gearshape")
+                                Text("Sync-Einstellungen")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        
+                        Button("Hilfe") {
+                            selectedSection = .logbook
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    Text("• **Zweck**: Gleicht eingehende Stationen in Echtzeit mit bereits getätigten QSOs auf dem Band ab, verhindert Doppel-QSOs und markiert ungearbeitete Länder/Grids farbig.")
+                        .font(.subheadline)
+                    Text("• **Einstellung**: Öffne **Einstellungen (⚙️) -> Logbuch-Sync**, gib deine Zugangsdaten für LoTW oder QRZ.com ein und starte den Sync (oder lade ein bestehendes Logbuch über *ADIF Datei hochladen* hoch).")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding(12)
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(8)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.15), lineWidth: 1))
+                
+                // 4. DX Cluster & Filter
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Label("4. DX Cluster & Filter (Optional)", systemImage: "list.bullet.rectangle.portrait.fill")
+                            .font(.headline)
+                        Spacer()
+                        Button(action: { openSettings(to: .cluster) }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "gearshape")
+                                Text("Cluster-Einstellungen")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        
+                        Button("Hilfe") {
+                            selectedSection = .cluster
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    Text("• **Zweck**: Paralleler Empfang weltweiter DX-Spots über bis zu drei Cluster (C1, C2, C3) zur Live-Ausbreitungsanalyse.")
+                        .font(.subheadline)
+                    Text("• **Einstellung**: Wähle in der linken Seitenleiste oder unter **Einstellungen (⚙️) -> DX Cluster** deine gewünschten Cluster per Dropdown aus.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding(12)
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(8)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.15), lineWidth: 1))
+            }
+            
         case .toolbar:
             VStack(alignment: .leading, spacing: 12) {
                 Text("Toolbar & Bedienung")
                     .font(.title2)
                     .bold()
-                Text("Hier finden Sie eine Übersicht über alle Steuerungselemente und Interaktionen in AutoQSO.")
+                Text("Hier findest du eine Übersicht über alle Steuerungselemente und Interaktionen in AutoQSO.")
                     .font(.body)
                 
                 Text("Bedienelemente der Toolbar:")
@@ -221,7 +399,7 @@ struct HelpView: View {
                 Text("Zuweisung & Status:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("In der linken Sidebar oder den Einstellungen wählen Sie die gewünschten Cluster aus einem Dropdown-Menü.")
+                    bullet("In der linken Sidebar oder den Einstellungen wählst du die gewünschten Cluster aus einem Dropdown-Menü.")
                     bullet("**Status-Indikatoren** zeigen an, ob die Verbindung aktiv ist (Grau = Aus, Orange = Verbindungsaufbau, Grün = Verbunden, Rot = Verbindungsfehler).")
                     bullet("**Universelles Spot-Parsing**: Alle eintreffenden Spots gängiger Knoten-Formate (VE7CC, K3LR, RBNet, AR-Cluster, CC-Cluster, DXSpider) werden automatisch erfasst.")
                 }
@@ -247,7 +425,7 @@ struct HelpView: View {
                 Text("Listen-Manager (Einstellungen -> DX Cluster):")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**Hinzufügen & Bearbeiten**: Sie können eigene Cluster mit Name, Host und Port registrieren.")
+                    bullet("**Hinzufügen & Bearbeiten**: Du kannst eigene Cluster mit Name, Host und Port registrieren.")
                     bullet("**Drag-and-Drop**: Die Reihenfolge der Cluster kann direkt in der Tabelle per Maus verschoben und angepasst werden.")
                     bullet("**Zurücksetzen (Restore Defaults)**: Stellt die ursprüngliche Liste der vordefinierten Standard-Cluster wieder her.")
                 }
@@ -258,7 +436,7 @@ struct HelpView: View {
                 Text("Telnet Server & Spotting-Ausgabe")
                     .font(.title2)
                     .bold()
-                Text("AutoQSO läuft als lokaler Telnet-Cluster-Server, an den Sie externe Log-Software (z.B. MacLoggerDX) koppeln können.")
+                Text("AutoQSO läuft als lokaler Telnet-Cluster-Server, an den du externe Log-Software (z.B. MacLoggerDX) koppeln kannst.")
                     .font(.body)
                 
                 Text("Konfiguration:")
@@ -270,7 +448,7 @@ struct HelpView: View {
                 
                 Text("WSJT-X Spotter Telnet-Ausgabe:")
                     .font(.headline)
-                bullet("Ist dieser Schalter aktiviert, werden alle gefilterten WSJT-X Dekodierungen als rohe DX-Spots im Telnet-Format ausgegeben, sodass sie sofort in Ihrem Log-Programm auf der Karte erscheinen. Standardmäßig ist diese Option deaktiviert (keine Ausgabe).")
+                bullet("Ist dieser Schalter aktiviert, werden alle gefilterten WSJT-X Dekodierungen als rohe DX-Spots im Telnet-Format ausgegeben, sodass sie sofort in deinem Log-Programm auf der Karte erscheinen. Standardmäßig ist diese Option deaktiviert (keine Ausgabe).")
             }
             
         case .propagationMap:
@@ -322,7 +500,7 @@ struct HelpView: View {
                 
                 Text("Filter-Garantie:")
                     .font(.headline)
-                bullet("Beide Karten aggregieren ausschließlich Dekodierungen und DX-Spots, die alle Ihre aktiven DX-Filterregeln erfolgreich bestanden haben.")
+                bullet("Beide Karten aggregieren ausschließlich Dekodierungen und DX-Spots, die alle deine aktiven DX-Filterregeln erfolgreich bestanden haben.")
             }
             
         case .compactMode:
@@ -338,9 +516,9 @@ struct HelpView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     bullet("**Kompakte Steuerleiste**: Bietet Zugriff auf Auto Transmit (Auto ON/OFF), den globalen Filter-Schalter, das Öffnen der Ausbreitungskarte und die Verbindungs-/TX-Statuslämpchen.")
                     bullet("**Reduzierte Tabelle**: Zeigt eine fokussierte Tabelle mit Zeit, DX Call, Land, SNR und Nachricht.")
-                    bullet("**Ticker für Most Wanted**: Unten scrollt eine Zeile mit ungearbeiteten seltenen Stationen durch. Durch Doppelklick/Anklicken können Sie diese anrufen bzw. im Banner fokussieren.")
+                    bullet("**Ticker für Most Wanted**: Unten scrollt eine Zeile mit ungearbeiteten seltenen Stationen durch. Durch Doppelklick/Anklicken kannst du diese anrufen bzw. im Banner fokussieren.")
                     bullet("**Minimalmaße**: Das Hauptfenster lässt sich bis auf 480x320 Pixel herunterskalieren, um perfekt in einer Bildschirmecke Platz zu finden.")
-                    bullet("**Zurückwechseln**: Über das Pfeilsymbol ganz rechts in der kompakten Leiste gelangen Sie wieder in die Normalansicht.")
+                    bullet("**Zurückwechseln**: Über das Pfeilsymbol ganz rechts in der kompakten Leiste gelangst du wieder in die Normalansicht.")
                 }
             }
             
@@ -360,7 +538,7 @@ struct HelpView: View {
                 
                 Text("ADIF-Datei importieren:")
                     .font(.headline)
-                bullet("Über den Button '**ADIF Datei hochladen**' können Sie bestehende Logbücher im `.adi` / `.adif` Format in Ihre lokale SQLite-Datenbank einspielen. Duplikate werden anhand des eindeutigen Schlüssels (Call, Band, Mode, Zeit) automatisch aussortiert.")
+                bullet("Über den Button '**ADIF Datei hochladen**' kannst du bestehende Logbücher im `.adi` / `.adif` Format in deine lokale SQLite-Datenbank einspielen. Duplikate werden anhand des eindeutigen Schlüssels (Call, Band, Mode, Zeit) automatisch aussortiert.")
                 
                 Text("Logbuch leeren / Löschen:")
                     .font(.headline)
@@ -398,7 +576,7 @@ struct HelpView: View {
                 Text("Ansicht & Farbanpassungen")
                     .font(.title2)
                     .bold()
-                Text("Im Einstellungsmenü unter **Ansicht** können Sie das gesamte Erscheinungsbild von AutoQSO Ihren individuellen Wünschen anpassen.")
+                Text("Im Einstellungsmenü unter **Ansicht** kannst du das gesamte Erscheinungsbild von AutoQSO deinen individuellen Wünschen anpassen.")
                     .font(.body)
                 
                 VStack(alignment: .leading, spacing: 10) {
@@ -432,7 +610,7 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                Text("Haben Sie Fragen, Probleme oder Feedback zu AutoQSO? Über den unten stehenden Button können Sie direkt eine E-Mail an unseren Support senden.")
+                Text("Hast du Fragen, Probleme oder Feedback zu AutoQSO? Über den unten stehenden Button kannst du direkt eine E-Mail an unseren Support senden.")
                     .font(.body)
                 
                 VStack(alignment: .leading, spacing: 8) {
@@ -537,7 +715,7 @@ struct HelpView: View {
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.blue.opacity(0.05))
+                .background(Color.green.opacity(0.08))
                 .cornerRadius(8)
                 
                 Divider()
@@ -575,7 +753,7 @@ struct HelpView: View {
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.green.opacity(0.08))
+                .background(Color.blue.opacity(0.05))
                 .cornerRadius(8)
                 
                 Divider()
@@ -1009,7 +1187,7 @@ struct HelpView: View {
         let bodyText = """
         Hallo AutoQSO Support-Team,
 
-        [Bitte beschreiben Sie hier Ihr Anliegen oder Problem]
+        [Bitte beschreibe hier dein Anliegen oder Problem]
 
 
         --------------------------------------------------

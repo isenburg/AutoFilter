@@ -134,7 +134,7 @@ struct InstallerContentView: View {
             }
             Button("Abbrechen", role: .cancel) { }
         } message: {
-            Text("In '\(targetDirectoryURL.path)' existiert bereits eine Version von AutoQSO. Möchten Sie diese durch die neue Version ersetzen?")
+            Text("In '\(targetDirectoryURL.path)' existiert bereits eine Version von AutoQSO. Möchtest du diese durch die neue Version ersetzen?")
         }
     }
 
@@ -172,7 +172,7 @@ struct InstallerContentView: View {
 
     private var readyView: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Wohin möchten Sie AutoQSO installieren?")
+            Text("Wohin möchtest du AutoQSO installieren?")
                 .font(.headline)
 
             VStack(spacing: 8) {
@@ -231,7 +231,7 @@ struct InstallerContentView: View {
                     Text("Automatischer macOS Gatekeeper Fix")
                         .font(.system(size: 11, weight: .bold))
                 }
-                Text("Der Installer entfernt automatisch Quarantäne-Sperren (xattr -cr) und fristet die ad-hoc Code-Signatur auf, damit AutoQSO direkt ohne Warnungen startet.")
+                Text("Der Installer entfernt automatisch Quarantäne-Sperren (xattr -cr) und frischt die ad-hoc Code-Signatur auf, damit AutoQSO direkt ohne Warnungen startet.")
                     .font(.system(size: 10.5))
                     .foregroundColor(.secondary)
             }
@@ -302,7 +302,7 @@ struct InstallerContentView: View {
                     .font(.title2)
                     .bold()
 
-                Text("AutoQSO wurde erfolgreich installiert und für den sicheren Start auf Ihrem Mac vorbereitet.")
+                Text("AutoQSO wurde erfolgreich installiert und für den sicheren Start auf deinem Mac vorbereitet.")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)

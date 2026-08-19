@@ -39,7 +39,8 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     @ObservedObject var viewModel: DecodeViewModel
     
-    // Lokaler Zustand der UI
+    // Lokaler Zustand der UI & gespeicherte Ziel-Sektion
+    @AppStorage("settingsSelectedSection") private var selectedSectionRaw: String = SettingsSection.udp.rawValue
     @State private var selectedSection: SettingsSection = .udp
     @State private var showResetAlert = false
     @State private var showDeleteLogbookAlert = false
@@ -144,6 +145,20 @@ struct SettingsView: View {
         .frame(minWidth: 740, minHeight: 380)
         .sheet(isPresented: $showQTHPickerSheet) {
             InteractiveQTHPickerView(myGridLocator: $myGridLocator)
+        }
+        .onAppear {
+            if let savedSection = SettingsSection(rawValue: selectedSectionRaw) {
+                selectedSection = savedSection
+            }
+        }
+        .onChange(of: selectedSection) { _, newSection in
+            selectedSectionRaw = newSection.rawValue
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenSettingsSection"))) { note in
+            if let targetRaw = note.object as? String, let targetSection = SettingsSection(rawValue: targetRaw) {
+                selectedSection = targetSection
+                selectedSectionRaw = targetSection.rawValue
+            }
         }
     }
     
@@ -512,7 +527,7 @@ struct SettingsView: View {
                         .tint(.green)
                     }
                     
-                    Text("Geben Sie Ihren präzisen Standorts-Locator ein (2- bis 8-Stellen).")
+                    Text("Gib deinen präzisen Standorts-Locator ein (2- bis 8-Stellen).")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

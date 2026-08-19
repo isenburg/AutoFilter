@@ -9,21 +9,53 @@
 AutoQSO ist eine macOS-Anwendung für Funkamateure. Die **Hauptfunktion ist der DX-Filter**, der eingehende DX-Spots und Dekodierungen nach flexiblen Kriterien analysiert, farblich klassifiziert und verarbeitet. **Für WSJT-X bietet AutoQSO zusätzlich die automatisierte Auto QSO Sende-Engine**, welche gezielte Anrufe auf FT8- und FT4-Frequenzen vollständig automatisch steuert, gegen das lokale SQLite-Logbuch abgleicht und seltene Most-Wanted-Stationen bevorzugt.
 
 ### Interaktiver Installer & macOS Gatekeeper Lösung
-Da AutoQSO ad-hoc signiert ist (ohne kostenpflichtiges Apple-Entwickler-Zertifikat), stuft macOS Gatekeeper die App beim ersten Download evtl. als „unbekannter Entwickler“ oder „beschädigt“ ein.
+Da AutoQSO ad-hoc signiert ist (ohne kostenpflichtiges Apple-Entwickler-Zertifikat), stuft macOS Gatekeeper die App beim ersten Download evtl. als „unbekannter Entwickler“ oder „beschädigt“ ein. Im DMG stehen zwei Wege zur Verfügung:
 
-**Installation per Doppelklick (Empfohlen):**
-1. Öffnen Sie die heruntergeladene **`AutoQSO-vX.X.X.dmg`** Datei.
-2. Starten Sie per Doppelklick das Skript **`Install AutoQSO.command`**.
-3. Wählen Sie interaktiv Ihren Zielordner (`/Applications`, `~/Applications` oder manueller Ordner-Dialog). Das Skript kopiert AutoQSO, entfernt das Quarantäne-Attribut (`xattr -cr`) automatisch und startet die App ohne Fehlermeldung.
+**Option 1: Nativer 1-Klick GUI Installer (Empfohlen)**
+1. Öffne die heruntergeladene **`AutoQSO-vX.X.X.dmg`** Datei.
+2. Starte per Doppelklick die App **`AutoQSO Installer.app`** (falls Gatekeeper warnt: *Rechtsklick -> Öffnen*).
+3. Wähle deinen Zielordner (`/Applications`, `~/Applications` oder Finder-Dialog). Der Installer kopiert AutoQSO, entfernt das Quarantäne-Attribut (`xattr -cr`) automatisch und startet die App ohne Fehlermeldung.
+
+**Option 2: Terminal-Installationsskript**
+- Starte per Doppelklick das Skript **`Install AutoQSO.command`** und folge den Anweisungen im Terminal.
 
 ---
 
-## 2. WSJTX Auto Transmit & Tabellen-Steuerung
+## 2. Quickstart – Mindesteinstellungen in 4 Schritten
+
+Für den erfolgreichen Betrieb von AutoQSO sind lediglich vier grundlegende Einstellungen erforderlich:
+
+1. **Eigenes Rufzeichen & Grid-Locator (Heimat-QTH)**
+   - *Zweck*: Automatische Entfernungs- und Peilungsberechnung sowie Zentrierung auf der Ausbreitungskarte und dem 3D-Globus.
+   - *Einstellung*: **Einstellungen (⚙️) -> Eigenes QTH (Maidenhead)** öffnen und Locator eingeben (z. B. `JO31AA24`) oder *Interaktive Karte zum Wählen 🗺️* nutzen.
+   - *Details*: Siehe Abschnitt [9. Ausbreitungskarte](#9-ausbreitungskarte-propagation-map).
+
+2. **WSJT-X UDP-Verbindung (Empfang & Auto Transmit)**
+   - *Zweck*: Empfang von FT8/FT4 Dekodierungen und automatische Antwortkommandos.
+   - *Einstellung in WSJT-X*: Unter **Settings -> Reporting** aktivieren:
+     - `Prompt me to log QSO` [x]
+     - `Accept UDP requests` [x]
+     - `UDP Server Address: 224.0.0.1` (oder `127.0.0.1`), `UDP Server Port: 2237`
+   - *Details*: Siehe Abschnitt [3. WSJTX Auto Transmit](#3-wsjtx-auto-transmit--tabellen-steuerung).
+
+3. **Logbuch-Synchronisation (LoTW / QRZ.com / ADIF)**
+   - *Zweck*: Echtzeit-Abgleich gegen bereits getätigte QSOs, Vermeidung von Doppel-QSOs, Markierung neuer Grids/Länder.
+   - *Einstellung*: **Einstellungen (⚙️) -> Logbuch-Sync** öffnen, Zugangsdaten eintragen und Sync starten (oder ADIF-Datei importieren).
+   - *Details*: Siehe Abschnitt [7. Logbuch-Sync & ADIF-Import](#7-logbuch-sync--adif-import).
+
+4. **DX Cluster (Optional, empfohlen)**
+   - *Zweck*: Paralleler Empfang von DX-Spots über bis zu 3 Verbindungen (C1, C2, C3).
+   - *Einstellung*: Dropdown-Picker in der linken Seitenleiste oder unter **Einstellungen (⚙️) -> DX Cluster**.
+   - *Details*: Siehe Abschnitt [5. DX Cluster Manager & Spot-Verarbeitung](#5-dx-cluster-manager--spot-verarbeitung).
+
+---
+
+## 3. WSJTX Auto Transmit & Tabellen-Steuerung
 
 Der Hauptschalter in der oberen Menüleiste wurde in **WSJTX Auto Transmit** umbenannt. Er steuert die automatische Steuerung der Sende-Engine:
 - **Aktivieren/Deaktivieren**: Ein Klick auf den prominenten Button schaltet die Automatik ein ("WSJTX AUTO TRANSMIT AKTIV", grün) oder aus ("WSJTX AUTO TRANSMIT AUS", grau).
-- **Freeze / Pause (Snapshot-Modus)**: Der Pause-Button friert die Dekodiertabelle und Protokolle mit einem statischen Snapshot ein. Auto-Scroll wird deaktiviert und Hintergrunddaten werden weiter empfangen. Sie können völlig frei durch historische Daten scrollen, ohne dass neu ankommende Dekodierungen die Ansicht zurückspringen lassen. Ein erneuter Klick hebt die Pause auf.
-- **Echtzeit-Suchfeld**: Über das integrierte Suchfeld in der Toolbar (sowie in den Logs) filtern Sie die Tabelle oder Protokolle in Echtzeit nach Rufzeichen, Land, Spotter, Grid-Locator oder Nachrichten-Text – sowohl im Live- als auch im Freeze-Modus.
+- **Freeze / Pause (Snapshot-Modus)**: Der Pause-Button friert die Dekodiertabelle und Protokolle mit einem statischen Snapshot ein. Auto-Scroll wird deaktiviert und Hintergrunddaten werden weiter empfangen. Du kannst völlig frei durch historische Daten scrollen, ohne dass neu ankommende Dekodierungen die Ansicht zurückspringen lassen. Ein erneuter Klick hebt die Pause auf.
+- **Echtzeit-Suchfeld**: Über das integrierte Suchfeld in der Toolbar (sowie in den Logs) filterst du die Tabelle oder Protokolle in Echtzeit nach Rufzeichen, Land, Spotter, Grid-Locator oder Nachrichten-Text – sowohl im Live- als auch im Freeze-Modus.
 - **Min. Sperre / Cooldown**: Das Feld für die Cooldown-Dauer (Standard: 10 Minuten) blockiert Rufzeichen nach einem automatischen Anruf temporär vor weiteren Sendeversuchen.
 
 ---
@@ -34,14 +66,14 @@ Der Hauptschalter in der oberen Menüleiste wurde in **WSJTX Auto Transmit** umb
 - **Rote Hervorhebung (🔥)**: Ungearbeitete Most Wanted Stationen werden in der Decodier-Tabelle knallrot mit Rang-Badge markiert (z.B. `🔥 #1`).
 - **Gesondertes Most-Wanted-Panel**: Unterhalb der Haupttabelle zeigt ein eigenes Panel ausschließlich die gerade empfangenen Most Wanted Stationen an, die auf dem aktuellen Band noch **nicht gearbeitet** wurden.
 - **Größenanpassung**: Die Höhe des Panels lässt sich über die native macOS Trennlinie (`VSplitView`) stufenlos verändern. Die eingestellte Größe wird automatisch in den Benutzerdaten gespeichert.
-- **Entfernung**: Automatische Berechnung der Großkreis-Entfernung in Kilometern via Haversine-Formel basierend auf dem Grid-Locator der Station und Ihrem eigenen Standort-Locator.
+- **Entfernung**: Automatische Berechnung der Großkreis-Entfernung in Kilometern via Haversine-Formel basierend auf dem Grid-Locator der Station und deinem eigenen Standort-Locator.
 
 ---
 
 ## 4. DX Cluster Manager & Spot-Verarbeitung
 
 Die Steuerung der DX-Cluster-Verbindung wurde komplett modernisiert:
-- **Sende-Slots**: In der Sidebar oder in den Einstellungen können Sie bis zu drei parallele DX-Cluster-Verbindungen (C1, C2, C3) per Dropdown-Picker auswählen.
+- **Sende-Slots**: In der Sidebar oder in den Einstellungen kannst du bis zu drei parallele DX-Cluster-Verbindungen (C1, C2, C3) per Dropdown-Picker auswählen.
 - **Verbindungsstatus**: Farbige Kreise zeigen den Live-Status an (Grau = Deaktiviert, Orange = Verbindungsaufbau, Grün = Verbunden, Rot = Fehler).
 - **Universelles Spot-Parsing**: Alle eintreffenden Spots gängiger Knoten-Formate (VE7CC, K3LR, RBNet, AR-Cluster, CC-Cluster, DXSpider) werden automatisch erfasst.
 - **Vollständige Listenanzeige & Farbkodierung**: Alle empfangenen Spots und Dekodierungen werden ohne Vorab-Löschung in der Haupttabelle dargestellt. Filter-Regeln löschen keine Einträge mehr, sondern steuern die farbliche Hervorhebung (z.B. Grau für blockiert) und automatische Aktionen.
@@ -61,7 +93,7 @@ Die Steuerung der DX-Cluster-Verbindung wurde komplett modernisiert:
 AutoQSO enthält einen eigenen Telnet-Cluster-Server, an den sich externe Log- oder Mapping-Programme (z.B. MacLoggerDX) connecten können:
 - **Port & Callsign**: Standardmäßig horcht der Server auf Port `8000`. Das Login-Rufzeichen (Standard `GUEST`) ist frei wählbar.
 - **Live-Status**: Zeigt an, ob der Server aktiv ist und wie viele externe Clients aktuell verbunden sind.
-- **WSJT-X Decodes Telnet-Ausgabe**: Ein Schalter ermöglicht es, alle lokalen WSJT-X Dekodierungen nach Durchlaufen Ihrer Filter als DX-Spots über Telnet auszugeben. Standardmäßig ist diese Option deaktiviert (keine Telnet-Ausgabe).
+- **WSJT-X Decodes Telnet-Ausgabe**: Ein Schalter ermöglicht es, alle lokalen WSJT-X Dekodierungen nach Durchlaufen deiner Filter als DX-Spots über Telnet auszugeben. Standardmäßig ist diese Option deaktiviert (keine Telnet-Ausgabe).
 
 ---
 
@@ -69,8 +101,8 @@ AutoQSO enthält einen eigenen Telnet-Cluster-Server, an den sich externe Log- o
 
 Sämtliche Logbuch-Optionen wurden im Einstellungsreiter **Logbuch-Sync** konsolidiert:
 - **LoTW & QRZ.com**: Eingabe der Zugangsdaten und manueller Live-Abgleich. Der Sync erfolgt inkrementell (standardmäßig ab 2 Tage vor dem letzten QSO).
-- **ADIF-Datei hochladen**: Sie können Ihre QSOs aus Drittprogrammen über eine ADIF-Datei (`.adi` oder `.adif`) importieren. AutoQSO liest die Datei ein, filtert Duplikate heraus und fügt neue QSOs in die lokale SQLite-Datenbank ein.
-- **Logbuch-Sync-Intervall**: Ermöglicht einen kontinuierlichen Abgleich Ihrer QSOs.
+- **ADIF-Datei hochladen**: Du kannst deine QSOs aus Drittprogrammen über eine ADIF-Datei (`.adi` oder `.adif`) importieren. AutoQSO liest die Datei ein, filtert Duplikate heraus und fügt neue QSOs in die lokale SQLite-Datenbank ein.
+- **Logbuch-Sync-Intervall**: Ermöglicht einen kontinuierlichen Abgleich deiner QSOs.
 - **Logbuch löschen**: Löscht alle lokalen QSOs aus der SQLite-Datenbank nach einer Sicherheitsabfrage.
 
 ---
@@ -90,8 +122,8 @@ Zur Diagnose und Rohdaten-Überwachung verfügt die App über drei umschaltbare 
 ## 8. Ansichtsoptionen
 
 Im Einstellungsreiter **Ansicht** können visuelle Vorlieben konfiguriert werden:
-- **Sortierung**: Legen Sie fest, ob neue Einträge in der Decodier-Tabelle und den Listen oben (Newest on Top) oder unten (Newest on Bottom) angefügt werden sollen. Dies lässt sich auch direkt in der Hauptansicht über den Pfeil-Button umschalten.
-- **Farbschema**: Wählen Sie zwischen **System** (folgt den macOS-Systemeinstellungen), **Hell** (Light Mode) und **Dunkel** (Sleek Dark Mode).
+- **Sortierung**: Lege fest, ob neue Einträge in der Decodier-Tabelle und den Listen oben (Newest on Top) oder unten (Newest on Bottom) angefügt werden sollen. Dies lässt sich auch direkt in der Hauptansicht über den Pfeil-Button umschalten.
+- **Farbschema**: Wähle zwischen **System** (folgt den macOS-Systemeinstellungen), **Hell** (Light Mode) und **Dunkel** (Sleek Dark Mode).
 - **Schriftgrößen**: Schieberegler für die Schriftgröße der Decodier-Tabelle (8-20 pt) und der Log-Konsole (8-20 pt).
 - **Farbanpassungen**:
   - **Tabelle**: Eigene Farben für Standard-Text, Most Wanted (🔥), interessante CQ-Rufe und gearbeitete Stationen.
@@ -102,7 +134,7 @@ Im Einstellungsreiter **Ansicht** können visuelle Vorlieben konfiguriert werden
 
 Über den Button **Karte ↗** in der Menüleiste/Toolbar (im Bereich FENSTER) kann die **Ausbreitungskarte** in einem eigenständigen, separaten Fenster geöffnet werden:
 - **Karte**: Zeigt eine interaktive Landkarte mit Annotations-Badges der aktiven Länder. Auf den Badges sind die Bänder und die Anzahl der Spots (z.B. `20M:5`) verzeichnet.
-- **Aktiver QSO-Pfad & Live-Banner**: Bei einem aktiven WSJT-X QSO/Anruf wird sowohl auf der 2D-Flachkarte als auch auf dem 3D-Globus eine leuchtend gelbe Großkreis-Verbindungslinie (`MKGeodesicPolyline` / `MapPolyline`) zwischen Ihrem eigenen QTH (grünes 🏠 Symbol) und der Zielstation gezeichnet. Ein Live-Statusbanner oben mittig zeigt Rufton, Ziel-Locator und Entfernung in km an.
+- **Aktiver QSO-Pfad & Live-Banner**: Bei einem aktiven WSJT-X QSO/Anruf wird sowohl auf der 2D-Flachkarte als auch auf dem 3D-Globus eine leuchtend gelbe Großkreis-Verbindungslinie (`MKGeodesicPolyline` / `MapPolyline`) zwischen deinem eigenen QTH (grünes 🏠 Symbol) und der Zielstation gezeichnet. Ein Live-Statusbanner oben mittig zeigt Rufton, Ziel-Locator und Entfernung in km an.
 - **Kartenstile & 3D-Globus**: Auswahl zwischen Standard, Satellit, Hybrid und nativer 3D-Globusansicht (Kugeldarstellung). Der Kartenstil lässt sich für Ausbreitungskarte und Grid-Karte unabhängig wählen.
 - **3D Maidenhead Grid & Schattierung**: Im 3D-Globus-Modus werden Maidenhead-Gitterlinien sowie gearbeitete 4-Stellen-Planquadrate als 3D-Geometrie direkt auf die Erdkugel projiziert. Ein Klick auf ein gearbeitetes Feld öffnet das Grid-Logbuchfenster.
 - **Eigenes QTH & Interaktiver QTH Picker**: Im Einstellungsfenster unter *Eigenes QTH (Maidenhead)* lässt sich der eigene Locator präzise bis zu 8 Stellen (z.B. `JO31AA24`) angeben. Ein Klick auf *Interaktive Karte zum Wählen 🗺️* öffnet eine interaktive Zoom-Karte mit dynamischem Maidenhead-Gitter und Google-Style Drop-Pin zum bequemen Wählen des eigenen Standorts per Mausklick.
@@ -136,6 +168,6 @@ Um den Platzbedarf auf dem Bildschirm drastisch zu reduzieren, kann AutoQSO übe
 >
 > Das Betreiben eines Amateurfunksenders unter automatischer Steuerung unterliegt nationalen Gesetzen und Vorschriften (z.B. BNetzA in Deutschland, FCC in den USA).
 >
-> Der Steuernde (Control Operator) ist für alle gesendeten Signale verantwortlich. Lassen Sie einen automatisierten Sender niemals unbeaufsichtigt laufen, sofern dies nicht durch Ihre Lizenzklasse und lokale Vorschriften erlaubt ist.
+> Der Steuernde (Control Operator) ist für alle gesendeten Signale verantwortlich. Lasse einen automatisierten Sender niemals unbeaufsichtigt laufen, sofern dies nicht durch deine Lizenzklasse und lokale Vorschriften erlaubt ist.
 >
 > Software wird „AS IS" bereitgestellt, ohne jegliche Garantie.
