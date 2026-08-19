@@ -135,14 +135,47 @@ cat > "$BUNDLE/Contents/Info.plist" <<PLIST
     <key>CFBundlePackageType</key>             <string>APPL</string>
     <key>NSHighResolutionCapable</key>         <true/>
     <key>LSMinimumSystemVersion</key>          <string>14.0</string>
+    <key>NSAppleEventsUsageDescription</key>   <string>AutoQSO benötigt Zugriff auf RUMlogNG, um Logbuch-Einträge abzugleichen.</string>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2024–2026 Georg Isenbürger · DJ6GI</string>
 </dict></plist>
 PLIST
 
-info "Signiere .app Bundle ad-hoc für lokalen Start..."
+info "Signiere AutoQSO.app Bundle ad-hoc..."
 codesign --force --deep --sign - "$BUNDLE"
-success ".app Bundle erstellt & ad-hoc signiert"
+success "AutoQSO.app Bundle erstellt & ad-hoc signiert"
+
+info "Erstelle AutoQSO Installer.app Bundle..."
+INSTALLER_NAME="AutoQSO Installer"
+INSTALLER_BUNDLE="$PROJECT_DIR/$INSTALLER_NAME.app"
+rm -rf "$INSTALLER_BUNDLE"
+mkdir -p "$INSTALLER_BUNDLE/Contents/MacOS" "$INSTALLER_BUNDLE/Contents/Resources"
+cp "$PROJECT_DIR/.build/release/AutoQSOInstaller" "$INSTALLER_BUNDLE/Contents/MacOS/$INSTALLER_NAME"
+chmod +x "$INSTALLER_BUNDLE/Contents/MacOS/$INSTALLER_NAME"
+[ -f "$PROJECT_DIR/Resources/AppIcon.icns" ] && \
+    cp "$PROJECT_DIR/Resources/AppIcon.icns" "$INSTALLER_BUNDLE/Contents/Resources/"
+
+cat > "$INSTALLER_BUNDLE/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+    <key>CFBundleExecutable</key>              <string>$INSTALLER_NAME</string>
+    <key>CFBundleIconFile</key>                <string>AppIcon</string>
+    <key>CFBundleIdentifier</key>              <string>com.dj6gi.autoqso.installer</string>
+    <key>CFBundleName</key>                    <string>$INSTALLER_NAME</string>
+    <key>CFBundleVersion</key>                 <string>$BUILD</string>
+    <key>CFBundleShortVersionString</key>      <string>$VERSION</string>
+    <key>CFBundlePackageType</key>             <string>APPL</string>
+    <key>NSHighResolutionCapable</key>         <true/>
+    <key>LSMinimumSystemVersion</key>          <string>14.0</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2024–2026 Georg Isenbürger · DJ6GI</string>
+</dict></plist>
+PLIST
+
+info "Signiere AutoQSO Installer.app Bundle ad-hoc..."
+codesign --force --deep --sign - "$INSTALLER_BUNDLE"
+success "AutoQSO Installer.app Bundle erstellt & ad-hoc signiert"
 
 # ── 6. .dmg erstellen ────────────────────────────────────────
 info "Erstelle .dmg..."
@@ -153,6 +186,11 @@ rm -f "$DMG_PATH" "$DMG_LATEST"
 
 STAGING=$(mktemp -d)
 cp -R "$BUNDLE" "$STAGING/"
+cp -R "$INSTALLER_BUNDLE" "$STAGING/"
+if [ -f "$PROJECT_DIR/Install AutoQSO.command" ]; then
+    cp "$PROJECT_DIR/Install AutoQSO.command" "$STAGING/"
+    chmod +x "$STAGING/Install AutoQSO.command"
+fi
 ln -s /Applications "$STAGING/Applications"
 
 # README für DMG erstellen (Deutsch & Englisch)
@@ -162,70 +200,63 @@ cat > "$STAGING/README.txt" << 'README_EOF'
 ================================================================================
 
 --------------------------------------------------------------------------------
-DEUTSCH / GERMAN: Wie starte ich AutoQSO unter macOS?
+DEUTSCH / GERMAN: Wie installiere & starte ich AutoQSO unter macOS?
 --------------------------------------------------------------------------------
 
 Da AutoQSO ad-hoc signiert ist (ohne kostenpflichtiges Apple-Entwickler-
 Zertifikat), stuft macOS Gatekeeper die App beim ersten Ausführen evtl. als
 "unbekannter Entwickler" oder "beschädigt" ein.
 
-SCHRITTE ZUR INSTALLATION UND ZUM START:
+1. OPTION 1 (Nativer 1-Klick GUI Installer – Empfohlen):
+   - Starte die App `AutoQSO Installer.app` direkt in dieser DMG.
+   - Falls Gatekeeper warnt: Rechtsklick (oder Ctrl+Klick) auf `AutoQSO Installer.app` -> "Öffnen".
+   - Der grafische Installer fragt deinen Wunsch-Zielordner (/Applications, ~/Applications
+     oder Ordnerauswahl im Finder) ab, kopiert die App, entfernt das macOS
+     Quarantäne-Attribut (xattr -cr) automatisch und startet AutoQSO auf Wunsch direkt.
 
-1. Kopiermodus:
-   Ziehen Sie `AutoQSO.app` in den Ordner `Applications` (Programme).
+2. OPTION 2 (Interaktives Terminal-Installationsskript):
+   - Starte per Doppelklick das Skript `Install AutoQSO.command`.
+   - Folge den Eingabeaufforderungen im Terminal.
 
-2. Empfohlene Methode (Terminal):
-   Öffnen Sie das Terminal (Programme > Dienstprogramme > Terminal) und führen Sie
-   folgenden Befehl aus, um das Quarantäne-Attribut zu entfernen:
+3. OPTION 3 (Manuell: Drag-and-Drop + Terminal):
+   - Ziehe `AutoQSO.app` in den Ordner `Applications` (Programme).
+   - Öffne das Terminal (Programme > Dienstprogramme > Terminal) und führe aus:
 
-     xattr -cr /Applications/AutoQSO.app
+       xattr -cr /Applications/AutoQSO.app
+       codesign --force --deep --sign - /Applications/AutoQSO.app
 
-   Danach können Sie AutoQSO ganz normal aus dem Programme-Ordner starten.
-
-3. Alternative Methode (ohne Terminal):
-   - Machen Sie im Finder einen Rechtsklick (oder Ctrl+Klick) auf `AutoQSO.app`
-     im Programme-Ordner und wählen Sie "Öffnen".
-   - Klicken Sie im angezeigten Dialog erneut auf "Öffnen".
-   - Falls blockiert: Öffnen Sie `Systemeinstellungen` > `Datenschutz & Sicherheit`,
-     scrollen Sie nach unten zu `Sicherheit` und klicken Sie auf "Dennoch öffnen".
-
-4. Lokale Entwicklung / Eigenes Kompilieren:
-   Um die App lokal ohne Fehlermeldung auszuführen, muss das .app Bundle signiert sein:
-
-     codesign --force --deep --sign - /pfad/zu/AutoQSO.app
+4. OPTION 4 (Rechtsklick im Finder):
+   - Rechtsklick (oder Ctrl+Klick) auf `AutoQSO.app` im Programme-Ordner -> "Öffnen".
+   - Falls blockiert: Systemeinstellungen > Datenschutz & Sicherheit -> "Dennoch öffnen".
 
 
 --------------------------------------------------------------------------------
-ENGLISH: How to run AutoQSO on macOS?
+ENGLISH: How to install & run AutoQSO on macOS?
 --------------------------------------------------------------------------------
 
 Since AutoQSO is distributed with ad-hoc code signing (without a paid Apple
-Developer ID certificate), macOS Gatekeeper might block the app on first launch,
-displaying a warning that it is from an "unidentified developer" or "damaged".
+Developer ID certificate), macOS Gatekeeper might block the app on first launch.
 
-STEPS TO INSTALL AND RUN:
+1. OPTION 1 (1-Click GUI Installer – Recommended):
+   - Double-click `AutoQSO Installer.app` inside this DMG.
+   - If Gatekeeper prompts a warning: Right-click (or Ctrl+Click) `AutoQSO Installer.app` -> "Open".
+   - The graphical installer prompts for your target directory (/Applications, ~/Applications,
+     or custom folder via Finder dialog), copies the app, strips Gatekeeper
+     quarantine locks (xattr -cr), refreshes code signing, and launches AutoQSO cleanly!
 
-1. Copying the App:
-   Drag `AutoQSO.app` into the `Applications` folder shortcut.
+2. OPTION 2 (Interactive Terminal Installer Script):
+   - Double-click `Install AutoQSO.command` inside this DMG and follow the prompt.
 
-2. Recommended Method (Terminal):
-   Open Terminal (Applications > Utilities > Terminal) and run the following
-   command to strip the quarantine attribute:
+3. OPTION 3 (Manual: Drag-and-Drop + Terminal):
+   - Drag `AutoQSO.app` into the `Applications` folder shortcut.
+   - Open Terminal (Applications > Utilities > Terminal) and run:
 
-     xattr -cr /Applications/AutoQSO.app
+       xattr -cr /Applications/AutoQSO.app
+       codesign --force --deep --sign - /Applications/AutoQSO.app
 
-   After running this, launch AutoQSO normally from your Applications folder.
-
-3. Alternative Method (UI):
+4. OPTION 4 (Finder Right-Click):
    - Right-click (or Ctrl+Click) `AutoQSO.app` in `/Applications` and select "Open".
-   - Click "Open" in the pop-up confirmation dialog.
-   - If still blocked: Open `System Settings` > `Privacy & Security`, scroll down
-     to `Security`, and click "Open Anyway".
-
-4. Local Builds & Code Signing:
-   To run locally built binaries, ensure the bundle is ad-hoc signed:
-
-     codesign --force --deep --sign - /path/to/AutoQSO.app
+   - If blocked: Open System Settings > Privacy & Security -> "Open Anyway".
 
 ================================================================================
 README_EOF

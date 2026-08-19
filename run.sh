@@ -60,7 +60,7 @@ if [ $? -eq 0 ]; then
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.autoqso.app</string>
+    <string>com.dj6gi.autoqso</string>
     <key>CFBundleName</key>
     <string>$APP_NAME</string>
     <key>CFBundleVersion</key>
@@ -71,9 +71,16 @@ if [ $? -eq 0 ]; then
     <string>APPL</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>AutoQSO benötigt Zugriff auf RUMlogNG, um Logbuch-Einträge abzugleichen.</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2024–2026 Georg Isenbürger · DJ6GI</string>
 </dict>
 </plist>
 EOF
+
+    echo "Signiere App-Bundle ad-hoc..."
+    codesign --force --deep --sign - "$BUNDLE_DIR"
 
     echo "Starte ${BUNDLE_DIR}..."
     open "$BUNDLE_DIR"

@@ -7,12 +7,17 @@ let package = Package(
         .macOS(.v14), .iOS(.v17)
     ],
     products: [
-        .executable(name: "AutoQSO", targets: ["AutoQSO"])
+        .executable(name: "AutoQSO", targets: ["AutoQSO"]),
+        .executable(name: "AutoQSOInstaller", targets: ["AutoQSOInstaller"])
     ],
     targets: [
         .executableTarget(
             name: "AutoQSO",
             path: "Sources/AutoQSO"
+        ),
+        .executableTarget(
+            name: "AutoQSOInstaller",
+            path: "Sources/AutoQSOInstaller"
         )
     ]
 )

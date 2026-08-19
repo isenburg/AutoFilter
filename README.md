@@ -1,6 +1,6 @@
 # AutoQSO
 
-**Automated FT8/FT4 QSO Manager & WSJT-X Assistant**
+**DX-Filter and Automated FT8/FT4 QSO Manager & WSJT-X Assistant**
 
 *Copyright (c) Georg Isenbürger - DJ6GI*
 
@@ -8,17 +8,44 @@
 
 ## 📖 Overview
 
-**AutoQSO** is a macOS application designed to automate FT8 and FT4 contacts in conjunction with **WSJT-X**. It monitors incoming UDP decode messages from WSJT-X, filters out callsigns already worked on the current band (using local SQLite logbook data synchronized with ARRL LoTW and QRZ.com), and automatically initiates calls to new stations.
+**AutoQSO** is a high-performance macOS application designed for amateur radio operators. 
+
+- **Primary Function (DX-Filter)**: Analyzes, classifies, and filters incoming DX spots and decodes in real-time according to custom criteria, callsign lists, countries, and bands.
+- **WSJT-X Integration (Auto QSO)**: Automated transmit engine for FT8 and FT4 contacts, cross-referencing incoming decodes against a local SQLite logbook synchronized with RUMlogNG, ARRL LoTW, and QRZ.com, prioritizing rare Most-Wanted DXCC stations.
 
 ---
 
 ## ⚡ Key Features
 
-- **Automated QSO Triggers**: Automatically responds to incoming decodes containing **`CQ`**, **`73`**, **`RR73`**, and **`RRR`**.
-- **Dupe & Band Filtering**: Checks each station against your logbook before replying. Previously worked stations on that band are dimmed, and unworked stations trigger an auto-reply.
-- **LoTW & QRZ.com Synchronization**: Downloads full historical logbook records (from `1900-01-01` onwards, including all records prior to 2014) and caches them in a fast local SQLite database.
-- **Blacklist & Cooldown Management**: Automatically blacklists stations for 10-15 minutes if a QSO attempt times out (120 seconds) or is manually halted, preventing repetitive loops.
-- **WSJT-X Integration**: Listens for WSJT-X UDP multicast messages (default `224.0.0.1:2237` or unicast `127.0.0.1:2237`) and sends `Reply` (Type 12) packets.
+- **DX-Filter (Core Feature)**: Intelligent real-time spot evaluation, customizable color coding, continent/region filtering, and spot forwarding via built-in Telnet cluster server.
+- **Automated FT8/FT4 QSO Engine**: Responds automatically to `CQ`, `73`, `RR73`, and `RRR` decodes with dupe prevention and automatic cooldown management.
+- **3D Globe & 2D Propagation Maps**: Native 3D Globe projection rendering Maidenhead grid lines, worked 4-character squares, spot pins, and active QSO great-circle paths.
+- **Active QSO Path Visualization & Centering**: Displays an accurate 3D spherical great-circle arc (Slerp) connecting Home QTH (🏠) and the target station (⚡), automatically centered and framed on the map with a 1-click re-centering status banner.
+- **Interactive QTH Picker**: Dedicated Maidenhead settings topic (up to 8-character precision) with interactive map picking and Google-style drop pins.
+- **RUMlogNG, LoTW & QRZ.com Logbook Sync**: Local SQLite storage supporting 1-click sync from RUMlogNG (via native AppleScript `ReadAdif`), LoTW, and QRZ.com from 1900-01-01 onwards with selectable provider mode and automatic post-QSO syncing.
+- **Compact & Detachable Modes**: Toolbar toggle for compact view with full icon access, and detachable log diagnostic consoles.
+
+---
+
+## 📥 Installation & macOS Gatekeeper Fix
+
+Since AutoQSO is distributed with self-signed (ad-hoc) code signing without a paid Apple Developer ID certificate, macOS Gatekeeper may block direct launches. The DMG release includes two installer options:
+
+### Option 1: Native 1-Click GUI Installer (Recommended)
+1. Mount the downloaded **`AutoQSO-vX.X.X.dmg`** file.
+2. Double-click (or **Right-Click -> Open**) **`AutoQSO Installer.app`** inside the DMG.
+3. Select your desired target directory (`/Applications`, `~/Applications`, or custom folder). The installer automatically copies the app, removes quarantine attributes (`xattr -cr`), and refreshes code signatures.
+
+### Option 2: Interactive Terminal Installer Script
+1. Inside the DMG, double-click **`Install AutoQSO.command`**.
+2. Follow the prompt to select the destination folder.
+
+### Option 3: Manual Installation (Terminal)
+If you drag `AutoQSO.app` into `/Applications` manually, run:
+```bash
+xattr -cr /Applications/AutoQSO.app
+codesign --force --deep --sign - /Applications/AutoQSO.app
+```
 
 ---
 
@@ -33,9 +60,10 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 
 ### 2. AutoQSO Configuration
 1. Launch **AutoQSO**.
-2. Enter your **LoTW Username & Password** and click **LoTW Sync** to populate your local logbook.
-3. Enter your **QRZ.com API Key** and click **QRZ Sync** for QRZ logbook synchronization.
-4. Toggle **AUTO MODE** to enable automated calling.
+2. Go to **Settings -> Logbuch-Sync** to choose your active logbook source (**RUMlogNG**, **LoTW**, or **QRZ.com**).
+3. Go to **Settings -> Telnet Server** to set your login callsign.
+4. Go to **Settings -> Eigenes QTH** to set your Maidenhead locator (or click 🗺️ for interactive map picker).
+5. Toggle **WSJTX Auto Transmit** in the toolbar to enable automated calling.
 
 ---
 
@@ -53,42 +81,42 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 
 ## 📝 Changelog
 
+### Version 3.4.0 (Build 410)
+- **RUMlogNG AppleScript Integration**: 1-click logbook synchronization from running RUMlogNG app via native AppleScript (`ReadAdif`) with full (since 1900) and incremental sync modes.
+- **Selectable Logbook Providers**: Switch between *RUMlogNG*, *ARRL LoTW*, and *QRZ.com* in settings with automatic dynamic post-QSO syncing.
+- **Active QSO Great-Circle Centering**: Automatically centers and zooms the map on active QSO great-circle paths with 1-click re-centering from the top status pill.
+- **Dual-Installer Release DMG**: Includes both native macOS GUI Installer (`AutoQSO Installer.app`) and terminal script (`Install AutoQSO.command`).
+- **Quickstart Deep-Linking**: Direct navigation buttons from Quickstart to specific settings tabs.
+- **Auto-Scroll Crash Fix**: Thread-safe asynchronous viewport scrolling for high-throughput decoding.
+
+### Version 3.3.2 (Build 402)
+- **Native macOS GUI Installer**: Native GUI installer app bundled inside DMG with custom target directory picker.
+- **Interactive Grid Inspector**: Clickable grid cells with detailed popovers showing bearing, distance, worked status, and QRZ lookups.
+- **Band Quick-Filter Pills**: Horizontal filter pills (`ALL`, `160M`–`6M`) on the grid map.
+- **Bearing & Distance Display**: Shows azimuth and great-circle distance relative to Home QTH in grid lists.
+- **Spot Freshness Decay**: Visual indicators for fresh spots (<3 min) and subtle fading for older spots.
+- **Interactive 1-Click Installer**: Bundled `Install AutoQSO.command` inside DMG releases with target folder selection (`/Applications`, `~/Applications`, Finder dialog) and automatic Gatekeeper quarantine removal (`xattr -cr`).
+- **3D Globe Projection & Maidenhead Grid**: Rendered Maidenhead grid lines and worked 4-character squares natively as 3D polylines and polygons on 3D Globe map.
+- **Active QSO Path Visualization**: Added accurate 3D spherical great-circle arc (Slerp) between Home QTH (🏠) and target station (⚡) with top status banner.
+- **Interactive QTH Picker**: Modal map picker with 8-character locator resolution and Google-style drop pin.
+- **Compact Mode Toolbar**: Integrated complete set of 6 icon buttons into the compact view header with clean bordered styling.
+- **Map Style Menu Controls**: Compact, high-contrast dropdown menus (`.ultraThinMaterial` pill) across all 2D and 3D map views.
+
 ### Version 3.2.1 (Build 198)
-- **Bugfixes & Toolbar Help**:
-  - Fixed SwiftUI macOS text fields (ports/cooldowns) resetting to 1 during typing by introducing `NumericTextField`.
-  - Implemented window-level hierarchy auto-scrolling to reliably scroll the main table and log views.
-  - Resolved DX Cluster duplicate checks to obey filter preferences and the custom time window.
-  - Added toolbar clear buttons to empty table decodes and raw logs.
-  - Created a dedicated "Toolbar & Bedienung" topic documenting controls, single-click detail lookups, and double-click manual replies.
+- **Bugfixes & Toolbar Help**: Fixed numeric text fields, window-level scroll hierarchy, and added toolbar clear buttons.
 
 ### Version 3.2.0 (Build 190)
-- **UI Performance Boost**: Coalesced and debounced decode UI calculations by 300ms, removing rendering stutter during dense FT8 activity.
-- **Background Startup**: Moved `cty.dat` parser to a background queue to launch the app instantly without blocking the main thread.
-- **Stored Spot Metadata**: Shifted lookup computations (`callsign`, `country`, `isMostWanted`, `grid`, etc.) to stored properties on `WSJTXDecode`, bringing table redraw time to near zero.
-- **Lazy Console**: Replaced eager console layout elements with `LazyVStack` to handle massive log streams smoothly.
-- **Static Key Cache**: Optimized `MostWantedManager` prefix mapping to reuse pre-sorted lookup tables.
+- **UI Performance Boost**: Coalesced and debounced decode UI calculations by 300ms, and moved `cty.dat` parser to background queue.
 
 ### Version 3.1.0 (Build 174)
-- **Propagation Map**: Interactive Live Map detailing country activity and active bands, openable in a standalone macOS window via "Karte ↗" toolbar button.
-- **Persistent Selection**: Manually clicked spot selections remain pinned in the top info banner and are only overridden when Auto QSO targets another station.
-- **Centered Console Tabs**: Center-aligned the segmented tab picker in the integrated and detached raw log view headers.
-- **Label Refinements**: Shortened "WSJTX Auto Transmit" button labels to compact "Auto ON" and "Auto OFF".
-- **Dynamic Fonts**: Rescaled map overlays and sidebar entries based on `fontSizeTable` preference, and reduced the Telnet option label font size to avoid truncation.
+- **Propagation Map**: Interactive Live Map detailing country activity and active bands.
 
 ### Version 3.0.0 (Build 166)
-- **Detachable Console**: The diagnosis logs console can now be detached into its own floatable window and docks back automatically when closed.
-- **DX Cluster Manager**: Added lists, editing, deleting, and native drag-and-drop sort order configurations for upstream DX Clusters in Settings.
-- **Split Views & Dimensions**: Swapped layout containers for native `VSplitView` split dividers and added preference-based size storage to remember panel heights.
-- **Sync & ADIF Import**: Integrated ADIF file imports, database wipe options, and QRZ/LoTW synchronizations under a single consolidated "Logbuch-Sync" settings group.
-- **Theme Selection & Styling**: Sliders to completely adjust table and console font sizes, integrated color pickers for customized log console/table colors, and support for Light, Dark, or System appearances.
+- **Detachable Console**: Diagnostic logs console now detachable into floating window.
+- **DX Cluster Manager**: Upstream cluster management with native drag-and-drop reordering.
 
 ### Version 1.0.0 (Build 61)
-- **Expanded Auto QSO Triggers**: AutoQSO now triggers on `73`, `RR73`, and `RRR` messages as well as `CQ` decodes.
-- **LoTW Historical Download Fix**: Fixed ARRL LoTW report parameters (`qso_qsos=1`) and start date queries (`qso_startdate=1900-01-01`) to ensure all QSOs prior to 2014 are fetched.
-- **QRZ.com Historical Sync Fix**: Fixed QRZ API fetch options (`MODSINCE:1900-01-01`) to retrieve full log history back to 1900.
-- **URL Encoding Enhancements**: Improved sanitization for credentials and API keys containing special characters.
-- **Release Automation & Packaging**: Added automated `release` and `run.sh` scripts supporting semantic versioning (`.version`), `.dmg` bundle generation, and GitHub release uploads.
-- **SQLite Logbook Engine**: Built-in SQLite local storage for fast dupe checking across all bands.
+- **Initial Release**: SQLite logbook engine, LoTW/QRZ historical sync, and FT8/FT4 auto-calling.
 
 ---
 
