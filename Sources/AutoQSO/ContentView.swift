@@ -468,24 +468,15 @@ struct ContentView: View {
         .onChange(of: viewModel.totalReceived) { _, _ in
             guard !viewModel.isMainTableScrollPaused else { return }
             self.scrollToNewestRow()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.scrollToNewestRow()
-            }
         }
         .onChange(of: viewModel.isMainTableScrollPaused) { _, isPaused in
             if !isPaused {
                 self.scrollToNewestRow()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    self.scrollToNewestRow()
-                }
             }
         }
         .onChange(of: isNewestOnTop) { _, _ in
             if !viewModel.isMainTableScrollPaused {
                 self.scrollToNewestRow()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    self.scrollToNewestRow()
-                }
             }
         }
         .alert("Fehler beim LoTW Sync", isPresented: Binding(
@@ -2498,10 +2489,18 @@ struct ContentView: View {
     }
 
     private func scrollToNewestRow() {
-        if let tableView = findTableView() {
-            let targetRow = isNewestOnTop ? 0 : tableView.numberOfRows - 1
-            if targetRow >= 0 && targetRow < tableView.numberOfRows {
-                tableView.scrollRowToVisible(targetRow)
+        DispatchQueue.main.async {
+            guard let tableView = self.findTableView(),
+                  let scrollView = tableView.enclosingScrollView,
+                  let clipView = scrollView.contentView as NSClipView? else { return }
+            
+            if self.isNewestOnTop {
+                clipView.scroll(to: NSPoint(x: 0, y: 0))
+                scrollView.reflectScrolledClipView(clipView)
+            } else {
+                let maxY = max(0, tableView.frame.height - clipView.bounds.height)
+                clipView.scroll(to: NSPoint(x: 0, y: maxY))
+                scrollView.reflectScrolledClipView(clipView)
             }
         }
     }
