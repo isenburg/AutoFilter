@@ -8,6 +8,10 @@
 
 AutoQSO ist eine macOS-Anwendung für Funkamateure. Die **Hauptfunktion ist der DX-Filter**, der eingehende DX-Spots und Dekodierungen nach flexiblen Kriterien analysiert, farblich klassifiziert und verarbeitet. **Für WSJT-X bietet AutoQSO zusätzlich die automatisierte Auto QSO Sende-Engine**, welche gezielte Anrufe auf FT8- und FT4-Frequenzen vollständig automatisch steuert, gegen das lokale SQLite-Logbuch abgleicht und seltene Most-Wanted-Stationen bevorzugt.
 
+### Systemvoraussetzungen
+- **Betriebssystem**: macOS 14.0 (Sonoma) oder neuer (einschließlich macOS 15 Sequoia).
+- **Prozessor / Architektur**: Apple Silicon Mac (M1, M2, M3, M4 oder neuer; `arm64`).
+
 ### Interaktiver Installer & macOS Gatekeeper Lösung
 Da AutoQSO ad-hoc signiert ist (ohne kostenpflichtiges Apple-Entwickler-Zertifikat), stuft macOS Gatekeeper die App beim ersten Download evtl. als „unbekannter Entwickler“ oder „beschädigt“ ein. Im DMG stehen zwei Wege zur Verfügung:
 
