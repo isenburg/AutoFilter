@@ -70,6 +70,7 @@ struct ContentView: View {
     @AppStorage("isBlockedITUZonesExpanded") private var isBlockedITUZonesExpanded = true
     @AppStorage("isWsjtSpecialFilterExpanded") private var isWsjtSpecialFilterExpanded = true
     @AppStorage("isNewGridFilterExpanded") private var isNewGridFilterExpanded = true
+    @AppStorage("isWorkedBeforeFilterExpanded") private var isWorkedBeforeFilterExpanded = true
     @AppStorage("isDuplicateFilterExpanded") private var isDuplicateFilterExpanded = true
     @AppStorage("isAllowedDXCallsignsExpanded") private var isAllowedDXCallsignsExpanded = true
     @AppStorage("isAllowedSpotterCountriesExpanded") private var isAllowedSpotterCountriesExpanded = true
@@ -1603,6 +1604,40 @@ struct ContentView: View {
 
     @ViewBuilder
     private var countryFilterContent: some View {
+        // 1. Kontinent-Filter
+        Section(isExpanded: $isContinentFilterExpanded) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Erlaubte Kontinente an- oder abwählen.")
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary)
+                    .italic()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+
+            ForEach(continentCodes, id: \.code) { item in
+                Toggle(isOn: Binding(
+                    get: { !viewModel.disabledContinents.contains(item.code) },
+                    set: { _ in viewModel.toggleContinent(item.code) }
+                )) {
+                    Text("\(item.nameKey) (\(item.code))").font(.system(size: 11))
+                }
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+            }
+
+            HStack {
+                Button("Alle an") { viewModel.setAllContinents(enabled: true) }
+                    .buttonStyle(.bordered).controlSize(.small)
+                Button("Alle aus") { viewModel.setAllContinents(enabled: false) }
+                    .buttonStyle(.bordered).controlSize(.small)
+            }
+            .padding(.top, 2)
+        } header: {
+            sidebarHeader("Kontinent-Filter", isExpanded: $isContinentFilterExpanded, activeCount: viewModel.disabledContinents.count)
+        }
+
+        // 2. Gesperrte Länder (Blacklist)
         Section(isExpanded: $isBlockedCountriesExpanded) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Blacklist-Modus").font(.caption).bold()
@@ -1635,6 +1670,7 @@ struct ContentView: View {
             sidebarHeader("Gesperrte Länder", isExpanded: $isBlockedCountriesExpanded, activeCount: viewModel.blockedCountries.count)
         }
 
+        // 3. Erlaubte DX-Länder (Whitelist)
         Section(isExpanded: $isAllowedDXCountriesExpanded) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Whitelist-Modus").font(.caption).bold()
@@ -1668,38 +1704,7 @@ struct ContentView: View {
             sidebarHeader("Erlaubte DX-Länder", isExpanded: $isAllowedDXCountriesExpanded, activeCount: viewModel.allowedCountries.count)
         }
 
-        Section(isExpanded: $isContinentFilterExpanded) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Erlaubte Kontinente an- oder abwählen.")
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
-                    .italic()
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
-
-            ForEach(continentCodes, id: \.code) { item in
-                Toggle(isOn: Binding(
-                    get: { !viewModel.disabledContinents.contains(item.code) },
-                    set: { _ in viewModel.toggleContinent(item.code) }
-                )) {
-                    Text("\(item.nameKey) (\(item.code))").font(.system(size: 11))
-                }
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-            }
-
-            HStack {
-                Button("Alle an") { viewModel.setAllContinents(enabled: true) }
-                    .buttonStyle(.bordered).controlSize(.small)
-                Button("Alle aus") { viewModel.setAllContinents(enabled: false) }
-                    .buttonStyle(.bordered).controlSize(.small)
-            }
-            .padding(.top, 2)
-        } header: {
-            sidebarHeader("Kontinent-Filter", isExpanded: $isContinentFilterExpanded, activeCount: viewModel.disabledContinents.count)
-        }
-
+        // 4. Gesperrte CQ-Zonen
         Section(isExpanded: $isBlockedCQZonesExpanded) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Signale aus diesen CQ-Zonen werden blockiert.")
@@ -1741,6 +1746,7 @@ struct ContentView: View {
             sidebarHeader("Gesperrte CQ-Zonen", isExpanded: $isBlockedCQZonesExpanded, activeCount: viewModel.blockedCQZones.count)
         }
 
+        // 5. Gesperrte ITU-Zonen
         Section(isExpanded: $isBlockedITUZonesExpanded) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Signale aus diesen ITU-Zonen werden blockiert.")
@@ -1782,18 +1788,89 @@ struct ContentView: View {
             sidebarHeader("Gesperrte ITU-Zonen", isExpanded: $isBlockedITUZonesExpanded, activeCount: viewModel.blockedITUZones.count)
         }
 
-        Section(isExpanded: $isWsjtSpecialFilterExpanded) {
+        // 6. Erlaubte DX-Rufzeichen
+        Section(isExpanded: $isAllowedDXCallsignsExpanded) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Whitelist-Modus").font(.caption).bold()
+                Text("NUR Rufzeichen, die mit diesen Präfixen beginnen, werden durchgelassen.")
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary)
+                    .italic()
+                    .lineLimit(nil)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+
+            ForEach(viewModel.allowedDXCallsigns, id: \.self) { callsign in
+                HStack {
+                    Text(callsign).font(.system(size: 11, design: .monospaced)).bold()
+                    Spacer()
+                    Button { viewModel.removeAllowedDXCallsign(callsign) } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("DX-Rufzeichen erlauben").font(.caption2).foregroundColor(.secondary)
+                HStack(spacing: 4) {
+                    TextField("z.B. DP0, K1, DL1ABC", text: $newAllowedDXCallsign)
+                        .textFieldStyle(UnifiedTextFieldStyle())
+                        .onSubmit {
+                            viewModel.addAllowedDXCallsign(newAllowedDXCallsign)
+                            newAllowedDXCallsign = ""
+                        }
+                    Button {
+                        viewModel.addAllowedDXCallsign(newAllowedDXCallsign)
+                        newAllowedDXCallsign = ""
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundColor(newAllowedDXCallsign.trimmingCharacters(in: .whitespaces).isEmpty ? .secondary : .blue)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(newAllowedDXCallsign.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }.padding(.vertical, 4)
+        } header: {
+            sidebarHeader("Erlaubte DX-Rufzeichen", isExpanded: $isAllowedDXCallsignsExpanded, activeCount: viewModel.allowedDXCallsigns.count)
+        }
+
+        // 7. Gearbeitete Stationen
+        Section(isExpanded: $isWorkedBeforeFilterExpanded) {
             VStack(alignment: .leading, spacing: 6) {
                 Toggle(isOn: Binding(
-                    get: { viewModel.isWsjtSpecialFilterEnabled },
-                    set: { viewModel.isWsjtSpecialFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                    get: { viewModel.isWorkedBeforeFilterEnabled },
+                    set: { viewModel.isWorkedBeforeFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
                 )) {
-                    Text("Nur CQ, RRR, RR73, 73").font(.system(size: 11)).bold()
+                    Text("Gearbeitete Stationen filtern").font(.system(size: 11)).bold()
                 }
                 .toggleStyle(.switch)
                 .controlSize(.mini)
 
-                Text("Filtert alle Dekodierungen heraus, die keine CQ-Rufe oder QSO-Beendigungen sind.")
+                HStack(spacing: 6) {
+                    Text("Zeitspanne:").font(.system(size: 10))
+                    
+                    NumericTextField("1", value: Binding(
+                        get: { viewModel.workedBeforeDuration },
+                        set: { viewModel.workedBeforeDuration = max(0, min(999, $0)); viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                    ), range: 0...999)
+                    .textFieldStyle(UnifiedTextFieldStyle())
+                    .frame(width: 42)
+                    .controlSize(.mini)
+                    
+                    Picker("", selection: Binding(
+                        get: { viewModel.workedBeforeUnit },
+                        set: { viewModel.workedBeforeUnit = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                    )) {
+                        ForEach(WorkedBeforeUnit.allCases) { unit in
+                            Text(viewModel.workedBeforeDuration == 1 ? unit.singularTitle : unit.title).tag(unit)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .controlSize(.mini)
+                }
+
+                Text("Lässt bereits auf dem Band gearbeitete Stationen nur durch, wenn das letzte QSO mindestens die gewählte Zeitspanne zurückliegt.")
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
                     .italic()
@@ -1804,9 +1881,10 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
         } header: {
-            sidebarHeader("WSJT-X Spezialfilter", isExpanded: $isWsjtSpecialFilterExpanded, activeCount: viewModel.isWsjtSpecialFilterEnabled ? 1 : 0)
+            sidebarHeader("Gearbeitete Stationen", isExpanded: $isWorkedBeforeFilterExpanded, activeCount: viewModel.isWorkedBeforeFilterEnabled ? 1 : 0)
         }
 
+        // 8. Maidenhead Grid-Filter
         Section(isExpanded: $isNewGridFilterExpanded) {
             VStack(alignment: .leading, spacing: 6) {
                 Toggle(isOn: Binding(
@@ -1841,6 +1919,33 @@ struct ContentView: View {
             sidebarHeader("Maidenhead Grid-Filter", isExpanded: $isNewGridFilterExpanded, activeCount: (viewModel.isNew4CharGridOnlyFilterEnabled ? 1 : 0) + (viewModel.isNew6CharGridOnlyFilterEnabled ? 1 : 0))
         }
 
+        // 9. WSJT-X CQ Filter
+        Section(isExpanded: $isWsjtSpecialFilterExpanded) {
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle(isOn: Binding(
+                    get: { viewModel.isWsjtSpecialFilterEnabled },
+                    set: { viewModel.isWsjtSpecialFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                )) {
+                    Text("Nur CQ, RRR, RR73, 73").font(.system(size: 11)).bold()
+                }
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+
+                Text("Filtert alle Dekodierungen heraus, die keine CQ-Rufe oder QSO-Beendigungen sind.")
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary)
+                    .italic()
+                    .lineLimit(nil)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+        } header: {
+            sidebarHeader("WSJT-X CQ Filter", isExpanded: $isWsjtSpecialFilterExpanded, activeCount: viewModel.isWsjtSpecialFilterEnabled ? 1 : 0)
+        }
+
+        // 10. Doubletten-Filter
         Section(isExpanded: $isDuplicateFilterExpanded) {
             VStack(alignment: .leading, spacing: 6) {
                 Toggle(isOn: Binding(
@@ -1890,52 +1995,6 @@ struct ContentView: View {
             .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
         } header: {
             sidebarHeader("Doubletten-Filter", isExpanded: $isDuplicateFilterExpanded, activeCount: viewModel.isDuplicateFilterEnabled ? 1 : 0)
-        }
-
-        Section(isExpanded: $isAllowedDXCallsignsExpanded) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Whitelist-Modus").font(.caption).bold()
-                Text("NUR Rufzeichen, die mit diesen Präfixen beginnen, werden durchgelassen.")
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
-                    .italic()
-                    .lineLimit(nil)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
-
-            ForEach(viewModel.allowedDXCallsigns, id: \.self) { callsign in
-                HStack {
-                    Text(callsign).font(.system(size: 11, design: .monospaced)).bold()
-                    Spacer()
-                    Button { viewModel.removeAllowedDXCallsign(callsign) } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("DX-Rufzeichen erlauben").font(.caption2).foregroundColor(.secondary)
-                HStack(spacing: 4) {
-                    TextField("z.B. DP0, K1, DL1ABC", text: $newAllowedDXCallsign)
-                        .textFieldStyle(UnifiedTextFieldStyle())
-                        .onSubmit {
-                            viewModel.addAllowedDXCallsign(newAllowedDXCallsign)
-                            newAllowedDXCallsign = ""
-                        }
-                    Button {
-                        viewModel.addAllowedDXCallsign(newAllowedDXCallsign)
-                        newAllowedDXCallsign = ""
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundColor(newAllowedDXCallsign.trimmingCharacters(in: .whitespaces).isEmpty ? .secondary : .blue)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(newAllowedDXCallsign.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }.padding(.vertical, 4)
-        } header: {
-            sidebarHeader("Erlaubte DX-Rufzeichen", isExpanded: $isAllowedDXCallsignsExpanded, activeCount: viewModel.allowedDXCallsigns.count)
         }
     }
 

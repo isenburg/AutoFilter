@@ -147,6 +147,9 @@ class DecodeViewModel: ObservableObject {
     @Published var isWsjtSpecialFilterEnabled: Bool = false
     @Published var isNew4CharGridOnlyFilterEnabled: Bool = false
     @Published var isNew6CharGridOnlyFilterEnabled: Bool = false
+    @Published var isWorkedBeforeFilterEnabled: Bool = false
+    @Published var workedBeforeDuration: Int = 1
+    @Published var workedBeforeUnit: WorkedBeforeUnit = .months
     @Published var isDuplicateFilterEnabled: Bool = true
     @Published var duplicateSpotWindowMinutes: Int = 1
     @Published var duplicateSpotFrequencyTolerance: Double = 0.5
@@ -587,8 +590,15 @@ class DecodeViewModel: ObservableObject {
                     }
                 }
                 
-                // Check if not worked on this band
-                if !lotwManager.hasWorked(callsign: call, band: decode.band) {
+                // Check if not worked on this band (or meets the worked-before threshold)
+                let isWorkedBlocked: Bool
+                if isWorkedBeforeFilterEnabled {
+                    isWorkedBlocked = lotwManager.hasWorkedRecently(callsign: call, band: decode.band, duration: workedBeforeDuration, unit: workedBeforeUnit)
+                } else {
+                    isWorkedBlocked = lotwManager.hasWorked(callsign: call, band: decode.band)
+                }
+                
+                if !isWorkedBlocked {
                     // Check if callsign is currently in failure/aborted cooldown
                     if let blacklistedAt = blacklistedCalls[call] {
                         let elapsedMinutes = Date().timeIntervalSince(blacklistedAt) / 60.0
@@ -601,7 +611,8 @@ class DecodeViewModel: ObservableObject {
                     }
                     candidates.append(decode)
                 } else {
-                    skippedCounts["Bereits auf \(decode.band) gearbeitet"] = (skippedCounts["Bereits auf \(decode.band) gearbeitet"] ?? 0) + 1
+                    let msg = isWorkedBeforeFilterEnabled ? "Vor kurzem auf \(decode.band) gearbeitet" : "Bereits auf \(decode.band) gearbeitet"
+                    skippedCounts[msg] = (skippedCounts[msg] ?? 0) + 1
                 }
             }
         }
@@ -1171,6 +1182,17 @@ class DecodeViewModel: ObservableObject {
         isWsjtSpecialFilterEnabled = defaults.bool(forKey: "isWsjtSpecialFilterEnabled")
         isNew4CharGridOnlyFilterEnabled = defaults.bool(forKey: "isNew4CharGridOnlyFilterEnabled")
         isNew6CharGridOnlyFilterEnabled = defaults.bool(forKey: "isNew6CharGridOnlyFilterEnabled")
+        isWorkedBeforeFilterEnabled = defaults.bool(forKey: "isWorkedBeforeFilterEnabled")
+        if defaults.object(forKey: "workedBeforeDuration") != nil {
+            workedBeforeDuration = max(0, min(999, defaults.integer(forKey: "workedBeforeDuration")))
+        } else {
+            workedBeforeDuration = 1
+        }
+        if let unitStr = defaults.string(forKey: "workedBeforeUnit"), let unit = WorkedBeforeUnit(rawValue: unitStr) {
+            workedBeforeUnit = unit
+        } else {
+            workedBeforeUnit = .months
+        }
         isDuplicateFilterEnabled = defaults.object(forKey: "isDuplicateFilterEnabled") as? Bool ?? true
         duplicateSpotWindowMinutes = defaults.integer(forKey: "duplicateSpotWindowMinutes")
         if duplicateSpotWindowMinutes == 0 { duplicateSpotWindowMinutes = 1 }
@@ -1193,9 +1215,13 @@ class DecodeViewModel: ObservableObject {
         defaults.set(isWsjtSpecialFilterEnabled, forKey: "isWsjtSpecialFilterEnabled")
         defaults.set(isNew4CharGridOnlyFilterEnabled, forKey: "isNew4CharGridOnlyFilterEnabled")
         defaults.set(isNew6CharGridOnlyFilterEnabled, forKey: "isNew6CharGridOnlyFilterEnabled")
+        defaults.set(isWorkedBeforeFilterEnabled, forKey: "isWorkedBeforeFilterEnabled")
+        defaults.set(workedBeforeDuration, forKey: "workedBeforeDuration")
+        defaults.set(workedBeforeUnit.rawValue, forKey: "workedBeforeUnit")
         defaults.set(isDuplicateFilterEnabled, forKey: "isDuplicateFilterEnabled")
         defaults.set(duplicateSpotWindowMinutes, forKey: "duplicateSpotWindowMinutes")
         defaults.set(duplicateSpotFrequencyTolerance, forKey: "duplicateSpotFrequencyTolerance")
+        clearEvaluationCache()
         scheduleRecalculations()
     }
 
@@ -1280,6 +1306,13 @@ class DecodeViewModel: ObservableObject {
             }
         }
         
+        // 8.7. Worked Before Time Filter
+        if isWorkedBeforeFilterEnabled {
+            if lotwManager.hasWorkedRecently(callsign: call, band: decode.band, duration: workedBeforeDuration, unit: workedBeforeUnit) {
+                return false
+            }
+        }
+        
         // 9. Duplicate Filter
         if isDuplicateFilterEnabled {
             let freqMhz = Double(decode.dialFrequency) / 1_000_000.0 + Double(decode.deltaFrequency) / 1_000_000.0
@@ -1304,9 +1337,12 @@ class DecodeViewModel: ObservableObject {
             return cached
         }
         let accepted = shouldAccept(decode: decode)
-        let worked = lotwManager.hasWorked(callsign: decode.callsign, band: decode.band)
-        let interesting = isAutoQSOInterestingEvaluated(decode: decode, accepted: accepted, worked: worked)
-        let result = (isInteresting: interesting, isWorked: worked, shouldAccept: accepted)
+        let workedEver = lotwManager.hasWorked(callsign: decode.callsign, band: decode.band)
+        let workedBlocked = isWorkedBeforeFilterEnabled ?
+            lotwManager.hasWorkedRecently(callsign: decode.callsign, band: decode.band, duration: workedBeforeDuration, unit: workedBeforeUnit) :
+            workedEver
+        let interesting = isAutoQSOInterestingEvaluated(decode: decode, accepted: accepted, workedBlocked: workedBlocked)
+        let result = (isInteresting: interesting, isWorked: workedEver, shouldAccept: accepted)
         if decodeEvalCache.count > 2000 {
             decodeEvalCache.removeAll(keepingCapacity: true)
         }
@@ -1319,7 +1355,7 @@ class DecodeViewModel: ObservableObject {
         return eval.isInteresting
     }
 
-    private func isAutoQSOInterestingEvaluated(decode: WSJTXDecode, accepted: Bool, worked: Bool) -> Bool {
+    private func isAutoQSOInterestingEvaluated(decode: WSJTXDecode, accepted: Bool, workedBlocked: Bool) -> Bool {
         let call = decode.callsign.uppercased()
         guard !call.isEmpty else { return false }
         
@@ -1353,7 +1389,7 @@ class DecodeViewModel: ObservableObject {
         }
         
         // 3. Worked before on this band
-        if worked {
+        if workedBlocked {
             return false
         }
         
@@ -1739,7 +1775,9 @@ class DecodeViewModel: ObservableObject {
                 let call = decode.callsign
                 guard !call.isEmpty else { return false }
                 let isMW = decode.isMostWanted
-                let hasWorkedOnBand = lotwManager.hasWorked(callsign: call, band: decode.band)
+                let hasWorkedOnBand = isWorkedBeforeFilterEnabled ?
+                    lotwManager.hasWorkedRecently(callsign: call, band: decode.band, duration: workedBeforeDuration, unit: workedBeforeUnit) :
+                    lotwManager.hasWorked(callsign: call, band: decode.band)
                 return isMW && !hasWorkedOnBand && shouldAccept(decode: decode)
             }
             .sorted { a, b in

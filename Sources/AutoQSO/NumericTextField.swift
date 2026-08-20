@@ -3,13 +3,15 @@ import SwiftUI
 struct NumericTextField: View {
     let titleKey: LocalizedStringKey
     @Binding var value: Int
+    var range: ClosedRange<Int>? = nil
     var prompt: Text? = nil
     
     @State private var text: String = ""
     
-    init(_ titleKey: LocalizedStringKey, value: Binding<Int>, prompt: Text? = nil) {
+    init(_ titleKey: LocalizedStringKey, value: Binding<Int>, range: ClosedRange<Int>? = nil, prompt: Text? = nil) {
         self.titleKey = titleKey
         self._value = value
+        self.range = range
         self.prompt = prompt
     }
     
@@ -26,8 +28,12 @@ struct NumericTextField: View {
             .onChange(of: text) { _, newValue in
                 let cleaned = newValue.filter { $0.isNumber }
                 if let intVal = Int(cleaned) {
-                    if intVal != value {
-                        value = intVal
+                    var targetVal = intVal
+                    if let range = range {
+                        targetVal = min(range.upperBound, max(range.lowerBound, targetVal))
+                    }
+                    if targetVal != value {
+                        value = targetVal
                     }
                 }
             }

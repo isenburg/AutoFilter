@@ -56,6 +56,43 @@ struct QSOEntry: Identifiable, Codable {
         return clean
     }
     
+    var qsoDateTime: Date? {
+        let cleanDate = qsoDate.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: "/", with: "").replacingOccurrences(of: ".", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard cleanDate.count >= 8 else { return nil }
+        
+        let year = Int(cleanDate.prefix(4)) ?? 0
+        let month = Int(cleanDate.dropFirst(4).prefix(2)) ?? 0
+        let day = Int(cleanDate.dropFirst(6).prefix(2)) ?? 0
+        guard year > 1900, month >= 1, month <= 12, day >= 1, day <= 31 else { return nil }
+        
+        let cleanTime = timeOn.replacingOccurrences(of: ":", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+        var hour = 0
+        var minute = 0
+        var second = 0
+        if cleanTime.count >= 2 {
+            hour = Int(cleanTime.prefix(2)) ?? 0
+        }
+        if cleanTime.count >= 4 {
+            minute = Int(cleanTime.dropFirst(2).prefix(2)) ?? 0
+        }
+        if cleanTime.count >= 6 {
+            second = Int(cleanTime.dropFirst(4).prefix(2)) ?? 0
+        }
+        
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.day = day
+        components.hour = hour
+        components.minute = minute
+        components.second = second
+        components.timeZone = TimeZone(secondsFromGMT: 0)
+        
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        return calendar.date(from: components)
+    }
+
     var uniqueKey: String {
         let cleanDate = qsoDate.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: "/", with: "").replacingOccurrences(of: ".", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanTime = timeOn.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -1,6 +1,48 @@
 import Foundation
 import Combine
 
+enum WorkedBeforeUnit: String, CaseIterable, Identifiable, Codable {
+    case hours = "hours"
+    case days = "days"
+    case months = "months"
+    case years = "years"
+    
+    var id: String { rawValue }
+    
+    var title: String {
+        switch self {
+        case .hours: return "Stunden"
+        case .days: return "Tage"
+        case .months: return "Monate"
+        case .years: return "Jahre"
+        }
+    }
+    
+    var singularTitle: String {
+        switch self {
+        case .hours: return "Stunde"
+        case .days: return "Tag"
+        case .months: return "Monat"
+        case .years: return "Jahr"
+        }
+    }
+    
+    func cutoffDate(duration: Int, from date: Date = Date()) -> Date? {
+        let calendar = Calendar.current
+        let val = max(0, min(999, duration))
+        switch self {
+        case .hours:
+            return calendar.date(byAdding: .hour, value: -val, to: date)
+        case .days:
+            return calendar.date(byAdding: .day, value: -val, to: date)
+        case .months:
+            return calendar.date(byAdding: .month, value: -val, to: date)
+        case .years:
+            return calendar.date(byAdding: .year, value: -val, to: date)
+        }
+    }
+}
+
 class LoTWManager: ObservableObject {
     @Published var isDownloading = false
     @Published var errorMessage: String?
@@ -10,6 +52,7 @@ class LoTWManager: ObservableObject {
     private var workedSet = Set<String>()
     private(set) var workedGridsSet = Set<String>()
     private(set) var workedGrids6Set = Set<String>()
+    private(set) var latestQSOByCallBand: [String: Date] = [:]
     
     init() {
         loadLog()
@@ -30,9 +73,25 @@ class LoTWManager: ObservableObject {
             var newSet = Set<String>()
             var newGrids = Set<String>()
             var newGrids6 = Set<String>()
+            var newLatestQSO = [String: Date]()
             newSet.reserveCapacity(qsos.count)
+            newLatestQSO.reserveCapacity(qsos.count)
             for qso in qsos {
-                newSet.insert("\(qso.callsign.uppercased())_\(qso.band.uppercased())")
+                let call = qso.callsign.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+                let b = qso.band.uppercased().trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "")
+                if !call.isEmpty && !b.isEmpty {
+                    let key = "\(call)_\(b)"
+                    newSet.insert(key)
+                    if let dt = qso.qsoDateTime {
+                        if let existing = newLatestQSO[key] {
+                            if dt > existing {
+                                newLatestQSO[key] = dt
+                            }
+                        } else {
+                            newLatestQSO[key] = dt
+                        }
+                    }
+                }
                 let cleanGrid = qso.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
                 if cleanGrid.count >= 4 {
                     newGrids.insert(String(cleanGrid.prefix(4)))
@@ -47,6 +106,7 @@ class LoTWManager: ObservableObject {
                 self?.workedSet = newSet
                 self?.workedGridsSet = newGrids
                 self?.workedGrids6Set = newGrids6
+                self?.latestQSOByCallBand = newLatestQSO
                 self?.addLog("SQLite Logbuch geladen: \(qsos.count) QSOs (\(newGrids.count) 4-Stellen Grids / \(newGrids6.count) 6-Stellen Grids).")
             }
         }
@@ -108,7 +168,17 @@ class LoTWManager: ObservableObject {
                 let call = entry.callsign.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
                 let b = entry.band.uppercased().trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "")
                 if !call.isEmpty && !b.isEmpty {
-                    self?.workedSet.insert("\(call)_\(b)")
+                    let key = "\(call)_\(b)"
+                    self?.workedSet.insert(key)
+                    if let dt = entry.qsoDateTime {
+                        if let existing = self?.latestQSOByCallBand[key] {
+                            if dt > existing {
+                                self?.latestQSOByCallBand[key] = dt
+                            }
+                        } else {
+                            self?.latestQSOByCallBand[key] = dt
+                        }
+                    }
                 }
                 let cleanGrid = entry.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
                 if cleanGrid.count >= 4 {
@@ -127,12 +197,24 @@ class LoTWManager: ObservableObject {
             var newSet = Set<String>()
             var newGrids = Set<String>()
             var newGrids6 = Set<String>()
+            var newLatestQSO = [String: Date]()
             newSet.reserveCapacity(updatedLog.count)
+            newLatestQSO.reserveCapacity(updatedLog.count)
             for qso in updatedLog {
                 let call = qso.callsign.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
                 let b = qso.band.uppercased().trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "")
                 if !call.isEmpty && !b.isEmpty {
-                    newSet.insert("\(call)_\(b)")
+                    let key = "\(call)_\(b)"
+                    newSet.insert(key)
+                    if let dt = qso.qsoDateTime {
+                        if let existing = newLatestQSO[key] {
+                            if dt > existing {
+                                newLatestQSO[key] = dt
+                            }
+                        } else {
+                            newLatestQSO[key] = dt
+                        }
+                    }
                 }
                 let cleanGrid = qso.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
                 if cleanGrid.count >= 4 {
@@ -148,6 +230,7 @@ class LoTWManager: ObservableObject {
                 self?.workedSet = newSet
                 self?.workedGridsSet = newGrids
                 self?.workedGrids6Set = newGrids6
+                self?.latestQSOByCallBand = newLatestQSO
                 self?.addLog("SQLite Logbuch aktualisiert: +\(addedCount) neue QSOs. Gesamt: \(updatedLog.count) QSOs (\(newGrids.count) 4-Stellen Grids / \(newGrids6.count) 6-Stellen Grids).")
             }
         }
@@ -158,6 +241,24 @@ class LoTWManager: ObservableObject {
         let cleanCall = callsign.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanBand = band.uppercased().trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "")
         return workedSet.contains("\(cleanCall)_\(cleanBand)")
+    }
+    
+    func lastWorkedDate(callsign: String, band: String) -> Date? {
+        guard !callsign.isEmpty, !band.isEmpty else { return nil }
+        let cleanCall = callsign.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanBand = band.uppercased().trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "")
+        return latestQSOByCallBand["\(cleanCall)_\(cleanBand)"]
+    }
+    
+    func hasWorkedRecently(callsign: String, band: String, duration: Int, unit: WorkedBeforeUnit) -> Bool {
+        guard !callsign.isEmpty, !band.isEmpty else { return false }
+        guard hasWorked(callsign: callsign, band: band) else { return false }
+        guard let cutoff = unit.cutoffDate(duration: duration) else { return true }
+        
+        if let lastDate = lastWorkedDate(callsign: callsign, band: band) {
+            return lastDate > cutoff
+        }
+        return true
     }
 
     func hasWorkedGrid(_ grid: String) -> Bool {
