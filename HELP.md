@@ -10,7 +10,7 @@ AutoQSO ist eine macOS-Anwendung für Funkamateure. Die **Hauptfunktion ist der 
 
 ### Systemvoraussetzungen
 - **Betriebssystem**: macOS 14.0 (Sonoma) oder neuer (einschließlich macOS 15 Sequoia).
-- **Prozessor / Architektur**: Apple Silicon Mac (M1, M2, M3, M4 oder neuer; `arm64`).
+- **Prozessor / Architektur**: Universal Binary (Nativ für **Apple Silicon** M1/M2/M3/M4 & **Intel Macs** `x86_64`).
 
 ### Interaktiver Installer & macOS Gatekeeper Lösung
 Da AutoQSO ad-hoc signiert ist (ohne kostenpflichtiges Apple-Entwickler-Zertifikat), stuft macOS Gatekeeper die App beim ersten Download evtl. als „unbekannter Entwickler“ oder „beschädigt“ ein. Im DMG stehen zwei Wege zur Verfügung:

@@ -689,10 +689,10 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                // Version 3.5.0
+                // Version 3.6.0
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 3.5.0")
+                        Text("Version 3.6.0")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -710,18 +710,41 @@ struct HelpView: View {
                         Text("✨ Neue Funktionen & Verbesserungen")
                             .font(.subheadline)
                             .bold()
-                        bullet("Konfigurierbarer Filter für bereits gearbeitete Stationen: Neuer Schalter in der Filter-Sidebar, der gearbeitete Stationen nach einer frei wählbaren Zeitspanne (0 bis 999 Stunden, Tage, Monate oder Jahre) wieder durchlässt und für AutoQSO freigibt.", font: .subheadline, color: .secondary)
-                        bullet("Blitzschnelle O(1) Zeitstempel-Indexierung: AutoQSO indexiert die exakten UTC-Zeitstempel aller QSOs im SQLite-Speicher, sodass Zeitspannen-Prüfungen auch bei zehntausenden Logbucheinträgen in Nanosekunden erfolgen.", font: .subheadline, color: .secondary)
-                        bullet("Flexible Zifferneingabe & Einheiten-Picker: Direkte numerische Eingabe (0–999) im Textfeld kombiniert mit Stunden-, Tage-, Monate- und Jahre-Auswahl.", font: .subheadline, color: .secondary)
-                        bullet("Vollständige Integration in Filter & Auto-Transmit: Einstellbare Wiederholungs-QSOs fließen nahtlos in die DX-Filterung, die automatische Sendeauswahl (Auto Transmit) und das Most-Wanted-Panel ein.", font: .subheadline, color: .secondary)
+                        bullet("Universal 2 Binary: Vollständige native Unterstützung für Apple Silicon (M1/M2/M3/M4) sowie Intel-basierte Macs (x86_64) unter macOS 14+.", font: .subheadline, color: .secondary)
                         bullet("Strukturierte Filter-Sidebar: Logische Neuordnung aller Filterbereiche von geografischen Kriterien (Kontinente, gesperrte/erlaubte Länder, Zonen, Rufzeichen) über Logbuch-Historie bis hin zu Signal- und Doubletten-Filtern.", font: .subheadline, color: .secondary)
                         bullet("Klarere Filterbezeichnung: Der frühere „WSJT-X Spezialfilter“ heißt nun prägnant „WSJT-X CQ Filter“ (Nur CQ, RRR, RR73, 73).", font: .subheadline, color: .secondary)
+                        bullet("Automatisierte Universal-Release-Pipeline: Das Release-Skript und der integrierte Installer bauen und paketieren automatisch universelle Mach-O-Binaries in der DMG.", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 }
                 .padding()
                 .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+                
+                Divider()
+
+                // Version 3.5.0
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 3.5.0")
+                            .font(.headline)
+                            .bold()
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("✨ Neue Funktionen & Verbesserungen")
+                            .font(.subheadline)
+                            .bold()
+                        bullet("Konfigurierbarer Filter für bereits gearbeitete Stationen: Neuer Schalter in der Filter-Sidebar, der gearbeitete Stationen nach einer frei wählbaren Zeitspanne (0 bis 999 Stunden, Tage, Monate oder Jahre) wieder durchlässt und für AutoQSO freigibt.", font: .subheadline, color: .secondary)
+                        bullet("Blitzschnelle O(1) Zeitstempel-Indexierung: AutoQSO indexiert die exakten UTC-Zeitstempel aller QSOs im SQLite-Speicher, sodass Zeitspannen-Prüfungen auch bei zehntausenden Logbucheinträgen in Nanosekunden erfolgen.", font: .subheadline, color: .secondary)
+                        bullet("Flexible Zifferneingabe & Einheiten-Picker: Direkte numerische Eingabe (0–999) im Textfeld kombiniert mit Stunden-, Tage-, Monate- und Jahre-Auswahl.", font: .subheadline, color: .secondary)
+                        bullet("Vollständige Integration in Filter & Auto-Transmit: Einstellbare Wiederholungs-QSOs fließen nahtlos in die DX-Filterung, die automatische Sendeauswahl (Auto Transmit) und das Most-Wanted-Panel ein.", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.blue.opacity(0.05))
                 .cornerRadius(8)
                 
                 Divider()
