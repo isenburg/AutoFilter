@@ -124,6 +124,7 @@ public struct LocalizationDictionary {
         "filter.section.blockedCQZones": "Gesperrte CQ-Zonen",
         "filter.section.blockedITUZones": "Gesperrte ITU-Zonen",
         "filter.section.allowedCallsigns": "Erlaubte DX-Rufzeichen",
+        "filter.section.mostWantedOnly": "Most Wanted Only",
         "filter.section.workedBefore": "Gearbeitete Stationen",
         "filter.section.gridFilter": "Maidenhead Grid-Filter",
         "filter.section.wsjtCQ": "WSJT-X CQ Filter",
@@ -144,6 +145,9 @@ public struct LocalizationDictionary {
         "filter.ituZone.label": "ITU-Zone blockieren",
         "filter.callsigns.desc": "NUR Rufzeichen, die mit diesen Präfixen beginnen, werden durchgelassen.",
         "filter.callsigns.label": "DX-Rufzeichen erlauben",
+        "filter.mostWantedOnly.toggle": "Nur Most Wanted durchlassen",
+        "filter.mostWantedOnly.threshold": "Schwelle:",
+        "filter.mostWantedOnly.desc": "Lässt ausschließlich unbestätigte Most-Wanted-Entitäten bis zum gewählten Rang durch und blockiert alle anderen Stationen.",
         "filter.workedBefore.toggle": "Gearbeitete Stationen filtern",
         "filter.workedBefore.timespan": "Zeitspanne:",
         "filter.workedBefore.desc": "Lässt bereits auf dem Band gearbeitete Stationen nur durch, wenn das letzte QSO mindestens die gewählte Zeitspanne zurückliegt.",
@@ -227,9 +231,12 @@ public struct LocalizationDictionary {
         // Einstellungen - WSJT-X
         "settings.wsjtx.address": "UDP Server IP-Adresse:",
         "settings.wsjtx.port": "UDP Server Port:",
+        "settings.wsjtx.bridgeAddress": "UDP Weiterleitungs-IP (Bridge):",
         "settings.wsjtx.bridgePort": "UDP Weiterleitungs-Port (Bridge):",
         "settings.wsjtx.cooldown": "Sperrzeit nach automatischem Anruf (Minuten):",
         "settings.wsjtx.autoClear": "Tabelle bei Bandwechsel automatisch leeren",
+        "settings.options.onlyCQ": "Nur Stationen anrufen, die CQ rufen",
+        "settings.options.onlyCQ.desc": "Verhindert das automatische Anrufen bei QSO-Enden (73 / RR73 / RRR) anderer Stationen und ruft ausschließlich echte CQ-Rufe an. Hinweis: Beim Anrufen am QSO-Ende fehlt der Grid-Locator und muss bei Bedarf manuell ergänzt werden.",
         
         // Einstellungen - DX Cluster
         "settings.cluster.listHeader": "Verfügbare DX-Cluster",
@@ -427,6 +434,7 @@ public struct LocalizationDictionary {
         "filter.section.blockedCQZones": "Blocked CQ Zones",
         "filter.section.blockedITUZones": "Blocked ITU Zones",
         "filter.section.allowedCallsigns": "Allowed DX Callsigns",
+        "filter.section.mostWantedOnly": "Most Wanted Only",
         "filter.section.workedBefore": "Worked Before Stations",
         "filter.section.gridFilter": "Maidenhead Grid Filter",
         "filter.section.wsjtCQ": "WSJT-X CQ Filter",
@@ -447,6 +455,9 @@ public struct LocalizationDictionary {
         "filter.ituZone.label": "Block ITU Zone",
         "filter.callsigns.desc": "ONLY callsigns matching these prefixes will be accepted.",
         "filter.callsigns.label": "Allow DX Callsign",
+        "filter.mostWantedOnly.toggle": "Allow Most Wanted Only",
+        "filter.mostWantedOnly.threshold": "Threshold:",
+        "filter.mostWantedOnly.desc": "Allows only unworked Most Wanted entities up to the selected rank and blocks all other stations.",
         "filter.workedBefore.toggle": "Filter Worked Before Stations",
         "filter.workedBefore.timespan": "Time Span:",
         "filter.workedBefore.desc": "Allows stations previously worked on the band through only if the last QSO was at least the selected time span ago.",
@@ -530,9 +541,12 @@ public struct LocalizationDictionary {
         // Settings - WSJT-X
         "settings.wsjtx.address": "UDP Server IP Address:",
         "settings.wsjtx.port": "UDP Server Port:",
+        "settings.wsjtx.bridgeAddress": "UDP Forwarding IP (Bridge):",
         "settings.wsjtx.bridgePort": "UDP Forwarding Port (Bridge):",
         "settings.wsjtx.cooldown": "Cooldown after auto-transmit (minutes):",
         "settings.wsjtx.autoClear": "Clear table automatically on band change",
+        "settings.options.onlyCQ": "Only call stations calling CQ",
+        "settings.options.onlyCQ.desc": "Prevents calling stations at the end of their QSOs (73 / RR73 / RRR) and strictly calls active CQ callers. Note: Calling stations at their end of a QSO will omit the Grid-Locator, which has to be added manually if desired.",
         
         // Settings - DX Cluster
         "settings.cluster.listHeader": "Available DX Clusters",

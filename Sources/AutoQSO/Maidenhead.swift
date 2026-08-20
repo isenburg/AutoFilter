@@ -368,15 +368,41 @@ public struct GridOverlaySettingsBar: View {
 }
 
 public struct Maidenhead {
-    public static func grid4BoundingBox(_ grid4: String) -> (minLat: Double, maxLat: Double, minLon: Double, maxLon: Double)? {
-        let clean = grid4.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        guard clean.count >= 4 else { return nil }
+    public static func isValidGrid(_ grid: String) -> Bool {
+        let clean = grid.trimmingCharacters(in: CharacterSet.alphanumerics.inverted).uppercased()
+        guard clean.count == 4 || clean.count == 6 || clean.count == 8 else { return false }
+        
+        let nonGrids: Set<String> = [
+            "RR73", "RRR", "73", "RO", "CQ", "DX", "NA", "SA", "EU", "AS", "AF", "OC",
+            "TEST", "POTA", "SOTA", "IOTA", "QRP", "QRO", "WW", "FD", "CONTEST"
+        ]
+        if nonGrids.contains(clean) { return false }
+        
         let bytes = Array(clean.utf8)
         guard bytes[0] >= 65 && bytes[0] <= 82, // A-R
               bytes[1] >= 65 && bytes[1] <= 82, // A-R
               bytes[2] >= 48 && bytes[2] <= 57, // 0-9
               bytes[3] >= 48 && bytes[3] <= 57  // 0-9
-        else { return nil }
+        else { return false }
+        
+        if clean.count >= 6 {
+            guard bytes[4] >= 65 && bytes[4] <= 88, // A-X
+                  bytes[5] >= 65 && bytes[5] <= 88  // A-X
+            else { return false }
+            
+            if clean.count == 8 {
+                guard bytes[6] >= 48 && bytes[6] <= 57, // 0-9
+                      bytes[7] >= 48 && bytes[7] <= 57  // 0-9
+                else { return false }
+            }
+        }
+        return true
+    }
+
+    public static func grid4BoundingBox(_ grid4: String) -> (minLat: Double, maxLat: Double, minLon: Double, maxLon: Double)? {
+        let clean = grid4.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard isValidGrid(clean) else { return nil }
+        let bytes = Array(clean.utf8)
         
         let minLon = Double(bytes[0] - 65) * 20.0 - 180.0 + Double(bytes[2] - 48) * 2.0
         let minLat = Double(bytes[1] - 65) * 10.0 - 90.0 + Double(bytes[3] - 48) * 1.0
@@ -386,10 +412,47 @@ public struct Maidenhead {
     }
 
     public static func extractGrid(from message: String) -> String? {
-        let tokens = message.components(separatedBy: .whitespacesAndNewlines).map { $0.trimmingCharacters(in: CharacterSet.alphanumerics.inverted).uppercased() }
-        let gridPattern = "^[A-R]{2}[0-9]{2}([A-X]{2})?$"
+        let cleanMsg = message.replacingOccurrences(of: "<", with: " ").replacingOccurrences(of: ">", with: " ")
+        let tokens = cleanMsg.components(separatedBy: .whitespacesAndNewlines)
+            .map { $0.trimmingCharacters(in: CharacterSet.alphanumerics.inverted).uppercased() }
+            .filter { !$0.isEmpty }
+        guard !tokens.isEmpty else { return nil }
+        
+        let lastToken = tokens.last!
+        let endOfQSOTokens: Set<String> = ["RR73", "RRR", "73", "RO", "TU", "SK", "GL", "TNX"]
+        if endOfQSOTokens.contains(lastToken) {
+            return nil
+        }
+        
+        // Signal reports at the end of a transmission (e.g. +03, -12, R+05, R-18)
+        if lastToken.hasPrefix("+") || lastToken.hasPrefix("-") || lastToken.hasPrefix("R+") || lastToken.hasPrefix("R-") {
+            return nil
+        }
+        
+        // 1. Structural parsing for CQ messages: "CQ <CALL> <GRID>" or "CQ <MODIFIER> <CALL> <GRID>"
+        let first = tokens[0]
+        if first == "CQ" || first.hasPrefix("CQ") {
+            if tokens.count >= 3 {
+                let candidate = tokens.last!
+                if isValidGrid(candidate) {
+                    return candidate
+                }
+            }
+            return nil
+        }
+        
+        // 2. Structural parsing for standard 3-token initial responses: "<TARGET> <CALLER> <GRID>"
+        if tokens.count == 3 {
+            let candidate = tokens[2]
+            if isValidGrid(candidate) {
+                return candidate
+            }
+            return nil
+        }
+        
+        // 3. Fallback for compound callsigns (e.g. "EA8/DL1ABC W1AW FN20")
         for token in tokens.reversed() {
-            if token.range(of: gridPattern, options: .regularExpression) != nil {
+            if !endOfQSOTokens.contains(token) && isValidGrid(token) {
                 return token
             }
         }
@@ -398,15 +461,9 @@ public struct Maidenhead {
     
     public static func locatorToLatLon(_ grid: String) -> (lat: Double, lon: Double)? {
         let clean = grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        guard clean.count >= 4 else { return nil }
+        guard isValidGrid(clean) else { return nil }
         
         let bytes = Array(clean.utf8)
-        guard bytes[0] >= 65 && bytes[0] <= 82, // A-R
-              bytes[1] >= 65 && bytes[1] <= 82, // A-R
-              bytes[2] >= 48 && bytes[2] <= 57, // 0-9
-              bytes[3] >= 48 && bytes[3] <= 57  // 0-9
-        else { return nil }
-        
         let lonField = Double(bytes[0] - 65) * 20.0 - 180.0
         let latField = Double(bytes[1] - 65) * 10.0 - 90.0
         let lonSquare = Double(bytes[2] - 48) * 2.0

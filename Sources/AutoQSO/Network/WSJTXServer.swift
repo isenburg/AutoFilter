@@ -151,14 +151,24 @@ class WSJTXServer: ObservableObject {
     }
     
     func sendRaw(data: Data, toPort port: UInt16, address: String = "127.0.0.1") {
+        let trimmedAddr = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        let targetAddr = trimmedAddr.isEmpty ? "127.0.0.1" : trimmedAddr
         let fd = socket(AF_INET, SOCK_DGRAM, 0)
         guard fd >= 0 else { return }
         defer { close(fd) }
         
+        var broadcastOn: Int32 = 1
+        setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &broadcastOn, socklen_t(MemoryLayout<Int32>.size))
+        
+        var ttl: UInt8 = 4
+        setsockopt(fd, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, socklen_t(MemoryLayout<UInt8>.size))
+        var loop: UInt8 = 1
+        setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, socklen_t(MemoryLayout<UInt8>.size))
+        
         var dest = sockaddr_in()
         dest.sin_family = sa_family_t(AF_INET)
         dest.sin_port = port.bigEndian
-        dest.sin_addr.s_addr = inet_addr(address)
+        dest.sin_addr.s_addr = inet_addr(targetAddr)
         
         let sent = withUnsafePointer(to: &dest) { destPtr in
             destPtr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
@@ -166,9 +176,9 @@ class WSJTXServer: ObservableObject {
             }
         }
         if sent >= 0 {
-            self.logRaw(.outgoing, "Bridge: sent \(data.count) bytes to \(address):\(port)")
+            self.logRaw(.outgoing, "Bridge: sent \(data.count) bytes to \(targetAddr):\(port)")
         } else {
-            self.logRaw(.outgoing, "Bridge failed (errno=\(errno)): to \(address):\(port)")
+            self.logRaw(.outgoing, "Bridge failed (errno=\(errno)): to \(targetAddr):\(port)")
         }
     }
     

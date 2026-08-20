@@ -260,10 +260,11 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                     longitude: path.myCoordinate.longitude,
                     bandName: "MY_QTH"
                 )
+                let targetSubtitle = path.targetGrid ?? path.targetCountry ?? ""
                 let targetSpot = GlobeSpotItem(
                     id: "TARGET_\(path.targetCall)",
                     title: path.targetCall,
-                    subtitle: path.targetGrid ?? "",
+                    subtitle: targetSubtitle,
                     latitude: path.targetCoordinate.latitude,
                     longitude: path.targetCoordinate.longitude,
                     bandName: "ACTIVE_QSO"

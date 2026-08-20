@@ -55,9 +55,41 @@ class PrefixMatcher {
         return ituZoneDatabase[prefix]
     }
     
+    func coordinates(for callsign: String) -> (latitude: Double, longitude: Double)? {
+        let countryName = country(for: callsign)
+        guard countryName != "OTHER" && !countryName.isEmpty else { return nil }
+        return coordinates(forCountry: countryName)
+    }
+    
     private func findPrefix(for callsign: String) -> String {
-        let call = callsign.uppercased().trimmingCharacters(in: .whitespaces)
-        if call.isEmpty { return "" }
+        let rawCall = callsign.uppercased().trimmingCharacters(in: .whitespaces)
+        if rawCall.isEmpty { return "" }
+        
+        let parts = rawCall.components(separatedBy: "/")
+        if parts.count >= 2 {
+            let p0 = parts[0]
+            let p1 = parts[1]
+            let modifiers = ["P", "M", "MM", "AM", "QRP", "LH", "LGT", "R", "B"]
+            if p0.count <= 4 && !modifiers.contains(p0) {
+                let match0 = matchPrefix(p0)
+                if !match0.isEmpty && database[match0] != nil {
+                    return match0
+                }
+            }
+            if p1.count <= 4 && !modifiers.contains(p1) {
+                let match1 = matchPrefix(p1)
+                if !match1.isEmpty && database[match1] != nil {
+                    return match1
+                }
+            }
+            let mainPart = p0.count >= p1.count ? p0 : p1
+            return matchPrefix(mainPart)
+        }
+        
+        return matchPrefix(rawCall)
+    }
+
+    private func matchPrefix(_ call: String) -> String {
         for length in (1...6).reversed() {
             if call.count >= length {
                 let prefix = String(call.prefix(length))
@@ -156,16 +188,16 @@ class PrefixMatcher {
     }
     
     private func loadBasicData() {
-        let basic = "Germany: 14: 28: EU: 51.0: 10.0: -1.0: DL:\r\n DA,DB,DC,DD,DE,DF,DG,DH,DI,DJ,DK,DL,DM,DN,DO,DP,DQ,DR,Y2,Y3,Y4,Y5,Y6,Y7,Y8,Y9;\r\n" +
-                    "Russia: 16: 20: EU: 55.0: 37.0: -3.0: UA:\r\n R,UA,UB,UC,UD,UE,UF,UG,UH,UI,RA,RN,RU,RV,RW,RX,RY,RZ;\r\n" +
-                    "United States: 05: 08: NA: 40.0: -100.0: 5.0: K:\r\n K,W,N,AA,AB,AC,AD,AE,AF,AG,AH,AI,AJ,AK,AL;\r\n" +
-                    "Spain: 14: 37: EU: 40.0: -4.0: 0.0: EA:\r\n EA,EB,EC,ED,EE,EF,EG,EH,AM,AN,AO;\r\n" +
-                    "Italy: 15: 28: EU: 43.0: 12.0: -1.0: I:\r\n I,IK,IZ,IU,IA,IB,IC,ID,IE,IF,IG,IH,II,IL,IM,IN,IO,IP,IQ,IR,IS,IT,IV,IW,IX,IY;\r\n" +
-                    "France: 14: 27: EU: 46.0: 2.0: -1.0: F:\r\n F,HW,HX,HY,TK,TM,TO,TP,TQ,TV,TX;\r\n" +
-                    "United Kingdom: 14: 27: EU: 54.0: -2.0: 0.0: G:\r\n G,GX,M,MQ,2A,2E,2I,2M,2O,2Q,2W;\r\n" +
-                    "China: 24: 44: AS: 35.0: 105.0: -8.0: BY:\r\n B,BA,BD,BG,BH,BI,BJ,BL,BM,BN,BO,BP,BQ,BR,BS,BT,BU,BV,BW,BX,BY,BZ,XS;\r\n" +
-                    "Japan: 25: 45: AS: 36.0: 138.0: -9.0: JA:\r\n JA,JE,JF,JG,JH,JI,JJ,JK,JL,JM,JN,JO,JP,JQ,JR,JS,7J,7K,7L,7M,7N,8J,8K,8L,8M,8N;\r\n" +
-                    "Canada: 05: 09: NA: 60.0: -95.0: 5.0: VE:\r\n VE,VA,VO,VY,XJ,XK,XL,XM,XN,XO;\r\n" +
+        let basic = "Germany: 14: 28: EU: 51.0: -10.0: -1.0: DL:\r\n DA,DB,DC,DD,DE,DF,DG,DH,DI,DJ,DK,DL,DM,DN,DO,DP,DQ,DR,Y2,Y3,Y4,Y5,Y6,Y7,Y8,Y9;\r\n" +
+                    "Russia: 16: 20: EU: 55.0: -37.0: -3.0: UA:\r\n R,UA,UB,UC,UD,UE,UF,UG,UH,UI,RA,RN,RU,RV,RW,RX,RY,RZ;\r\n" +
+                    "United States: 05: 08: NA: 40.0: 100.0: 5.0: K:\r\n K,W,N,AA,AB,AC,AD,AE,AF,AG,AH,AI,AJ,AK,AL;\r\n" +
+                    "Spain: 14: 37: EU: 40.0: 4.0: 0.0: EA:\r\n EA,EB,EC,ED,EE,EF,EG,EH,AM,AN,AO;\r\n" +
+                    "Italy: 15: 28: EU: 43.0: -12.0: -1.0: I:\r\n I,IK,IZ,IU,IA,IB,IC,ID,IE,IF,IG,IH,II,IL,IM,IN,IO,IP,IQ,IR,IS,IT,IV,IW,IX,IY;\r\n" +
+                    "France: 14: 27: EU: 46.0: -2.0: -1.0: F:\r\n F,HW,HX,HY,TK,TM,TO,TP,TQ,TV,TX;\r\n" +
+                    "United Kingdom: 14: 27: EU: 54.0: 2.0: 0.0: G:\r\n G,GX,M,MQ,2A,2E,2I,2M,2O,2Q,2W;\r\n" +
+                    "China: 24: 44: AS: 35.0: -105.0: -8.0: BY:\r\n B,BA,BD,BG,BH,BI,BJ,BL,BM,BN,BO,BP,BQ,BR,BS,BT,BU,BV,BW,BX,BY,BZ,XS;\r\n" +
+                    "Japan: 25: 45: AS: 36.0: -138.0: -9.0: JA:\r\n JA,JE,JF,JG,JH,JI,JJ,JK,JL,JM,JN,JO,JP,JQ,JR,JS,7J,7K,7L,7M,7N,8J,8K,8L,8M,8N;\r\n" +
+                    "Canada: 05: 09: NA: 60.0: 95.0: 5.0: VE:\r\n VE,VA,VO,VY,XJ,XK,XL,XM,XN,XO;\r\n" +
                     "Madeira Islands: 33: 36: AF: 32.7: 16.8: 0.0: CT3:\r\n CT3,CQ3,CR3,CS3;\r\n"
         parseCtyDat(basic)
     }

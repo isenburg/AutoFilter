@@ -21,6 +21,7 @@ struct ContentView: View {
     @AppStorage("isLeftSidebarVisible") private var isLeftSidebarVisible = true
     @AppStorage("leftSidebarWidth") private var leftSidebarWidth: Double = 240.0
     @AppStorage("rightSidebarWidth") private var rightSidebarWidth: Double = 280.0
+    @AppStorage("udpBridgeAddress") private var udpBridgeAddress = "127.0.0.1"
     @AppStorage("udpBridgePort") private var udpBridgePort = 0
     @State private var rightSidebarTab = 0
     
@@ -75,6 +76,7 @@ struct ContentView: View {
     @AppStorage("isWorkedBeforeFilterExpanded") private var isWorkedBeforeFilterExpanded = true
     @AppStorage("isDuplicateFilterExpanded") private var isDuplicateFilterExpanded = true
     @AppStorage("isAllowedDXCallsignsExpanded") private var isAllowedDXCallsignsExpanded = true
+    @AppStorage("isMostWantedOnlyExpanded") private var isMostWantedOnlyExpanded = true
     @AppStorage("isAllowedSpotterCountriesExpanded") private var isAllowedSpotterCountriesExpanded = true
     @AppStorage("isAllowedSpotterCallsignsExpanded") private var isAllowedSpotterCallsignsExpanded = true
     
@@ -183,8 +185,17 @@ struct ContentView: View {
                 }) {
                     HStack(spacing: 4) {
                         Image(systemName: viewModel.isAutoModeEnabled ? "play.circle.fill" : "play.circle")
-                        Text(viewModel.isAutoModeEnabled ? "Auto ON" : "Auto OFF")
-                            .fontWeight(.bold)
+                        if viewModel.isAutoModeEnabled && viewModel.isAutoModeOnlyCQEnabled {
+                            VStack(alignment: .leading, spacing: -1) {
+                                Text("Auto ON")
+                                    .font(.system(size: 10, weight: .bold))
+                                Text("CQ Only")
+                                    .font(.system(size: 8, weight: .semibold))
+                            }
+                        } else {
+                            Text(viewModel.isAutoModeEnabled ? "Auto ON" : "Auto OFF")
+                                .fontWeight(.bold)
+                        }
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -954,8 +965,17 @@ struct ContentView: View {
             }) {
                 HStack(spacing: 4) {
                     Image(systemName: viewModel.isAutoModeEnabled ? "play.circle.fill" : "play.circle")
-                    Text(viewModel.isAutoModeEnabled ? "Auto ON" : "Auto OFF")
-                        .fontWeight(.bold)
+                    if viewModel.isAutoModeEnabled && viewModel.isAutoModeOnlyCQEnabled {
+                        VStack(alignment: .leading, spacing: -1) {
+                            Text("Auto ON")
+                                .font(.system(size: 9, weight: .bold))
+                            Text("CQ Only")
+                                .font(.system(size: 7, weight: .semibold))
+                        }
+                    } else {
+                        Text(viewModel.isAutoModeEnabled ? "Auto ON" : "Auto OFF")
+                            .fontWeight(.bold)
+                    }
                 }
             }
             .buttonStyle(.borderedProminent)
@@ -1838,7 +1858,49 @@ struct ContentView: View {
             sidebarHeader(L("filter.section.allowedCallsigns"), isExpanded: $isAllowedDXCallsignsExpanded, activeCount: viewModel.allowedDXCallsigns.count)
         }
 
-        // 7. Gearbeitete Stationen
+        // 7. Most Wanted Only
+        Section(isExpanded: $isMostWantedOnlyExpanded) {
+            VStack(alignment: .leading, spacing: 6) {
+                Toggle(isOn: Binding(
+                    get: { viewModel.isOnlyMostWantedFilterEnabled },
+                    set: { viewModel.isOnlyMostWantedFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                )) {
+                    Text(L("filter.mostWantedOnly.toggle")).font(.system(size: 11)).bold()
+                }
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+
+                HStack(spacing: 6) {
+                    Text(L("filter.mostWantedOnly.threshold")).font(.system(size: 10))
+                    
+                    Picker("", selection: Binding(
+                        get: { viewModel.maxMostWantedRank },
+                        set: { viewModel.maxMostWantedRank = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                    )) {
+                        Text("Top 10").tag(10)
+                        Text("Top 20").tag(20)
+                        Text("Top 50").tag(50)
+                        Text("Top 100").tag(100)
+                    }
+                    .pickerStyle(.menu)
+                    .controlSize(.mini)
+                }
+
+                Text(L("filter.mostWantedOnly.desc"))
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary)
+                    .italic()
+                    .lineLimit(nil)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+        } header: {
+            sidebarHeader(L("filter.section.mostWantedOnly"), isExpanded: $isMostWantedOnlyExpanded, activeCount: viewModel.isOnlyMostWantedFilterEnabled ? 1 : 0)
+        }
+
+        // 8. Gearbeitete Stationen
         Section(isExpanded: $isWorkedBeforeFilterExpanded) {
             VStack(alignment: .leading, spacing: 6) {
                 Toggle(isOn: Binding(
@@ -2182,11 +2244,26 @@ struct ContentView: View {
                 Section(isExpanded: $isUdpBridgeExpanded) {
                     VStack(alignment: .leading, spacing: 8) {
                         VStack(alignment: .leading, spacing: 4) {
+                            Text(isDe ? "UDP Weiterleitungs-IP" : "UDP Forwarding IP").font(.caption).foregroundColor(.secondary)
+                            TextField("127.0.0.1", text: $udpBridgeAddress)
+                                .textFieldStyle(UnifiedTextFieldStyle())
+                                .controlSize(.small)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 4) {
                             Text(isDe ? "Weiterleitungs-Port (Bridge)" : "Forwarding Port (Bridge)").font(.caption).foregroundColor(.secondary)
                             NumericTextField(isDe ? "z.B. 2238 (0 = Aus)" : "e.g. 2238 (0 = Off)", value: $udpBridgePort)
                                 .textFieldStyle(UnifiedTextFieldStyle())
                                 .controlSize(.small)
                         }
+                        
+                        let isMulticastBridge = {
+                            if let firstOctetStr = udpBridgeAddress.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: ".").first,
+                               let firstOctet = Int(firstOctetStr) {
+                                return firstOctet >= 224 && firstOctet <= 239
+                            }
+                            return false
+                        }()
                         
                         let isBridgeActive = udpBridgePort > 0
                         HStack {
@@ -2200,9 +2277,19 @@ struct ContentView: View {
                                 .background(isBridgeActive ? Color.green.opacity(0.15) : Color.gray.opacity(0.15))
                                 .foregroundColor(isBridgeActive ? .green : .gray)
                                 .cornerRadius(3)
+                            
+                            if isBridgeActive {
+                                Text(isMulticastBridge ? "MC" : "UC")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 2)
+                                    .background(isMulticastBridge ? Color.blue.opacity(0.15) : Color.orange.opacity(0.15))
+                                    .foregroundColor(isMulticastBridge ? .blue : .orange)
+                                    .cornerRadius(3)
+                            }
                         }
                         
-                        Text(isDe ? "Leitet alle empfangenen FT8/FT4 Dekodierungen, welche die aktiven DX-Filter passiert haben, an diesen lokalen UDP-Port (localhost) weiter." : "Forwards all received FT8/FT4 decodes passing active DX filters to this local UDP port (localhost).")
+                        Text(isDe ? "Leitet alle empfangenen FT8/FT4 Dekodierungen, welche die aktiven DX-Filter passiert haben, an diesen UDP-Port weiter." : "Forwards all received FT8/FT4 decodes passing active DX filters to this UDP port.")
                             .font(.system(size: 9))
                             .foregroundColor(.secondary)
                             .lineLimit(nil)

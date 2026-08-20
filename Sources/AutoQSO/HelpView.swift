@@ -111,7 +111,7 @@ struct HelpView: View {
                 }
                 .padding(12)
             }
-            .frame(width: 210)
+            .frame(width: 235)
             .background(Color(NSColor.controlBackgroundColor))
             
             Divider()
@@ -121,11 +121,11 @@ struct HelpView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     detailView(for: selectedSection)
                 }
-                .padding(20)
+                .padding(22)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 720, height: 540)
+        .frame(width: 860, height: 620)
     }
 
     @ViewBuilder
@@ -209,13 +209,13 @@ struct HelpView: View {
                 // 1. Eigenes Rufzeichen & QTH
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Label(isDe ? "1. Eigenes Rufzeichen & Grid-Locator (Heimat-QTH)" : "1. Callsign & Grid Locator (Home QTH)", systemImage: "location.circle.fill")
+                        Label(isDe ? "1. Rufzeichen & Heimat-QTH" : "1. Callsign & Home QTH", systemImage: "location.circle.fill")
                             .font(.headline)
                         Spacer()
                         Button(action: { openSettings(to: .telnet) }) {
                             HStack(spacing: 4) {
                                 Image(systemName: "gearshape")
-                                Text(isDe ? "Rufzeichen (Telnet)" : "Callsign (Telnet)")
+                                Text(isDe ? "Rufzeichen" : "Callsign")
                             }
                         }
                         .buttonStyle(.bordered)
@@ -224,7 +224,7 @@ struct HelpView: View {
                         Button(action: { openSettings(to: .qth) }) {
                             HStack(spacing: 4) {
                                 Image(systemName: "gearshape")
-                                Text("QTH-Locator")
+                                Text("QTH")
                             }
                         }
                         .buttonStyle(.bordered)
@@ -254,19 +254,19 @@ struct HelpView: View {
                 // 2. WSJT-X Setup
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Label(isDe ? "2. WSJT-X UDP-Verbindung (Empfang & Auto Transmit)" : "2. WSJT-X UDP Connection (Rx & Auto Transmit)", systemImage: "antenna.radiowaves.left.and.right")
+                        Label(isDe ? "2. WSJT-X UDP-Verbindung (Rx & Auto TX)" : "2. WSJT-X UDP Connection (Rx & Auto TX)", systemImage: "antenna.radiowaves.left.and.right")
                             .font(.headline)
                         Spacer()
                         Button(action: { openSettings(to: .udp) }) {
                             HStack(spacing: 4) {
                                 Image(systemName: "gearshape")
-                                Text(isDe ? "UDP-Einstellungen" : "UDP Settings")
+                                Text(isDe ? "UDP-Setup" : "UDP Setup")
                             }
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         
-                        Button(isDe ? "WSJT-X Anleitung" : "WSJT-X Guide") {
+                        Button(isDe ? "WSJT-X Hilfe" : "WSJT-X Guide") {
                             selectedSection = .wsjtx
                         }
                         .buttonStyle(.bordered)
@@ -290,13 +290,13 @@ struct HelpView: View {
                 // 3. Logbuch-Sync
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Label(isDe ? "3. Logbuch-Synchronisation (RUMlogNG / LoTW / QRZ.com / ADIF)" : "3. Logbook Sync (RUMlogNG / LoTW / QRZ.com / ADIF)", systemImage: "book.closed.fill")
+                        Label(isDe ? "3. Logbuch-Sync (RUMlog / LoTW / QRZ)" : "3. Logbook Sync (RUMlog / LoTW / QRZ)", systemImage: "book.closed.fill")
                             .font(.headline)
                         Spacer()
                         Button(action: { openSettings(to: .sync) }) {
                             HStack(spacing: 4) {
                                 Image(systemName: "gearshape")
-                                Text(isDe ? "Sync-Einstellungen" : "Sync Settings")
+                                Text(isDe ? "Sync-Setup" : "Sync Setup")
                             }
                         }
                         .buttonStyle(.bordered)
@@ -332,7 +332,7 @@ struct HelpView: View {
                         Button(action: { openSettings(to: .cluster) }) {
                             HStack(spacing: 4) {
                                 Image(systemName: "gearshape")
-                                Text(isDe ? "Cluster-Einstellungen" : "Cluster Settings")
+                                Text(isDe ? "Cluster-Setup" : "Cluster Setup")
                             }
                         }
                         .buttonStyle(.bordered)
@@ -368,11 +368,13 @@ struct HelpView: View {
                 Text(isDe ? "Hier findest du eine Übersicht über alle Steuerungselemente und Interaktionen in AutoQSO." : "Here you will find an overview of all controls and interactions in AutoQSO.")
                     .font(.body)
                 
+                toolbarIllustrationCard(isDe: isDe)
+                
                 Text(isDe ? "Bedienelemente der Toolbar:" : "Toolbar Controls:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
                     iconBullet(icon: "sidebar.left", text: isDe ? "**Verbindungs-Sidebar**: Blendet die linke Status- und Konfigurations-Seitenleiste ein oder aus." : "**Connection Sidebar**: Toggles the left status and connection sidebar.")
-                    iconBullet(icon: "play.circle", text: isDe ? "**Auto Transmit Toggle (Auto ON/OFF)**: Aktiviert oder deaktiviert die automatische Sende-Engine." : "**Auto Transmit Toggle (Auto ON/OFF)**: Activates or deactivates the automated transmit engine.")
+                    iconBullet(icon: "play.circle", text: isDe ? "**Auto Transmit Toggle (Auto ON / Auto OFF)**: Aktiviert oder deaktiviert die automatische Sende-Engine. Ist in den Auto Mode Optionen „Nur Stationen anrufen, die CQ rufen“ aktiv, wird der Button kompakt zweizeilig als **Auto ON / CQ Only** dargestellt." : "**Auto Transmit Toggle (Auto ON / Auto OFF)**: Activates or deactivates the automated transmit engine. If “Only call stations calling CQ” is active in settings, the button dynamically displays **Auto ON / CQ Only** on two lines.")
                     iconBullet(icon: "pause.circle", text: isDe ? "**Freeze / Pause Toggle**: Friert die Ansicht der Dekodiertabelle & Logs mit einem statischen Snapshot ein (Auto-Scroll aus). Hintergrunddaten werden weiter empfangen. Erneuter Klick schaltet zurück auf Live-Scrollen." : "**Freeze / Pause Toggle**: Freezes the decode table and logs with a static snapshot (auto-scroll off). Incoming data continues to be received in the background.")
                     iconBullet(icon: "magnifyingglass", text: isDe ? "**Echtzeit-Suchfeld**: Ermöglicht das sofortige Durchsuchen der Tabelle oder Logs nach Rufzeichen, Land, Spotter, Grid-Locator oder Nachrichten-Text – sowohl im Live- als auch im Freeze-Modus." : "**Real-Time Search Field**: Instantly filters the table or logs by callsign, country, spotter, grid locator, or message text.")
                     iconBullet(icon: "book", text: isDe ? "**Logbuch**: Öffnet das LoTW/QRZ-Logbuchfenster zur Ansicht der getätigten QSOs." : "**Logbook**: Opens the logbook window to view worked QSOs.")
@@ -415,27 +417,56 @@ struct HelpView: View {
             }
             
         case .triggers:
-            VStack(alignment: .leading, spacing: 12) {
-                Text(isDe ? "Auto QSO Trigger Logik" : "Auto QSO Trigger Logic")
+            VStack(alignment: .leading, spacing: 14) {
+                Text(isDe ? "Auto QSO Trigger Logik & Einstellungen" : "Auto QSO Trigger Logic & Settings")
                     .font(.title2)
                     .bold()
-                Text(isDe ? "AutoQSO analysiert alle empfangenen WSJT-X Decodes in Echtzeit:" : "AutoQSO analyzes all received WSJT-X decodes in real-time:")
+                
+                Text(isDe ? "Im automatischen QSO-Modus (Auto Mode) analysiert AutoQSO nach jedem 15-Sekunden-Empfangsfenster alle eintreffenden WSJT-X Dekodierungen, bewertet potenzielle Anruf-Kandidaten und steuert WSJT-X vollautomatisch an." : "In Auto Mode, AutoQSO evaluates all incoming WSJT-X decodes after every 15-second reception window, scores eligible targets, and controls WSJT-X automatically.")
                     .font(.body)
+                
+                // 1. Erkannte Nachrichtentypen & Signal-Trigger
+                Text(isDe ? "1. Erkannte Meldungstypen & Signal-Trigger:" : "1. Supported Message Types & Triggers:")
+                    .font(.headline)
+                
+                autoModeButtonsIllustrationCard(isDe: isDe)
+                
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet(isDe ? "**CQ Anrufe**: CQ, CQ DX, CQ POTA, CQ TEST, etc." : "**CQ Calls**: CQ, CQ DX, CQ POTA, CQ TEST, etc.")
-                    bullet(isDe ? "**73 Nachrichten**: z.B. `DL1ABC G4XYZ 73`" : "**73 Messages**: e.g. `DL1ABC G4XYZ 73`")
-                    bullet(isDe ? "**RR73 / RRR Nachrichten**: z.B. `K1ABC W1AW RR73`" : "**RR73 / RRR Messages**: e.g. `K1ABC W1AW RR73`")
+                    bullet(isDe ? "**Echte CQ-Rufe**: Alle CQ-Formate (`CQ`, `CQ DX`, `CQ POTA`, `CQ NA`, `CQ TEST`, etc.) inklusive des mitgesendeten Maidenhead-Locators." : "**Active CQ Calls**: All standard CQ formats (`CQ`, `CQ DX`, `CQ POTA`, `CQ NA`, `CQ TEST`, etc.) with grid locators.")
+                    bullet(isDe ? "**QSO-Abschlussmeldungen (Tail-Ending)**: Stationen, die ein QSO mit `73`, `RR73` oder `RRR` beenden (z. B. `DL1ABC G4XYZ 73`), werden direkt nach QSO-Ende angerufen." : "**QSO Termination (Tail-Ending)**: Stations concluding QSOs with `73`, `RR73`, or `RRR` (e.g. `DL1ABC G4XYZ 73`) can be called immediately upon completion.")
                 }
                 .padding()
-                .background(Color.blue.opacity(0.1))
+                .background(Color.blue.opacity(0.08))
                 .cornerRadius(8)
-                Text(isDe ? "Ablauf:" : "Workflow:")
+                
+                tableRowsIllustrationCard(isDe: isDe)
+                
+                // 2. Verfügbare Einstellungen (Einstellungen -> Auto Mode Optionen & Filter)
+                Text(isDe ? "2. Konfigurierbare Auto-Mode-Einstellungen:" : "2. Configurable Auto Mode Settings:")
+                    .font(.headline)
+                VStack(alignment: .leading, spacing: 10) {
+                    bullet(isDe ? "**Nur Stationen anrufen, die CQ rufen** (*Einstellungen → Auto Mode Optionen*): Schränkt den automatischen Anruf strikt auf echte CQ-Rufe ein und ignoriert `73`/`RR73`-Abschlussmeldungen (der grüne Hauptschalter signalisiert dies zweizeilig als **Auto ON / CQ Only**). *Hinweis*: Beim Anrufen am QSO-Ende fehlt der Grid-Locator und muss bei Bedarf manuell ergänzt werden." : "**Only call stations calling CQ** (*Settings → Auto Mode Options*): Strictly limits automatic calling to active CQ callers, ignoring `73`/`RR73` completion messages (the green toolbar button displays **Auto ON / CQ Only** on two lines). *Note*: Calling stations at their end of a QSO omits the grid locator, which can be added manually if desired.")
+                    
+                    bullet(isDe ? "**Sperrdauer für abgebrochene QSOs (Cooldown)** (*Einstellungen → Auto Mode Optionen*): Legt die Wartezeit in Minuten (z. B. 10 Min.) fest, für die ein Rufzeichen nach einem erfolglosen oder abgebrochenen Anruf gesperrt wird, um Endlosschleifen zu verhindern." : "**Cooldown for aborted QSOs** (*Settings → Auto Mode Options*): Sets the duration in minutes (e.g. 10 min) to temporarily blacklist a callsign after an aborted or unanswered transmission to prevent calling loops.")
+                    
+                    bullet(isDe ? "**Most-Wanted-Priorisierung & Only-Mode** (*Einstellungen → Most Wanted & Priorität*):\n• *Priorisiere Most Wanted*: Seltene, ungearbeitete DXCCs aus den Top 100 erhalten stets Vorrang vor normalen Stationen.\n• *Nur Most Wanted anrufen*: Ruft im Auto-Modus ausschließlich Stationen bis zum gewählten Rang-Cutoff (z. B. Top 50) an." : "**Most Wanted Priority & Only-Mode** (*Settings → Most Wanted & Priority*):\n• *Prioritize Most Wanted*: Unworked rare DXCC entities from the Top 100 always take precedence.\n• *Only Call Most Wanted*: Strictly calls stations matching your configured Most Wanted rank cutoff (e.g. Top 50).")
+                    
+                    bullet(isDe ? "**Bereits gearbeitete Stationen (Worked Before Filter)** (*Filter-Seitenleiste*):\n• *Standard*: Verhindert das erneute Arbeiten von Stationen, die auf dem Band bereits im Logbuch stehen.\n• *Zeitschwelle*: Erlaubt erneutes Arbeiten nach Ablauf einer frei wählbaren Zeitspanne (0–999 Stunden, Tage, Monate oder Jahre)." : "**Worked Station Filter (Worked Before)** (*Filter Sidebar*):\n• *Default*: Prevents re-calling stations already logged on the current band.\n• *Time Threshold*: Allows re-working stations after a customizable duration (0–999 hours, days, months, or years).")
+                    
+                    bullet(isDe ? "**Maidenhead Grid-Filter** (*Filter-Seitenleiste & Einstellungen*):\n• *Nur ungearbeitete 4-Stellen Grids* (z. B. JO31)\n• *Nur ungearbeitete 6-Stellen Grids* (z. B. JO31aa)" : "**Maidenhead Grid Filters** (*Filter Sidebar & Settings*):\n• *Only unworked 4-char Grids* (e.g. JO31)\n• *Only unworked 6-char Grids* (e.g. JO31aa)")
+                }
+                .padding()
+                .background(Color.secondary.opacity(0.06))
+                .cornerRadius(8)
+                
+                // 3. Automatischer Ablauf & Priorisierung
+                Text(isDe ? "3. Auswertungs- & Priorisierungs-Ablauf:" : "3. Decision Workflow & Scoring Order:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    numberedItem("1.", isDe ? "Ermittlung des Rufzeichens der sendenden Station." : "Identify transmitting station callsign.")
-                    numberedItem("2.", isDe ? "Abgleich mit dem Logbuch (falls auf dem aktuellen Band bereits gearbeitet -> grau hinterlegt und übersprungen)." : "Check against logbook (if already worked on band -> dimmed and skipped).")
-                    numberedItem("3.", isDe ? "Prüfung auf aktiven Cooldown/Sperre." : "Check active cooldown/lockout timer.")
-                    numberedItem("4.", isDe ? "Senden des Reply-Kommandos an WSJT-X zum automatischen Anruf (WSJTX Auto Transmit)." : "Send reply command to WSJT-X for automated transmit (Auto Transmit).")
+                    numberedItem("1.", isDe ? "**Filterung**: Prüfung gegen geografische DX-Filter (Kontinente, gesperrte/erlaubte Länder, Zonen), Logbuch-Historie und aktive Sperrzeiten (Cooldowns)." : "**Filter Validation**: Verifies geographical filters (continents, allowed/blocked countries, zones), logbook history, and active cooldowns.")
+                    numberedItem("2.", isDe ? "**Priorisierung**: 1. Most-Wanted-Rang (seltenste DXCCs zuerst) → 2. Größte Großkreis-Entfernung (km) → 3. Signalstärke (SNR)." : "**Target Ranking**: 1. Most Wanted Rank (rarest entity first) → 2. Furthest Great Circle distance (km) → 3. Signal-to-noise ratio (SNR).")
+                    numberedItem("3.", isDe ? "**WSJT-X Steuerung**: Sendet das `Reply`-Kommando an WSJT-X und überwacht die Aktivierung der Sende-Bereitschaft (`TX BEREIT`)." : "**WSJT-X Control**: Dispatches the `Reply` UDP command to WSJT-X and monitors transmit readiness (`TX ENABLED`).")
+                    numberedItem("4.", isDe ? "**Intelligenter Sende-Schutz**: Bricht WSJT-X nach nur einem Sende-Zyklus ab, greift keine Quarantäne; nach längerer Nicht-Antwort wird die Station für die eingestellte Cooldown-Dauer gesperrt." : "**Smart Retry Protection**: If WSJT-X halts after a single cycle, no cooldown is applied; extended non-responses enter the configured cooldown.")
                 }
             }
             
@@ -509,6 +540,8 @@ struct HelpView: View {
                     .bold()
                 Text(isDe ? "AutoQSO bietet zwei spezialisierte interaktive Kartenansichten, die über die Toolbar-Buttons **Karte ↗** und **Grid-Map ↗** als eigenständige Fenster geöffnet werden können." : "AutoQSO offers two specialized interactive map views available via the **Map ↗** and **Grid Map ↗** toolbar buttons.")
                     .font(.body)
+                
+                activeQSOPathIllustrationCard(isDe: isDe)
                 
                 Text(isDe ? "1. Ausbreitungskarte (Propagation Map):" : "1. Propagation Map:")
                     .font(.headline)
@@ -737,10 +770,10 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                // Version 4.0.0
+                // Version 4.0.1
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 4.0.0")
+                        Text("Version 4.0.1")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -755,6 +788,39 @@ struct HelpView: View {
                             .cornerRadius(4)
                     }
                     VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "✨ Fehlerbehebungen & Verbesserungen" : "✨ Bug Fixes & Improvements")
+                            .font(.subheadline)
+                            .bold()
+                        bullet(isDe ? "Visuelle Hilfegrafiken & optimiertes Fensterlayout: Das Hilfefenster wurde auf 860 × 620 px vergrößert und um anschauliche UI-Grafiken für Toolbar, Auto-Sende-Schalter, Tabellen-Farblegende und Live-Statusbanner erweitert." : "Visual Help Illustrations & Optimized Layout: Help window expanded to 860 × 620 px with native UI illustration cards for Toolbar, Auto Transmit button states, table row color legends, and live QSO status banner.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Dynamische Toolbar-Statusanzeige „Auto ON / CQ Only“: Ist die Option „Nur Stationen anrufen, die CQ rufen“ aktiv, zeigt der grüne Hauptschalter dies kompakt zweizeilig als „Auto ON / CQ Only“ an." : "Dynamic “Auto ON / CQ Only” Toolbar Badge: When CQ Only is active in settings, the green auto transmit button displays “Auto ON / CQ Only” on two compact lines without enlarging the button.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Neuer Filter „Most wanted Only“: Eigenständige Sektion in der rechten Filter-Seitenleiste (unterhalb der erlaubten DX-Rufzeichen) mit Schalter und wählbarer Rang-Schwelle (Top 10 bis 100)." : "New “Most wanted Only” Filter: Dedicated section in the right filter sidebar (below allowed DX callsigns) with active toggle and rank threshold selector (Top 10 to 100).", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Erweiterte Dokumentation für Auto-QSO-Trigger: Umfassende Erklärungen aller Signal-Trigger, Einstellungsoptionen und der Priorisierungs-Pipeline im Hilfebereich." : "Expanded Auto QSO Triggers Documentation: Comprehensive breakdown of message triggers, operational settings, and candidate scoring order in the Help section.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Konfigurierbare UDP-Bridge Zieladresse: Volle Unterstützung für individuelle IP-Adressen (Unicast & Multicast) und Portweiterleitung inklusive dynamischer Modusanzeige (UC/MC)." : "Configurable UDP Bridge Destination: Full support for custom destination IP addresses (Unicast & Multicast) and port forwarding with dynamic UC/MC mode indicator.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Option „Nur Stationen anrufen, die CQ rufen“: Neue Einstellung unter Auto Mode Optionen, um ausschließlich aktive CQ-Rufer automatisch anzurufen und QSO-Enden (73 / RR73 / RRR) zu überspringen." : "“Only call stations calling CQ” Option: New setting under Auto Mode Options to strictly call active CQ callers and skip transmissions at the end of other QSOs (73 / RR73 / RRR).", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Struktureller FT8/FT4 Grid-Parser: Verhindert zuverlässig, dass QSO-Abschluss-Tokens wie RR73 fälschlicherweise als Maidenhead-Planquadrate interpretiert werden." : "Structural FT8/FT4 Grid Parser: Reliably distinguishes Maidenhead locators from QSO termination tokens such as RR73.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Großkreis-Pfad bei fehlendem Locator: Bei einem aktiven QSO ohne empfangenen Maidenhead-Locator wird der Großkreis (Great Circle) automatisch zum Zentrum des ermittelten Landes gezeichnet, zentriert und mit Entfernungsberechnung angezeigt." : "Great Circle Path Fallback to Country: When no Maidenhead grid locator is received for an active QSO, the Great Circle path is automatically drawn and centered to the resolved country center with accurate distance calculation.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Erweiterte Rufzeichen- & Präfix-Auflösung: Verbesserte Erkennung von Sonder- und Portabel-Rufzeichen mit Slashes (/P, /M, /MM, EA8/DL1ABC)." : "Enhanced Prefix & Callsign Resolution: Improved entity resolution for portable and slash callsigns (/P, /M, /MM, EA8/DL1ABC).", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+                
+                Divider()
+
+                // Version 4.0.0
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 4.0.0")
+                            .font(.headline)
+                            .bold()
+                        Text("(Build 437)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
                         Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
@@ -767,7 +833,7 @@ struct HelpView: View {
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.green.opacity(0.08))
+                .background(Color.blue.opacity(0.05))
                 .cornerRadius(8)
                 
                 Divider()
@@ -1240,5 +1306,261 @@ struct HelpView: View {
                 .foregroundColor(color)
                 .multilineTextAlignment(.leading)
         }
+    }
+
+    // MARK: - Visuelle Hilfe-Grafiken / UI Illustrations
+
+    private func toolbarIllustrationCard(isDe: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(isDe ? "🖼️ Visuelle Toolbar-Übersicht:" : "🖼️ Visual Toolbar Overview:")
+                .font(.caption)
+                .bold()
+                .foregroundColor(.secondary)
+            
+            HStack(spacing: 8) {
+                // Linke Sidebar
+                Image(systemName: "sidebar.left")
+                    .padding(5)
+                    .background(Color.secondary.opacity(0.15))
+                    .cornerRadius(4)
+                
+                // Auto Transmit Button
+                HStack(spacing: 4) {
+                    Image(systemName: "play.circle.fill")
+                    VStack(alignment: .leading, spacing: -1) {
+                        Text("Auto ON").font(.system(size: 9, weight: .bold))
+                        Text("CQ Only").font(.system(size: 7, weight: .semibold))
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.green)
+                .foregroundColor(.white)
+                .cornerRadius(5)
+                
+                // Sortierung & Pause
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.up")
+                    Image(systemName: "pause.circle")
+                }
+                .padding(4)
+                .background(Color.secondary.opacity(0.1))
+                .cornerRadius(4)
+                
+                // Suchfeld
+                HStack(spacing: 4) {
+                    Image(systemName: "magnifyingglass").font(.caption2)
+                    Text(isDe ? "Suchen..." : "Search...").font(.caption2).foregroundColor(.secondary)
+                    Spacer()
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(4)
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.secondary.opacity(0.2), lineWidth: 1))
+                .frame(maxWidth: 120)
+                
+                Spacer()
+                
+                // Rechte Buttons
+                HStack(spacing: 6) {
+                    Image(systemName: "book")
+                    Image(systemName: "map")
+                    Image(systemName: "square.grid.3x3.topleft.filled")
+                    Image(systemName: "gearshape")
+                    Image(systemName: "questionmark.circle")
+                    Image(systemName: "sidebar.right")
+                }
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+            }
+            .padding(8)
+            .background(Color(NSColor.windowBackgroundColor))
+            .cornerRadius(6)
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.2), lineWidth: 1))
+        }
+        .padding(10)
+        .background(Color.blue.opacity(0.04))
+        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.blue.opacity(0.15), lineWidth: 1))
+    }
+
+    private func autoModeButtonsIllustrationCard(isDe: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(isDe ? "🖼️ Auto-Sende-Schalter (Zustände im Vergleich):" : "🖼️ Auto Transmit Button States Comparison:")
+                .font(.caption)
+                .bold()
+                .foregroundColor(.secondary)
+            
+            HStack(spacing: 12) {
+                // 1. Normaler Auto-Modus
+                VStack(spacing: 4) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "play.circle.fill")
+                        Text("Auto ON").fontWeight(.bold)
+                    }
+                    .font(.system(size: 11))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(6)
+                    
+                    Text(isDe ? "Alle CQs & 73s" : "All CQs & 73s")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                }
+                
+                // 2. CQ-Only Modus (Zweizeilig)
+                VStack(spacing: 4) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "play.circle.fill")
+                        VStack(alignment: .leading, spacing: -1) {
+                            Text("Auto ON").font(.system(size: 10, weight: .bold))
+                            Text("CQ Only").font(.system(size: 8, weight: .semibold))
+                        }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(6)
+                    
+                    Text(isDe ? "Nur echte CQs" : "Only Active CQs")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                }
+                
+                // 3. Ausgeschaltet
+                VStack(spacing: 4) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "play.circle")
+                        Text("Auto OFF").fontWeight(.bold)
+                    }
+                    .font(.system(size: 11))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.gray.opacity(0.3))
+                    .foregroundColor(.primary)
+                    .cornerRadius(6)
+                    
+                    Text(isDe ? "Deaktiviert" : "Disabled")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(10)
+        .background(Color.green.opacity(0.04))
+        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.green.opacity(0.15), lineWidth: 1))
+    }
+
+    private func tableRowsIllustrationCard(isDe: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(isDe ? "🖼️ Farbliche Kennzeichnung in der Dekodiertabelle:" : "🖼️ Decode Table Color Highlights & Badges:")
+                .font(.caption)
+                .bold()
+                .foregroundColor(.secondary)
+            
+            VStack(spacing: 4) {
+                // 1. Most Wanted
+                HStack(spacing: 6) {
+                    HStack(spacing: 2) {
+                        Image(systemName: "flame.fill").font(.system(size: 9))
+                        Text("#1").font(.system(size: 9, weight: .bold))
+                    }
+                    .padding(.horizontal, 4).padding(.vertical, 1)
+                    .background(Color.red).foregroundColor(.white).cornerRadius(3)
+                    
+                    Text("14:05:00").font(.system(size: 10, design: .monospaced))
+                    Text("P5/DJ6GI").font(.system(size: 11, weight: .bold, design: .monospaced)).foregroundColor(.red)
+                    Text(isDe ? "Nordkorea" : "North Korea").font(.system(size: 10)).foregroundColor(.secondary)
+                    Spacer()
+                    Text("CQ P5/DJ6GI PM49").font(.system(size: 10, design: .monospaced))
+                    Text(isDe ? "Most Wanted (#1)" : "Most Wanted (#1)").font(.system(size: 9, weight: .semibold)).foregroundColor(.red)
+                }
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(Color.red.opacity(0.1)).cornerRadius(4)
+                
+                // 2. CQ Kandidat
+                HStack(spacing: 6) {
+                    Text("CQ").font(.system(size: 9, weight: .bold))
+                        .padding(.horizontal, 4).padding(.vertical, 1)
+                        .background(Color.green).foregroundColor(.white).cornerRadius(3)
+                    
+                    Text("14:05:15").font(.system(size: 10, design: .monospaced))
+                    Text("OZ/DJ6GI").font(.system(size: 11, weight: .bold, design: .monospaced)).foregroundColor(.green)
+                    Text(isDe ? "Dänemark" : "Denmark").font(.system(size: 10)).foregroundColor(.secondary)
+                    Spacer()
+                    Text("CQ DX OZ/DJ6GI JO45").font(.system(size: 10, design: .monospaced))
+                    Text(isDe ? "AutoQSO Kandidat" : "AutoQSO Target").font(.system(size: 9, weight: .semibold)).foregroundColor(.green)
+                }
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(Color.green.opacity(0.1)).cornerRadius(4)
+                
+                // 3. Gearbeitet
+                HStack(spacing: 6) {
+                    Text("14:05:30").font(.system(size: 10, design: .monospaced)).foregroundColor(.secondary)
+                    Text("DL1ABC").font(.system(size: 11, design: .monospaced)).foregroundColor(.red.opacity(0.6))
+                    Text(isDe ? "Deutschland" : "Germany").font(.system(size: 10)).foregroundColor(.secondary)
+                    Spacer()
+                    Text("G4XYZ DL1ABC 73").font(.system(size: 10, design: .monospaced)).foregroundColor(.secondary)
+                    Text(isDe ? "Bereits gearbeitet" : "Worked on band").font(.system(size: 9)).foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(Color.secondary.opacity(0.04)).cornerRadius(4)
+                
+                // 4. Blockiert
+                HStack(spacing: 6) {
+                    Text("14:05:45").font(.system(size: 10, design: .monospaced)).foregroundColor(.secondary.opacity(0.6))
+                    Text("EA8XYZ").font(.system(size: 11, design: .monospaced)).foregroundColor(.secondary.opacity(0.5))
+                    Text(isDe ? "Kanarische Inseln" : "Canary Islands").font(.system(size: 10)).foregroundColor(.secondary.opacity(0.6))
+                    Spacer()
+                    Text("CQ EA8XYZ IL18").font(.system(size: 10, design: .monospaced)).foregroundColor(.secondary.opacity(0.5))
+                    Text(isDe ? "Durch Filter blockiert" : "Blocked by Filter").font(.system(size: 9)).foregroundColor(.secondary.opacity(0.6))
+                }
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(Color.secondary.opacity(0.02)).cornerRadius(4)
+            }
+        }
+        .padding(10)
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.15), lineWidth: 1))
+    }
+
+    private func activeQSOPathIllustrationCard(isDe: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(isDe ? "🖼️ Live QSO-Status-Banner & Großkreis-Pfad (2D-Karte & 3D-Globus):" : "🖼️ Live QSO Status Banner & Great Circle Path (2D Map & 3D Globe):")
+                .font(.caption)
+                .bold()
+                .foregroundColor(.secondary)
+            
+            // Live Status Banner Mockup
+            HStack(spacing: 10) {
+                Circle().fill(Color.green).frame(width: 8, height: 8)
+                Text("OZ/DJ6GI").font(.system(size: 11, weight: .bold, design: .monospaced)).foregroundColor(.yellow)
+                Text(isDe ? "Dänemark" : "Denmark").font(.system(size: 10)).foregroundColor(.secondary)
+                Divider().frame(height: 12)
+                Text("JO45").font(.system(size: 10, weight: .semibold, design: .monospaced))
+                Divider().frame(height: 12)
+                Text("485 km").font(.system(size: 10, weight: .bold))
+                Divider().frame(height: 12)
+                Text("🧭 012°").font(.system(size: 10))
+                Spacer()
+                Text("TX BEREIT").font(.system(size: 9, weight: .bold)).padding(.horizontal, 5).padding(.vertical, 2).background(Color.green).foregroundColor(.white).cornerRadius(3)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.black.opacity(0.85))
+            .foregroundColor(.white)
+            .cornerRadius(6)
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.yellow.opacity(0.5), lineWidth: 1))
+        }
+        .padding(10)
+        .background(Color.yellow.opacity(0.04))
+        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.yellow.opacity(0.2), lineWidth: 1))
     }
 }

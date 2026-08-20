@@ -69,6 +69,7 @@ struct SettingsView: View {
     // WSJT-X UDP Einstellungen
     @AppStorage("udpAddress") private var udpAddress = "224.0.0.1"
     @AppStorage("udpPort") private var udpPort: Int = 2237
+    @AppStorage("udpBridgeAddress") private var udpBridgeAddress = "127.0.0.1"
     @AppStorage("udpBridgePort") private var udpBridgePort = 0
     
     // Logbuch & Dienst-Zugangsdaten
@@ -208,7 +209,7 @@ struct SettingsView: View {
                     .bold()
                 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(isDe ? "UDP Adresse:" : "UDP Address:")
+                    Text(isDe ? "UDP Server Adresse:" : "UDP Server Address:")
                         .font(.headline)
                     TextField("224.0.0.1", text: $udpAddress)
                         .textFieldStyle(.roundedBorder)
@@ -216,11 +217,34 @@ struct SettingsView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("UDP Port:")
+                    Text("UDP Server Port:")
                         .font(.headline)
                     NumericTextField("2237", value: $udpPort)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 100)
+                }
+                
+                HStack {
+                    Text(isDe ? "Server-Typ:" : "Server Type:")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text(isMulticastAddress ? "Multicast (MC)" : "Unicast (UC)")
+                        .font(.system(size: 11, weight: .bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(isMulticastAddress ? Color.blue.opacity(0.15) : Color.orange.opacity(0.15))
+                        .foregroundColor(isMulticastAddress ? .blue : .orange)
+                        .cornerRadius(4)
+                }
+                
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(isDe ? "UDP Bridge Weiterleitungs-IP:" : "UDP Bridge Forwarding IP:")
+                        .font(.headline)
+                    TextField("127.0.0.1", text: $udpBridgeAddress)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 240)
                 }
                 
                 VStack(alignment: .leading, spacing: 6) {
@@ -231,16 +255,24 @@ struct SettingsView: View {
                         .frame(width: 100)
                 }
                 
+                let isMulticastBridge = {
+                    if let firstOctetStr = udpBridgeAddress.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: ".").first,
+                       let firstOctet = Int(firstOctetStr) {
+                        return firstOctet >= 224 && firstOctet <= 239
+                    }
+                    return false
+                }()
+                
                 HStack {
-                    Text(isDe ? "Typ:" : "Type:")
+                    Text(isDe ? "Bridge-Typ:" : "Bridge Type:")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    Text(isMulticastAddress ? "Multicast (MC)" : "Unicast (UC)")
+                    Text(isMulticastBridge ? "Multicast (MC)" : "Unicast (UC)")
                         .font(.system(size: 11, weight: .bold))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)
-                        .background(isMulticastAddress ? Color.blue.opacity(0.15) : Color.orange.opacity(0.15))
-                        .foregroundColor(isMulticastAddress ? .blue : .orange)
+                        .background(isMulticastBridge ? Color.blue.opacity(0.15) : Color.orange.opacity(0.15))
+                        .foregroundColor(isMulticastBridge ? .blue : .orange)
                         .cornerRadius(4)
                 }
                 
@@ -765,13 +797,19 @@ struct SettingsView: View {
                     Toggle(isDe ? "Priorität: Most Wanted zuerst, danach weiteste Entfernung" : "Priority: Most Wanted first, then furthest distance", isOn: $prioritizeMostWanted)
                         .toggleStyle(.checkbox)
                     
-                    Toggle(isDe ? "Ausschließlich Most Wanted Stationen anrufen (Strikter DXCC-Filter)" : "Call Most Wanted stations only (Strict DXCC filter)", isOn: $onlyMostWanted)
+                    Toggle(isDe ? "Ausschließlich Most Wanted Stationen anrufen (Strikter DXCC-Filter)" : "Call Most Wanted stations only (Strict DXCC filter)", isOn: Binding(
+                        get: { viewModel.isOnlyMostWantedFilterEnabled },
+                        set: { viewModel.isOnlyMostWantedFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                    ))
                         .toggleStyle(.checkbox)
                     
                     HStack {
                         Text(isDe ? "Most Wanted Schwelle:" : "Most Wanted Threshold:")
                             .font(.subheadline)
-                        Picker("", selection: $maxMostWantedRank) {
+                        Picker("", selection: Binding(
+                            get: { viewModel.maxMostWantedRank },
+                            set: { viewModel.maxMostWantedRank = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                        )) {
                             Text("Top 10 Most Wanted").tag(10)
                             Text("Top 20 Most Wanted").tag(20)
                             Text("Top 50 Most Wanted").tag(50)
@@ -791,7 +829,7 @@ struct SettingsView: View {
                         HStack {
                             Text("1.")
                                 .bold()
-                            Text(isDe ? "Most Wanted Entitäten (Top \(maxMostWantedRank))" : "Most Wanted Entities (Top \(maxMostWantedRank))")
+                            Text(isDe ? "Most Wanted Entitäten (Top \(viewModel.maxMostWantedRank))" : "Most Wanted Entities (Top \(viewModel.maxMostWantedRank))")
                                 .bold()
                                 .foregroundColor(.red)
                         }
@@ -889,6 +927,20 @@ struct SettingsView: View {
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 60)
                     Text(isDe ? "Minuten" : "Minutes")
+                        .foregroundStyle(.secondary)
+                }
+                
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(L("settings.options.onlyCQ"), isOn: Binding(
+                        get: { viewModel.isAutoModeOnlyCQEnabled },
+                        set: { viewModel.isAutoModeOnlyCQEnabled = $0; viewModel.saveFilters() }
+                    ))
+                    .font(.headline)
+                    
+                    Text(L("settings.options.onlyCQ.desc"))
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 

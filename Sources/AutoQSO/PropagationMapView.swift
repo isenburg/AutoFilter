@@ -222,7 +222,8 @@ struct PropagationMapView: View {
                     Annotation("", coordinate: path.targetCoordinate) {
                         HStack(spacing: 4) {
                             Image(systemName: "bolt.fill").font(.system(size: 10)).foregroundColor(.yellow)
-                            Text("\(path.targetCall)\(path.targetGrid != nil ? " (\(path.targetGrid!))" : "")")
+                            let locLabel = path.targetGrid ?? path.targetCountry ?? ""
+                            Text("\(path.targetCall)\(!locLabel.isEmpty ? " (\(locLabel))" : "")")
                                 .font(.system(size: 10, weight: .black, design: .monospaced))
                                 .foregroundColor(.white)
                         }
@@ -260,7 +261,8 @@ struct PropagationMapView: View {
                             HStack(spacing: 8) {
                                 Circle().fill(Color.orange).frame(width: 8, height: 8)
                                 Text("⚡ AKTIVES QSO:").font(.caption).bold().foregroundColor(.orange)
-                                Text("\(path.myGrid) ➔ \(path.targetCall)\(path.targetGrid != nil ? " (\(path.targetGrid!))" : "")")
+                                let locLabel = path.targetGrid ?? path.targetCountry ?? ""
+                                Text("\(path.myGrid) ➔ \(path.targetCall)\(!locLabel.isEmpty ? " (\(locLabel))" : "")")
                                     .font(.system(size: 11, weight: .black, design: .monospaced))
                                 if let dist = path.distanceKm {
                                     Text("·  \(Int(round(dist))) km")

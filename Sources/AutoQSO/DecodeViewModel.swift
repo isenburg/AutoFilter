@@ -9,16 +9,18 @@ public struct ActiveQSOPath: Equatable {
     public let myCoordinate: CLLocationCoordinate2D
     public let targetCall: String
     public let targetGrid: String?
+    public let targetCountry: String?
     public let targetCoordinate: CLLocationCoordinate2D
     public let distanceKm: Double?
     public let band: String
 
-    public init(myCall: String, myGrid: String, myCoordinate: CLLocationCoordinate2D, targetCall: String, targetGrid: String?, targetCoordinate: CLLocationCoordinate2D, distanceKm: Double?, band: String) {
+    public init(myCall: String, myGrid: String, myCoordinate: CLLocationCoordinate2D, targetCall: String, targetGrid: String?, targetCountry: String? = nil, targetCoordinate: CLLocationCoordinate2D, distanceKm: Double?, band: String) {
         self.myCall = myCall
         self.myGrid = myGrid
         self.myCoordinate = myCoordinate
         self.targetCall = targetCall
         self.targetGrid = targetGrid
+        self.targetCountry = targetCountry
         self.targetCoordinate = targetCoordinate
         self.distanceKm = distanceKm
         self.band = band
@@ -27,6 +29,8 @@ public struct ActiveQSOPath: Equatable {
     public static func == (lhs: ActiveQSOPath, rhs: ActiveQSOPath) -> Bool {
         lhs.targetCall == rhs.targetCall &&
         lhs.myGrid == rhs.myGrid &&
+        lhs.targetGrid == rhs.targetGrid &&
+        lhs.targetCountry == rhs.targetCountry &&
         lhs.myCoordinate.latitude == rhs.myCoordinate.latitude &&
         lhs.myCoordinate.longitude == rhs.myCoordinate.longitude &&
         lhs.targetCoordinate.latitude == rhs.targetCoordinate.latitude &&
@@ -145,6 +149,9 @@ class DecodeViewModel: ObservableObject {
     
     @Published var isFiltersEnabled: Bool = true
     @Published var isWsjtSpecialFilterEnabled: Bool = false
+    @Published var isAutoModeOnlyCQEnabled: Bool = false
+    @Published var isOnlyMostWantedFilterEnabled: Bool = false
+    @Published var maxMostWantedRank: Int = 100
     @Published var isNew4CharGridOnlyFilterEnabled: Bool = false
     @Published var isNew6CharGridOnlyFilterEnabled: Bool = false
     @Published var isWorkedBeforeFilterEnabled: Bool = false
@@ -421,6 +428,7 @@ class DecodeViewModel: ObservableObject {
         
         var targetGrid: String? = nil
         var targetCoord: CLLocationCoordinate2D? = nil
+        var targetCountry: String? = nil
         
         let allDecodes = server.decodes + clusterSpots
         if let matching = allDecodes.first(where: { $0.callsign.uppercased() == targetCall && $0.grid != nil && !($0.grid!.isEmpty) }),
@@ -430,9 +438,15 @@ class DecodeViewModel: ObservableObject {
             targetCoord = CLLocationCoordinate2D(latitude: ll.lat, longitude: ll.lon)
         }
         
+        let resolvedCountry = matcher.country(for: targetCall)
+        if resolvedCountry != "OTHER" && !resolvedCountry.isEmpty {
+            targetCountry = resolvedCountry
+        }
+        
         if targetCoord == nil {
-            let country = matcher.country(for: targetCall)
-            if let coords = matcher.coordinates(forCountry: country) {
+            if let c = targetCountry, let coords = matcher.coordinates(forCountry: c) {
+                targetCoord = CLLocationCoordinate2D(latitude: coords.latitude, longitude: coords.longitude)
+            } else if let coords = matcher.coordinates(for: targetCall) {
                 targetCoord = CLLocationCoordinate2D(latitude: coords.latitude, longitude: coords.longitude)
             }
         }
@@ -443,7 +457,7 @@ class DecodeViewModel: ObservableObject {
         if let tg = targetGrid {
             dist = Maidenhead.distanceKm(from: myGrid, to: tg)
         } else {
-            dist = nil
+            dist = Maidenhead.distanceKm(from: myCoord, to: finalTargetCoord)
         }
         
         let band = server.decodes.first(where: { $0.callsign.uppercased() == targetCall })?.band ?? ""
@@ -454,6 +468,7 @@ class DecodeViewModel: ObservableObject {
             myCoordinate: myCoord,
             targetCall: targetCall,
             targetGrid: targetGrid,
+            targetCountry: targetCountry,
             targetCoordinate: finalTargetCoord,
             distanceKm: dist,
             band: band
@@ -551,8 +566,8 @@ class DecodeViewModel: ObservableObject {
         var candidates: [WSJTXDecode] = []
         let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
         let prioritizeMW = UserDefaults.standard.object(forKey: "prioritizeMostWanted") as? Bool ?? true
-        let onlyMW = UserDefaults.standard.bool(forKey: "onlyMostWanted")
-        let maxRank = UserDefaults.standard.integer(forKey: "maxMostWantedRank") > 0 ? UserDefaults.standard.integer(forKey: "maxMostWantedRank") : 100
+        let onlyMW = isOnlyMostWantedFilterEnabled
+        let maxRank = maxMostWantedRank
         let ownCall = (UserDefaults.standard.string(forKey: "lotwUsername") ?? "").uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
         
         var skippedCounts = [String: Int]()
@@ -573,7 +588,9 @@ class DecodeViewModel: ObservableObject {
             let isCQ = upperMsg.contains("CQ ") || upperMsg.hasPrefix("CQ")
             let is73 = msgTokens.contains("73") || msgTokens.contains("RR73") || msgTokens.contains("RRR")
             
-            if isCQ || is73 {
+            let isEligible = isAutoModeOnlyCQEnabled ? isCQ : (isCQ || is73)
+            
+            if isEligible {
                 totalCQsOr73s += 1
                 
                 // DX Filter Check
@@ -620,7 +637,8 @@ class DecodeViewModel: ObservableObject {
         if candidates.isEmpty {
             if totalCQsOr73s > 0 {
                 let reasons = skippedCounts.map { "\($0.key): \($0.value)" }.joined(separator: ", ")
-                addLog("Auswertung: Keine Anruf-Kandidaten unter \(totalCQsOr73s) CQs/73s gefunden (\(reasons))")
+                let targetType = isAutoModeOnlyCQEnabled ? "CQs" : "CQs/73s"
+                addLog("Auswertung: Keine Anruf-Kandidaten unter \(totalCQsOr73s) \(targetType) gefunden (\(reasons))")
             }
             return
         }
@@ -1180,6 +1198,9 @@ class DecodeViewModel: ObservableObject {
         blockedITUZones = defaults.array(forKey: "blockedITUZones") as? [Int] ?? []
         
         isWsjtSpecialFilterEnabled = defaults.bool(forKey: "isWsjtSpecialFilterEnabled")
+        isAutoModeOnlyCQEnabled = defaults.bool(forKey: "isAutoModeOnlyCQEnabled")
+        isOnlyMostWantedFilterEnabled = defaults.bool(forKey: "onlyMostWanted")
+        maxMostWantedRank = defaults.integer(forKey: "maxMostWantedRank") > 0 ? defaults.integer(forKey: "maxMostWantedRank") : 100
         isNew4CharGridOnlyFilterEnabled = defaults.bool(forKey: "isNew4CharGridOnlyFilterEnabled")
         isNew6CharGridOnlyFilterEnabled = defaults.bool(forKey: "isNew6CharGridOnlyFilterEnabled")
         isWorkedBeforeFilterEnabled = defaults.bool(forKey: "isWorkedBeforeFilterEnabled")
@@ -1213,6 +1234,9 @@ class DecodeViewModel: ObservableObject {
         defaults.set(blockedITUZones, forKey: "blockedITUZones")
         
         defaults.set(isWsjtSpecialFilterEnabled, forKey: "isWsjtSpecialFilterEnabled")
+        defaults.set(isAutoModeOnlyCQEnabled, forKey: "isAutoModeOnlyCQEnabled")
+        defaults.set(isOnlyMostWantedFilterEnabled, forKey: "onlyMostWanted")
+        defaults.set(maxMostWantedRank, forKey: "maxMostWantedRank")
         defaults.set(isNew4CharGridOnlyFilterEnabled, forKey: "isNew4CharGridOnlyFilterEnabled")
         defaults.set(isNew6CharGridOnlyFilterEnabled, forKey: "isNew6CharGridOnlyFilterEnabled")
         defaults.set(isWorkedBeforeFilterEnabled, forKey: "isWorkedBeforeFilterEnabled")
@@ -1264,6 +1288,13 @@ class DecodeViewModel: ObservableObject {
         // 6. Allowed DX Callsigns (Whitelist)
         if !allowedDXCallsigns.isEmpty && !callsignMatches(call, in: allowedDXCallsigns) {
             return false
+        }
+        
+        // 6.5. Most Wanted Only Filter
+        if isOnlyMostWantedFilterEnabled {
+            if !MostWantedManager.shared.isMostWanted(callsign: call, maxRank: maxMostWantedRank) {
+                return false
+            }
         }
         
         // 7. Spotter Filter (applied to decode.spotter for clusters)
@@ -1371,7 +1402,8 @@ class DecodeViewModel: ObservableObject {
             let isCQ = upperMsg.contains("CQ ") || upperMsg.hasPrefix("CQ")
             let is73 = msgTokens.contains("73") || msgTokens.contains("RR73") || msgTokens.contains("RRR")
             
-            guard isCQ || is73 else { return false }
+            let isEligible = isAutoModeOnlyCQEnabled ? isCQ : (isCQ || is73)
+            guard isEligible else { return false }
         }
         
         // 1. Filtered out by DX Filters
@@ -1380,10 +1412,8 @@ class DecodeViewModel: ObservableObject {
         }
         
         // 2. Only Most Wanted filter active
-        let onlyMW = UserDefaults.standard.bool(forKey: "onlyMostWanted")
-        let maxRank = UserDefaults.standard.integer(forKey: "maxMostWantedRank") > 0 ? UserDefaults.standard.integer(forKey: "maxMostWantedRank") : 100
-        if onlyMW {
-            if !decode.isMostWanted || (decode.mostWantedRank ?? 999) > maxRank {
+        if isOnlyMostWantedFilterEnabled {
+            if !decode.isMostWanted || (decode.mostWantedRank ?? 999) > maxMostWantedRank {
                 return false
             }
         }
@@ -1407,12 +1437,13 @@ class DecodeViewModel: ObservableObject {
     func bridgeDecodeIfEnabled(decode: WSJTXDecode, rawData: Data, accepted: Bool) {
         let bridgePort = UserDefaults.standard.integer(forKey: "udpBridgePort")
         guard bridgePort > 0 else { return }
+        let bridgeAddress = UserDefaults.standard.string(forKey: "udpBridgeAddress") ?? "127.0.0.1"
         
         if isFiltersEnabled && !accepted {
             return
         }
         
-        server.sendRaw(data: rawData, toPort: UInt16(bridgePort))
+        server.sendRaw(data: rawData, toPort: UInt16(bridgePort), address: bridgeAddress)
     }
 
     private let usSynonyms = Set(["usa", "united states", "us"])

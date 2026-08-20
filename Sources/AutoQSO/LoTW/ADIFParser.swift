@@ -142,7 +142,10 @@ struct ADIFParser {
                 grid = vucc.components(separatedBy: CharacterSet(charactersIn: ",;/")).first ?? ""
             }
             
-            let entry = QSOEntry(callsign: call.uppercased(), band: band.uppercased(), mode: mode.uppercased(), qsoDate: qsoDate, timeOn: timeOn, dxcc: dxcc, grid: grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())
+            let cleanGrid = grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+            let finalGrid = Maidenhead.isValidGrid(cleanGrid) ? cleanGrid : ""
+            
+            let entry = QSOEntry(callsign: call.uppercased(), band: band.uppercased(), mode: mode.uppercased(), qsoDate: qsoDate, timeOn: timeOn, dxcc: dxcc, grid: finalGrid)
             entries.append(entry)
         }
         return entries
