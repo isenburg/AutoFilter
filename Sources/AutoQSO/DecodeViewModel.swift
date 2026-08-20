@@ -303,14 +303,38 @@ class DecodeViewModel: ObservableObject {
             }
             self.updatePropagationClusters()
 
-            // Sofortige Cooldown-Sperre, sobald die aktuelle Zielstation 73/RR73 sendet
+            // Überprüfung aktiver Anruf: Wenn unsere Zielstation einer anderen Station antwortet -> Sofort HaltTx, kein Cooldown!
             if !self.currentTargetCall.isEmpty {
                 let targetUpper = self.currentTargetCall.uppercased()
+                let ownCall = (UserDefaults.standard.string(forKey: "lotwUsername") ?? "").uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
                 let msgUpper = decode.message.uppercased()
-                if msgUpper.contains(targetUpper) {
-                    let tokens = msgUpper.components(separatedBy: .whitespacesAndNewlines).map { $0.trimmingCharacters(in: CharacterSet.alphanumerics.inverted) }
-                    if tokens.contains("73") || tokens.contains("RR73") || tokens.contains("RRR") {
-                        self.blacklistedCalls[targetUpper] = Date()
+                let tokens = msgUpper.components(separatedBy: .whitespacesAndNewlines)
+                    .map { $0.trimmingCharacters(in: CharacterSet.alphanumerics.inverted) }
+                    .filter { !$0.isEmpty }
+                
+                let isFromTarget = (decode.callsign.uppercased() == targetUpper) || (tokens.count >= 2 && tokens[1] == targetUpper)
+                
+                if isFromTarget && tokens.count >= 2 {
+                    let recipient = tokens[0]
+                    let isCQ = recipient.hasPrefix("CQ") || recipient == "QRZ" || recipient == "DE"
+                    let isForMe = !ownCall.isEmpty && (recipient == ownCall || recipient.contains(ownCall))
+                    
+                    if !isCQ && !isForMe {
+                        let otherCall = recipient
+                        let msg = "QSO abgebrochen: \(targetUpper) antwortet \(otherCall) (Kein Cooldown, bereit für nächsten Trigger)."
+                        self.currentQSOStatus = msg
+                        self.addLog("ℹ️ \(msg)")
+                        
+                        // Zuerst State zurücksetzen, damit nachfolgendes HaltTx keinen Cooldown anlegt
+                        self.currentTargetCall = ""
+                        self.qsoStartTime = nil
+                        self.txEnabledStartTime = nil
+                        self.lastTriggeredTarget = nil
+                        self.txTriggerAttempts = 0
+                        self.lastTxTriggerTime = nil
+                        
+                        // Senden in WSJT-X sofort stoppen
+                        self.server.sendHaltTx(autoTxOnly: false)
                     }
                 }
             }

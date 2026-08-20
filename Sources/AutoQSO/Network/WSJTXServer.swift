@@ -406,4 +406,33 @@ class WSJTXServer: ObservableObject {
             }
         }
     }
+    
+    func sendHaltTx(autoTxOnly: Bool = false) {
+        let halt = WSJTXHaltTx(id: self.wsjtxClientId, autoTxOnly: autoTxOnly)
+        let data = halt.serialize()
+        
+        guard wsjtSocketFd >= 0, let clientAddr = lastWSJTClientAddr else {
+            print("Cannot send haltTx: socket not ready or client address unknown")
+            self.logRaw(.outgoing, "HaltTx failed: socket not ready/address unknown")
+            return
+        }
+        var addr = clientAddr
+        
+        data.withUnsafeBytes { rawBuffer in
+            guard let baseAddress = rawBuffer.baseAddress else { return }
+            withUnsafePointer(to: &addr) {
+                $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                    let sent = sendto(wsjtSocketFd, baseAddress, data.count, 0, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+                    if sent < 0 {
+                        print("Error sending haltTx: errno=\(errno)")
+                        self.logRaw(.outgoing, "HaltTx failed (errno=\(errno)): client=\(self.wsjtxClientId)")
+                    } else {
+                        print("Sent haltTx of \(sent) bytes back to WSJT-X client")
+                        self.logRaw(.outgoing, "HaltTx: client=\(self.wsjtxClientId) autoTxOnly=\(autoTxOnly)")
+                    }
+                }
+            }
+        }
+    }
 }
+

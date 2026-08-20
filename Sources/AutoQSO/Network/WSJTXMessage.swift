@@ -203,6 +203,21 @@ struct WSJTXReply {
     }
 }
 
+struct WSJTXHaltTx {
+    var id: String
+    var autoTxOnly: Bool
+    
+    func serialize() -> Data {
+        var writer = QDataStreamWriter()
+        writer.writeUInt32(0xADBCCBDA) // Magic
+        writer.writeUInt32(2)          // Schema
+        writer.writeUInt32(WSJTXMessageType.haltTx.rawValue)
+        writer.writeString(id)
+        writer.writeBool(autoTxOnly)
+        return writer.data
+    }
+}
+
 enum WSJTXRawLogType: String, Codable {
     case decode = "Decode"
     case incoming = "Eingang"
