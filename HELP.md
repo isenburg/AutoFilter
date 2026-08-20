@@ -158,7 +158,18 @@ Zur Diagnose und Rohdaten-Überwachung verfügt die App über drei umschaltbare 
 
 ---
 
-## 12. Rechtlicher Hinweis
+## 12. Mehrsprachigkeit & Spracheinstellungen
+
+AutoQSO unterstützt Deutsch 🇩🇪 und Englisch 🇬🇧:
+- Unter **Einstellungen (⚙️) -> Ansicht & Sprache** lässt sich die Anzeigesprache jederzeit umschalten:
+  - 🌐 **System (Standard / Default)**: Passt sich automatisch der macOS-Systemsprache an.
+  - 🇩🇪 **Deutsch**: Deutsche Benutzeroberfläche.
+  - 🇬🇧 **English**: Englische Benutzeroberfläche.
+- Die Sprachumschaltung erfolgt **sofort und ohne Neustart** der Anwendung über alle offenen Fenster hinweg.
+
+---
+
+## 13. Rechtlicher Hinweis
 
 > **WICHTIGER RECHTLICHER HINWEIS**
 >
@@ -167,3 +178,4 @@ Zur Diagnose und Rohdaten-Überwachung verfügt die App über drei umschaltbare 
 > Der Steuernde (Control Operator) ist für alle gesendeten Signale verantwortlich. Lasse einen automatisierten Sender niemals unbeaufsichtigt laufen, sofern dies nicht durch deine Lizenzklasse und lokale Vorschriften erlaubt ist.
 >
 > Software wird „AS IS" bereitgestellt, ohne jegliche Garantie.
+

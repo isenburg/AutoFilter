@@ -11,19 +11,19 @@ enum WorkedBeforeUnit: String, CaseIterable, Identifiable, Codable {
     
     var title: String {
         switch self {
-        case .hours: return "Stunden"
-        case .days: return "Tage"
-        case .months: return "Monate"
-        case .years: return "Jahre"
+        case .hours: return L("unit.hour.plural")
+        case .days: return L("unit.day.plural")
+        case .months: return L("unit.month.plural")
+        case .years: return L("unit.year.plural")
         }
     }
     
     var singularTitle: String {
         switch self {
-        case .hours: return "Stunde"
-        case .days: return "Tag"
-        case .months: return "Monat"
-        case .years: return "Jahr"
+        case .hours: return L("unit.hour.singular")
+        case .days: return L("unit.day.singular")
+        case .months: return L("unit.month.singular")
+        case .years: return L("unit.year.singular")
         }
     }
     

@@ -15,8 +15,24 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case storage = "Speicherort & iCloud"
     case options = "Auto Mode Optionen"
     case appearance = "Ansicht"
+    case language = "Sprache"
     
     var id: String { rawValue }
+    
+    var title: String {
+        switch self {
+        case .udp: return L("settings.tab.udp")
+        case .cluster: return L("settings.tab.cluster")
+        case .telnet: return L("settings.tab.telnet")
+        case .sync: return L("settings.tab.sync")
+        case .qth: return L("settings.tab.qth")
+        case .mostWanted: return L("settings.tab.mostWanted")
+        case .storage: return L("settings.tab.storage")
+        case .options: return L("settings.tab.options")
+        case .appearance: return L("settings.tab.appearance")
+        case .language: return L("settings.tab.language")
+        }
+    }
     
     /// Zuordnung der SFSymbols-Icons für die linke Navigationsleiste
     var icon: String {
@@ -29,7 +45,8 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .mostWanted: return "flame.fill"
         case .storage: return "folder.fill"
         case .options: return "slider.horizontal.3"
-        case .appearance: return "circle.lefthalf.filled"
+        case .appearance: return "paintpalette"
+        case .language: return "globe"
         }
     }
 }
@@ -38,6 +55,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 
 struct SettingsView: View {
     @ObservedObject var viewModel: DecodeViewModel
+    @ObservedObject private var langManager = LanguageManager.shared
     
     // Lokaler Zustand der UI & gespeicherte Ziel-Sektion
     @AppStorage("settingsSelectedSection") private var selectedSectionRaw: String = SettingsSection.udp.rawValue
@@ -119,7 +137,7 @@ struct SettingsView: View {
                         Image(systemName: section.icon)
                             .foregroundColor(selectedSection == section ? .accentColor : .secondary)
                             .frame(width: 18)
-                        Text(section.rawValue)
+                        Text(section.title)
                             .font(.body)
                     }
                     .tag(section)
@@ -128,7 +146,7 @@ struct SettingsView: View {
                 
                 Spacer(minLength: 0)
             }
-            .frame(width: 200)
+            .frame(width: 210)
             .fixedSize(horizontal: true, vertical: false) // Verhindert ungewolltes Dehnen der Sidebar
             .background(Color(NSColor.controlBackgroundColor))
             
@@ -164,12 +182,13 @@ struct SettingsView: View {
     }
     
     private func resolutionDescription(for length: Int) -> String {
+        let isDe = langManager.isGerman
         switch length {
-        case 2: return "2-Stellen Field"
-        case 4: return "4-Stellen Square"
-        case 6: return "6-Stellen Subsquare"
-        case 8...: return "8-Stellen Extended Subsquare (Präzise)"
-        default: return "\(length)-Stellen"
+        case 2: return isDe ? "2-Stellen Field" : "2-char Field"
+        case 4: return isDe ? "4-Stellen Square" : "4-char Square"
+        case 6: return isDe ? "6-Stellen Subsquare" : "6-char Subsquare"
+        case 8...: return isDe ? "8-Stellen Extended Subsquare (Präzise)" : "8-char Extended Subsquare (Precise)"
+        default: return "\(length)" + (isDe ? "-Stellen" : "-char")
         }
     }
     
@@ -182,13 +201,14 @@ struct SettingsView: View {
             
         // --- 1. WSJT-X UDP Server ---
         case .udp:
+            let isDe = langManager.isGerman
             VStack(alignment: .leading, spacing: 14) {
-                Text("WSJT-X UDP Server Verbindung")
+                Text(isDe ? "WSJT-X UDP Server Verbindung" : "WSJT-X UDP Server Connection")
                     .font(.title2)
                     .bold()
                 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("UDP Adresse:")
+                    Text(isDe ? "UDP Adresse:" : "UDP Address:")
                         .font(.headline)
                     TextField("224.0.0.1", text: $udpAddress)
                         .textFieldStyle(.roundedBorder)
@@ -204,7 +224,7 @@ struct SettingsView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("UDP Bridge Weiterleitungs-Port (0 = Aus):")
+                    Text(isDe ? "UDP Bridge Weiterleitungs-Port (0 = Aus):" : "UDP Bridge Forwarding Port (0 = Off):")
                         .font(.headline)
                     NumericTextField("z.B. 2238", value: $udpBridgePort)
                         .textFieldStyle(.roundedBorder)
@@ -212,7 +232,7 @@ struct SettingsView: View {
                 }
                 
                 HStack {
-                    Text("Typ:")
+                    Text(isDe ? "Typ:" : "Type:")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     Text(isMulticastAddress ? "Multicast (MC)" : "Unicast (UC)")
@@ -224,7 +244,7 @@ struct SettingsView: View {
                         .cornerRadius(4)
                 }
                 
-                Button("Server Verbinden / Neu Starten") {
+                Button(isDe ? "Server Verbinden / Neu Starten" : "Connect / Restart Server") {
                     let portVal = UInt16(udpPort)
                     viewModel.startServer(port: portVal, address: udpAddress)
                 }
@@ -234,6 +254,7 @@ struct SettingsView: View {
             
         // --- 2. DX Cluster Konfiguration ---
         case .cluster:
+            let isDe = langManager.isGerman
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("DX Cluster")
@@ -264,7 +285,7 @@ struct SettingsView: View {
                                 viewModel.reconnectClusters()
                             }
                         )) {
-                            Text("Keiner (Deaktiviert)").tag(ClusterServer?.none)
+                            Text(isDe ? "Keiner (Deaktiviert)" : "None (Disabled)").tag(ClusterServer?.none)
                             ForEach(viewModel.availableClusters) { cluster in
                                 Text(cluster.name).tag(ClusterServer?.some(cluster))
                             }
@@ -291,7 +312,7 @@ struct SettingsView: View {
                                 viewModel.reconnectClusters()
                             }
                         )) {
-                            Text("Keiner (Deaktiviert)").tag(ClusterServer?.none)
+                            Text(isDe ? "Keiner (Deaktiviert)" : "None (Disabled)").tag(ClusterServer?.none)
                             ForEach(viewModel.availableClusters) { cluster in
                                 Text(cluster.name).tag(ClusterServer?.some(cluster))
                             }
@@ -318,7 +339,7 @@ struct SettingsView: View {
                                 viewModel.reconnectClusters()
                             }
                         )) {
-                            Text("Keiner (Deaktiviert)").tag(ClusterServer?.none)
+                            Text(isDe ? "Keiner (Deaktiviert)" : "None (Disabled)").tag(ClusterServer?.none)
                             ForEach(viewModel.availableClusters) { cluster in
                                 Text(cluster.name).tag(ClusterServer?.some(cluster))
                             }
@@ -328,7 +349,7 @@ struct SettingsView: View {
                     
                     Divider()
                     
-                    Text("DX Cluster verwalten")
+                    Text(isDe ? "DX Cluster verwalten" : "Manage DX Clusters")
                         .font(.title3)
                         .bold()
                         .padding(.top, 4)
@@ -341,6 +362,7 @@ struct SettingsView: View {
             
         // --- 3. Telnet Server ---
         case .telnet:
+            let isDe = langManager.isGerman
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Telnet Server")
@@ -348,7 +370,7 @@ struct SettingsView: View {
                         .bold()
                     
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Telnet Server Port (Default 8000):")
+                        Text(isDe ? "Telnet Server Port (Standard 8000):" : "Telnet Server Port (Default 8000):")
                             .font(.headline)
                         NumericTextField("8000", value: $telnetServerPort)
                             .textFieldStyle(.roundedBorder)
@@ -359,7 +381,7 @@ struct SettingsView: View {
                     }
                     
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Rufzeichen für Login (Default GUEST):")
+                        Text(isDe ? "Rufzeichen für Login (Standard GUEST):" : "Callsign for Login (Default GUEST):")
                             .font(.headline)
                         TextField("GUEST", text: $clusterCallsign)
                             .textFieldStyle(.roundedBorder)
@@ -369,7 +391,7 @@ struct SettingsView: View {
                             }
                     }
                     
-                    Toggle("WSJT-X Decodes über Telnet ausgeben", isOn: $isWsjtTelnetOutputEnabled)
+                    Toggle(isDe ? "WSJT-X Decodes über Telnet ausgeben" : "Broadcast WSJT-X decodes via Telnet", isOn: $isWsjtTelnetOutputEnabled)
                         .padding(.top, 4)
                 }
                 .padding(.trailing, 16)
@@ -377,19 +399,20 @@ struct SettingsView: View {
             
         // --- 4. Logbuch-Synchronisation & Daten-Import ---
         case .sync:
+            let isDe = langManager.isGerman
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Aktive Logbuch-Quelle")
+                        Text(isDe ? "Aktive Logbuch-Quelle" : "Active Logbook Source")
                             .font(.title2)
                             .bold()
                         
-                        Text("Wähle deine primäre Logbuch-Quelle für den automatischen Abgleich gearbeiteter Stationen und Grids:")
+                        Text(isDe ? "Wähle deine primäre Logbuch-Quelle für den automatischen Abgleich gearbeiteter Stationen und Grids:" : "Select your primary logbook source for automatic cross-referencing of worked stations and grids:")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         
-                        Picker("Logbuch-Quelle", selection: $activeLogbookProvider) {
+                        Picker(isDe ? "Logbuch-Quelle" : "Logbook Source", selection: $activeLogbookProvider) {
                             ForEach(LogbookProvider.allCases) { provider in
                                 Label(provider.displayName, systemImage: provider.iconName).tag(provider.rawValue)
                             }
@@ -413,7 +436,7 @@ struct SettingsView: View {
                                     .bold()
                             }
                             
-                            Text("Synchronisiert alle QSOs über die native macOS AppleScript-Schnittstelle direkt aus deiner lokal laufenden RUMlogNG-Anwendung.")
+                            Text(isDe ? "Synchronisiert alle QSOs über die native macOS AppleScript-Schnittstelle direkt aus deiner lokal laufenden RUMlogNG-Anwendung." : "Synchronizes all QSOs via native macOS AppleScript directly from your locally running RUMlogNG app.")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                             
@@ -427,13 +450,13 @@ struct SettingsView: View {
                                         } else {
                                             Image(systemName: "arrow.triangle.2.circlepath")
                                         }
-                                        Text("Inkrementeller Sync (Seit letztem Mal)")
+                                        Text(isDe ? "Inkrementeller Sync (Seit letztem Mal)" : "Incremental Sync (Since last sync)")
                                     }
                                 }
                                 .disabled(viewModel.rumlogManager.isDownloading)
                                 .buttonStyle(.borderedProminent)
                                 
-                                Button("Vollständiger Sync (ab 1900)") {
+                                Button(isDe ? "Vollständiger Sync (ab 1900)" : "Full Sync (since 1900)") {
                                     viewModel.syncRUMLog(fullSync: true)
                                 }
                                 .disabled(viewModel.rumlogManager.isDownloading)
@@ -447,13 +470,13 @@ struct SettingsView: View {
                                         .font(.caption)
                                         .foregroundColor(.red)
                                     
-                                    if error.contains("Berechtigung") || error.contains("Automation") {
+                                    if error.contains("Berechtigung") || error.contains("Automation") || error.contains("Permission") {
                                         Button(action: {
                                             if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation") {
                                                 NSWorkspace.shared.open(url)
                                             }
                                         }) {
-                                            Label("Systemeinstellungen (Automation) öffnen...", systemImage: "lock.shield")
+                                            Label(isDe ? "Systemeinstellungen (Automation) öffnen..." : "Open System Settings (Automation)...", systemImage: "lock.shield")
                                         }
                                         .buttonStyle(.bordered)
                                         .controlSize(.small)
@@ -476,23 +499,23 @@ struct SettingsView: View {
                             }
                             
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("Benutzername / Callsign:")
+                                Text(isDe ? "Benutzername / Rufzeichen:" : "Username / Callsign:")
                                     .font(.headline)
-                                TextField("Benutzername", text: $lotwUsername)
+                                TextField(isDe ? "Benutzername" : "Username", text: $lotwUsername)
                                     .textFieldStyle(.roundedBorder)
                                     .frame(maxWidth: 240)
                             }
                             
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("Passwort:")
+                                Text(isDe ? "Passwort:" : "Password:")
                                     .font(.headline)
-                                SecureField("Passwort", text: $lotwPassword)
+                                SecureField(isDe ? "Passwort" : "Password", text: $lotwPassword)
                                     .textFieldStyle(.roundedBorder)
                                     .frame(maxWidth: 240)
                             }
                             
                             HStack(spacing: 8) {
-                                Button("LoTW Logbuch Synchronisieren (Vollständig ab 1900)") {
+                                Button(isDe ? "LoTW Logbuch Synchronisieren (Vollständig ab 1900)" : "Sync LoTW Logbook (Full sync since 1900)") {
                                     viewModel.lotwManager.downloadLoTW(username: lotwUsername, password: lotwPassword, fullSync: true)
                                 }
                                 .disabled(lotwUsername.isEmpty || lotwPassword.isEmpty || viewModel.lotwManager.isDownloading)
@@ -522,7 +545,7 @@ struct SettingsView: View {
                             }
                             
                             HStack(spacing: 8) {
-                                Button("QRZ.com Logbuch Synchronisieren (Vollständig ab 1900)") {
+                                Button(isDe ? "QRZ.com Logbuch Synchronisieren (Vollständig ab 1900)" : "Sync QRZ.com Logbook (Full sync since 1900)") {
                                     viewModel.syncQRZ(apiKey: qrzApiKey, fullSync: true)
                                 }
                                 .disabled(qrzApiKey.isEmpty || viewModel.qrzManager.isDownloading)
@@ -536,15 +559,15 @@ struct SettingsView: View {
                     
                     // Manueller ADIF-Datei Import
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Manueller ADIF-Datei Import")
+                        Text(isDe ? "Manueller ADIF-Datei Import" : "Manual ADIF File Import")
                             .font(.title3)
                             .bold()
                         
-                        Text("Importiere QSOs aus einer lokalen .adi oder .adif Datei direkt in die SQLite-Datenbank.")
+                        Text(isDe ? "Importiere QSOs aus einer lokalen .adi oder .adif Datei direkt in die SQLite-Datenbank." : "Import QSOs from a local .adi or .adif file directly into SQLite database.")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         
-                        Button("ADIF-Datei auswählen & importieren...") {
+                        Button(isDe ? "ADIF-Datei auswählen & importieren..." : "Select & Import ADIF File...") {
                             importADIFFile()
                         }
                         .buttonStyle(.bordered)
@@ -554,18 +577,18 @@ struct SettingsView: View {
                     
                     // Lokale Datenbank zurücksetzen
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Lokales Logbuch löschen")
+                        Text(isDe ? "Lokales Logbuch löschen" : "Delete Local Logbook")
                             .font(.title3)
                             .bold()
                         
-                        Text("Achtung: Dies löscht unwiderruflich alle lokal gespeicherten QSOs aus der SQLite-Datenbank.")
+                        Text(isDe ? "Achtung: Dies löscht unwiderruflich alle lokal gespeicherten QSOs aus der SQLite-Datenbank." : "Warning: This permanently deletes all locally stored QSOs from the SQLite database.")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         
                         Button(role: .destructive) {
                             showDeleteLogbookAlert = true
                         } label: {
-                            Label("Logbuch löschen", systemImage: "trash")
+                            Label(isDe ? "Logbuch löschen" : "Delete Logbook", systemImage: "trash")
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.red)
@@ -573,35 +596,36 @@ struct SettingsView: View {
                 }
                 .padding(.trailing, 16)
             }
-            .alert("Logbuch wirklich löschen?", isPresented: $showDeleteLogbookAlert) {
-                Button("Abbrechen", role: .cancel) { }
-                Button("Löschen", role: .destructive) {
+            .alert(isDe ? "Logbuch wirklich löschen?" : "Delete logbook permanently?", isPresented: $showDeleteLogbookAlert) {
+                Button(isDe ? "Abbrechen" : "Cancel", role: .cancel) { }
+                Button(isDe ? "Löschen" : "Delete", role: .destructive) {
                     let count = DatabaseManager.shared.clearAllQSOs()
                     viewModel.lotwManager.loadLog()
                     viewModel.lotwManager.addLog("Lokales Logbuch manuell gelöscht (\(count) Einträge entfernt).")
                 }
             } message: {
-                Text("Alle lokal gespeicherten QSOs werden unwiderruflich gelöscht. Dies betrifft nicht deine Logbücher auf LoTW oder QRZ.com.")
+                Text(isDe ? "Alle lokal gespeicherten QSOs werden unwiderruflich gelöscht. Dies betrifft nicht deine Logbücher auf LoTW oder QRZ.com." : "All locally stored QSOs will be deleted permanently. This does not affect your online logbooks on LoTW or QRZ.com.")
             }
             
         // --- Eigenes QTH (Maidenhead) ---
         case .qth:
+            let isDe = langManager.isGerman
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 8) {
                     Image(systemName: "mappin.and.ellipse")
                         .font(.title2)
                         .foregroundColor(.green)
-                    Text("Eigenes QTH (Maidenhead Locator)")
+                    Text(isDe ? "Eigenes QTH (Maidenhead Locator)" : "Home QTH (Maidenhead Locator)")
                         .font(.title2)
                         .bold()
                 }
                 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Maidenhead Locator (max. 8 Zeichen):")
+                    Text(isDe ? "Maidenhead Locator (max. 8 Zeichen):" : "Maidenhead Locator (max. 8 characters):")
                         .font(.headline)
                     
                     HStack(spacing: 12) {
-                        TextField("z.B. JO31AA00 oder JO31", text: Binding(
+                        TextField(isDe ? "z.B. JO31AA00 oder JO31" : "e.g. JO31AA00 or JO31", text: Binding(
                             get: { myGridLocator },
                             set: { newValue in
                                 let cleaned = newValue.replacingOccurrences(of: " ", with: "").uppercased()
@@ -615,14 +639,14 @@ struct SettingsView: View {
                         Button(action: { showQTHPickerSheet = true }) {
                             HStack(spacing: 6) {
                                 Image(systemName: "map.fill")
-                                Text("Interaktive Karte zum Wählen 🗺️")
+                                Text(isDe ? "Interaktive Karte zum Wählen 🗺️" : "Interactive Map Picker 🗺️")
                             }
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.green)
                     }
                     
-                    Text("Gib deinen präzisen Standorts-Locator ein (2- bis 8-Stellen).")
+                    Text(isDe ? "Gib deinen präzisen Standorts-Locator ein (2- bis 8-Stellen)." : "Enter your precise station locator (2 to 8 characters).")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -631,20 +655,20 @@ struct SettingsView: View {
                 
                 // Standort-Analyse & Koordinaten
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Standort-Analyse & Auflösung:")
+                    Text(isDe ? "Standort-Analyse & Auflösung:" : "Location Analysis & Resolution:")
                         .font(.headline)
                     
                     let cleanGrid = myGridLocator.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
                     if let coords = Maidenhead.locatorToLatLon(cleanGrid) {
                         HStack(spacing: 16) {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Breitengrad (Lat):")
+                                Text(isDe ? "Breitengrad (Lat):" : "Latitude (Lat):")
                                     .font(.caption).foregroundColor(.secondary)
                                 Text(String(format: "%.5f° %@", abs(coords.lat), coords.lat >= 0 ? "N" : "S"))
                                     .font(.system(size: 13, weight: .bold, design: .monospaced))
                             }
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Längengrad (Lon):")
+                                Text(isDe ? "Längengrad (Lon):" : "Longitude (Lon):")
                                     .font(.caption).foregroundColor(.secondary)
                                 Text(String(format: "%.5f° %@", abs(coords.lon), coords.lon >= 0 ? "E" : "W"))
                                     .font(.system(size: 13, weight: .bold, design: .monospaced))
@@ -657,7 +681,7 @@ struct SettingsView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(.green)
-                            Text("Gültiger Locator: \(cleanGrid) (\(resolutionDescription(for: cleanGrid.count)))")
+                            Text(isDe ? "Gültiger Locator: \(cleanGrid) (\(resolutionDescription(for: cleanGrid.count)))" : "Valid Locator: \(cleanGrid) (\(resolutionDescription(for: cleanGrid.count)))")
                                 .font(.subheadline)
                                 .bold()
                         }
@@ -665,7 +689,7 @@ struct SettingsView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .foregroundColor(.orange)
-                            Text("Ungültiges Locator-Format (z.B. JO31, JO31AA oder JO31AA00 verwenden)")
+                            Text(isDe ? "Ungültiges Locator-Format (z.B. JO31, JO31AA oder JO31AA00 verwenden)" : "Invalid locator format (e.g. use JO31, JO31AA or JO31AA00)")
                                 .font(.subheadline)
                                 .foregroundColor(.orange)
                         }
@@ -675,20 +699,20 @@ struct SettingsView: View {
                 Divider()
                 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Verwendung in AutoQSO:")
+                    Text(isDe ? "Verwendung in AutoQSO:" : "Usage in AutoQSO:")
                         .font(.headline)
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(alignment: .top, spacing: 6) {
                             Image(systemName: "circle.fill").font(.system(size: 5)).padding(.top, 5)
-                            Text("Großkreis-Entfernungsberechnung (km) zu allen empfangenen Stationen und Spots.")
+                            Text(isDe ? "Großkreis-Entfernungsberechnung (km) zu allen empfangenen Stationen und Spots." : "Great-circle distance calculation (km) to all received stations and spots.")
                         }
                         HStack(alignment: .top, spacing: 6) {
                             Image(systemName: "circle.fill").font(.system(size: 5)).padding(.top, 5)
-                            Text("Visualisierung des eigenen Standorts (MY QTH) und der aktiven QSO-Verbindungspfade auf der Ausbreitungskarte (2D & 3D Globus).")
+                            Text(isDe ? "Visualisierung des eigenen Standorts (MY QTH) und der aktiven QSO-Verbindungspfade auf der Ausbreitungskarte (2D & 3D Globus)." : "Visualization of home station (MY QTH) and active QSO paths on propagation maps (2D & 3D Globe).")
                         }
                         HStack(alignment: .top, spacing: 6) {
                             Image(systemName: "circle.fill").font(.system(size: 5)).padding(.top, 5)
-                            Text("Unterstützt präzise Positionierung bis zu 8-Stellen Subsquare Resolution (ca. 925m × 462m).")
+                            Text(isDe ? "Unterstützt präzise Positionierung bis zu 8-Stellen Subsquare Resolution (ca. 925m × 462m)." : "Supports precise positioning up to 8-character subsquare resolution (approx. 925m × 462m).")
                         }
                     }
                     .font(.subheadline)
@@ -698,16 +722,17 @@ struct SettingsView: View {
 
         // --- 5. Most Wanted & Prioritäts-Filter ---
         case .mostWanted:
+            let isDe = langManager.isGerman
             VStack(alignment: .leading, spacing: 16) {
-                Text("Most Wanted & Priorisierung")
+                Text(isDe ? "Most Wanted & Priorisierung" : "Most Wanted & Priority")
                     .font(.title2)
                     .bold()
                 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Eigener Maidenhead Locator (Grid Square):")
+                    Text(isDe ? "Eigener Maidenhead Locator (Grid Square):" : "Home Maidenhead Locator (Grid Square):")
                         .font(.headline)
                     HStack(spacing: 8) {
-                        TextField("z.B. JO31 oder JO31AA", text: Binding(
+                        TextField(isDe ? "z.B. JO31 oder JO31AA" : "e.g. JO31 or JO31AA", text: Binding(
                             get: { myGridLocator },
                             set: { newValue in
                                 let cleaned = newValue.replacingOccurrences(of: " ", with: "").uppercased()
@@ -718,12 +743,12 @@ struct SettingsView: View {
                         .font(.system(.body, design: .monospaced))
                         .frame(maxWidth: 180)
                         
-                        Button("Details im QTH-Tab ↗") {
+                        Button(isDe ? "Details im QTH-Tab ↗" : "Details in QTH Tab ↗") {
                             selectedSection = .qth
                         }
                         .buttonStyle(.borderless)
                     }
-                    Text("Wird für die Entfernungsberechnung (km) zu decodierten Stationen genutzt.")
+                    Text(isDe ? "Wird für die Entfernungsberechnung (km) zu decodierten Stationen genutzt." : "Used for distance calculation (km) to decoded stations.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -731,20 +756,20 @@ struct SettingsView: View {
                 Divider()
                 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Hervorhebung & Sortierung:")
+                    Text(isDe ? "Hervorhebung & Sortierung:" : "Highlighting & Sorting:")
                         .font(.headline)
                     
-                    Toggle("Most Wanted Stationen rot hervorheben (🔥)", isOn: $highlightMostWanted)
+                    Toggle(isDe ? "Most Wanted Stationen rot hervorheben (🔥)" : "Highlight Most Wanted stations in red (🔥)", isOn: $highlightMostWanted)
                         .toggleStyle(.checkbox)
                     
-                    Toggle("Priorität: Most Wanted zuerst, danach weiteste Entfernung", isOn: $prioritizeMostWanted)
+                    Toggle(isDe ? "Priorität: Most Wanted zuerst, danach weiteste Entfernung" : "Priority: Most Wanted first, then furthest distance", isOn: $prioritizeMostWanted)
                         .toggleStyle(.checkbox)
                     
-                    Toggle("Ausschließlich Most Wanted Stationen anrufen (Strikter DXCC-Filter)", isOn: $onlyMostWanted)
+                    Toggle(isDe ? "Ausschließlich Most Wanted Stationen anrufen (Strikter DXCC-Filter)" : "Call Most Wanted stations only (Strict DXCC filter)", isOn: $onlyMostWanted)
                         .toggleStyle(.checkbox)
                     
                     HStack {
-                        Text("Most Wanted Schwelle:")
+                        Text(isDe ? "Most Wanted Schwelle:" : "Most Wanted Threshold:")
                             .font(.subheadline)
                         Picker("", selection: $maxMostWantedRank) {
                             Text("Top 10 Most Wanted").tag(10)
@@ -760,27 +785,27 @@ struct SettingsView: View {
                 
                 // Info-Box zur Regellogik
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Such- & Priorisierungs-Reihenfolge:")
+                    Text(isDe ? "Such- & Priorisierungs-Reihenfolge:" : "Search & Priority Order:")
                         .font(.headline)
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text("1.")
                                 .bold()
-                            Text("Most Wanted Entitäten (Top \(maxMostWantedRank))")
+                            Text(isDe ? "Most Wanted Entitäten (Top \(maxMostWantedRank))" : "Most Wanted Entities (Top \(maxMostWantedRank))")
                                 .bold()
                                 .foregroundColor(.red)
                         }
                         HStack {
                             Text("2.")
                                 .bold()
-                            Text("Weiteste Entfernung (km basierend auf \(myGridLocator.isEmpty ? "JO31" : myGridLocator))")
+                            Text(isDe ? "Weiteste Entfernung (km basierend auf \(myGridLocator.isEmpty ? "JO31" : myGridLocator))" : "Furthest Distance (km based on \(myGridLocator.isEmpty ? "JO31" : myGridLocator))")
                                 .bold()
                                 .foregroundColor(.blue)
                         }
                         HStack {
                             Text("3.")
                                 .bold()
-                            Text("Stärkstes Signal (SNR dB)")
+                            Text(isDe ? "Stärkstes Signal (SNR dB)" : "Strongest Signal (SNR dB)")
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -793,19 +818,20 @@ struct SettingsView: View {
             
         // --- 6. Speicherort & Datenbank ---
         case .storage:
+            let isDe = langManager.isGerman
             VStack(alignment: .leading, spacing: 14) {
-                Text("Datenbank & Speicherort")
+                Text(isDe ? "Datenbank & Speicherort" : "Database & Storage Location")
                     .font(.title2)
                     .bold()
                 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Speicherort wählen:")
+                    Text(isDe ? "Speicherort wählen:" : "Choose Storage Location:")
                         .font(.headline)
                     
                     Picker("", selection: $storageLocationMode) {
-                        Text("Standard (~/Documents/AutoQSO)").tag("default")
-                        Text("Benutzerdefinierter Ordner").tag("custom")
-                        Text("iCloud Drive (Synchronisiert)").tag("icloud")
+                        Text(isDe ? "Standard (~/Documents/AutoQSO)" : "Default (~/Documents/AutoQSO)").tag("default")
+                        Text(isDe ? "Benutzerdefinierter Ordner" : "Custom Folder").tag("custom")
+                        Text(isDe ? "iCloud Drive (Synchronisiert)" : "iCloud Drive (Synchronized)").tag("icloud")
                     }
                     .pickerStyle(.radioGroup)
                     .onChange(of: storageLocationMode) { _, _ in
@@ -816,16 +842,16 @@ struct SettingsView: View {
                 
                 if storageLocationMode == "custom" {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Ausgewählter Pfad:")
+                        Text(isDe ? "Ausgewählter Pfad:" : "Selected Path:")
                             .font(.subheadline)
                         HStack {
-                            Text(customStoragePath.isEmpty ? "Kein Ordner gewählt" : customStoragePath)
+                            Text(customStoragePath.isEmpty ? (isDe ? "Kein Ordner gewählt" : "No folder selected") : customStoragePath)
                                 .font(.caption)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                                 .foregroundStyle(.secondary)
                             Spacer()
-                            Button("Ordner wählen...") {
+                            Button(isDe ? "Ordner wählen..." : "Choose Folder...") {
                                 selectCustomFolder()
                             }
                             .buttonStyle(.bordered)
@@ -835,7 +861,7 @@ struct SettingsView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Aktueller SQLite Pfad:")
+                    Text(isDe ? "Aktueller SQLite Pfad:" : "Current SQLite Path:")
                         .font(.caption)
                         .bold()
                     Text(DatabaseManager.shared.currentDbPath)
@@ -850,30 +876,31 @@ struct SettingsView: View {
             
         // --- 7. Auto QSO Betriebsoptionen ---
         case .options:
+            let isDe = langManager.isGerman
             VStack(alignment: .leading, spacing: 14) {
-                Text("Auto QSO Optionen")
+                Text(isDe ? "Auto QSO Optionen" : "Auto QSO Options")
                     .font(.title2)
                     .bold()
                 
                 HStack(spacing: 8) {
-                    Text("Sperrdauer für abgebrochene QSOs:")
+                    Text(isDe ? "Sperrdauer für abgebrochene QSOs:" : "Cooldown for aborted QSOs:")
                         .font(.headline)
                     NumericTextField("10", value: $retryCooldownMinutes)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 60)
-                    Text("Minuten")
+                    Text(isDe ? "Minuten" : "Minutes")
                         .foregroundStyle(.secondary)
                 }
                 
                 Divider()
                 
-                Toggle("Nur ungearbeitete 4-Stellen Grids durchlassen (z.B. JO31)", isOn: Binding(
+                Toggle(isDe ? "Nur ungearbeitete 4-Stellen Grids durchlassen (z.B. JO31)" : "Only allow unworked 4-char Grids (e.g. JO31)", isOn: Binding(
                     get: { viewModel.isNew4CharGridOnlyFilterEnabled },
                     set: { viewModel.isNew4CharGridOnlyFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
                 ))
                 .font(.headline)
 
-                Toggle("Nur ungearbeitete 6-Stellen Grids durchlassen (z.B. JO31aa)", isOn: Binding(
+                Toggle(isDe ? "Nur ungearbeitete 6-Stellen Grids durchlassen (z.B. JO31aa)" : "Only allow unworked 6-char Grids (e.g. JO31aa)", isOn: Binding(
                     get: { viewModel.isNew6CharGridOnlyFilterEnabled },
                     set: { viewModel.isNew6CharGridOnlyFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
                 ))
@@ -882,22 +909,23 @@ struct SettingsView: View {
             
         // --- 8. Ansicht, Schriftgrößen & Farbanpassungen ---
         case .appearance:
+            let isDe = langManager.isGerman
             VStack(alignment: .leading, spacing: 20) {
                 // 1. System-Farbschema & Ansichts-Optionen
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Farbschema & Darstellung")
+                    Text(isDe ? "Farbschema & Darstellung" : "Theme & Appearance")
                         .font(.title2)
                         .bold()
                     
-                    Picker("Darstellung:", selection: $appColorScheme) {
-                        Text("System").tag("system")
-                        Text("Hell").tag("light")
-                        Text("Dunkel").tag("dark")
+                    Picker(isDe ? "Darstellung:" : "Appearance:", selection: $appColorScheme) {
+                        Text(isDe ? "System" : "System").tag("system")
+                        Text(isDe ? "Hell" : "Light").tag("light")
+                        Text(isDe ? "Dunkel" : "Dark").tag("dark")
                     }
                     .pickerStyle(.segmented)
                     .frame(width: 280)
                     
-                    Toggle("Neueste Einträge oben anzeigen (Tabelle & Logfenster)", isOn: $isNewestOnTop)
+                    Toggle(isDe ? "Neueste Einträge oben anzeigen (Tabelle & Logfenster)" : "Show newest entries on top (Table & Log console)", isOn: $isNewestOnTop)
                         .font(.subheadline)
                 }
                 
@@ -905,16 +933,16 @@ struct SettingsView: View {
                 
                 // 2. Listen-Ansicht (Haupttabelle & Log-Konsole: Schriftgrößen + Farbanpassungen)
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Listen-Ansicht (Haupttabelle & Log-Konsole)")
+                    Text(isDe ? "Listen-Ansicht (Haupttabelle & Log-Konsole)" : "Table & Log Console Styling")
                         .font(.title2)
                         .bold()
                     
-                    Text("Schriftgrößen:")
+                    Text(isDe ? "Schriftgrößen:" : "Font Sizes:")
                         .font(.headline)
                     
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("Tabelle Schriftgröße:")
+                            Text(isDe ? "Tabelle Schriftgröße:" : "Table Font Size:")
                                 .frame(width: 160, alignment: .leading)
                             Slider(value: $fontSizeTable, in: 8...20, step: 1) { Text("") }
                                 .frame(width: 150)
@@ -923,7 +951,7 @@ struct SettingsView: View {
                         }
                         
                         HStack {
-                            Text("Logs Schriftgröße:")
+                            Text(isDe ? "Logs Schriftgröße:" : "Logs Font Size:")
                                 .frame(width: 160, alignment: .leading)
                             Slider(value: $fontSizeLog, in: 8...20, step: 1) { Text("") }
                                 .frame(width: 150)
@@ -932,17 +960,17 @@ struct SettingsView: View {
                         }
                     }
                     
-                    Text("Farbanpassungen:")
+                    Text(isDe ? "Farbanpassungen:" : "Custom Colors:")
                         .font(.headline)
                         .padding(.top, 4)
                     
-                    Text("Haupttabelle:")
+                    Text(isDe ? "Haupttabelle:" : "Main Table:")
                         .font(.subheadline).bold()
                         .foregroundColor(.secondary)
                     
                     Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
                         GridRow {
-                            Text("Standard-Text")
+                            Text(isDe ? "Standard-Text" : "Standard Text")
                             ColorPicker("", selection: colorBinding(forKey: "colorTableStandard", defaultColor: .primary))
                                 .labelsHidden()
                             
@@ -952,54 +980,54 @@ struct SettingsView: View {
                         }
                         
                         GridRow {
-                            Text("Interessante (CQ)")
+                            Text(isDe ? "Interessante (CQ)" : "Interesting (CQ)")
                             ColorPicker("", selection: colorBinding(forKey: "colorTableCQ", defaultColor: .green))
                                 .labelsHidden()
                             
-                            Text("Gearbeitete Stationen")
+                            Text(isDe ? "Gearbeitete Stationen" : "Worked Stations")
                             ColorPicker("", selection: colorBinding(forKey: "colorTableWorked", defaultColor: .red.opacity(0.5)))
                                 .labelsHidden()
                         }
                     }
                     
-                    Text("Log-Konsole:")
+                    Text(isDe ? "Log-Konsole:" : "Log Console:")
                         .font(.subheadline).bold()
                         .foregroundColor(.secondary)
                         .padding(.top, 4)
                     
                     Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
                         GridRow {
-                            Text("Konsolen-Hintergrund")
+                            Text(isDe ? "Konsolen-Hintergrund" : "Console Background")
                             ColorPicker("", selection: colorBinding(forKey: "colorLogBackground", defaultColor: Color(NSColor.textBackgroundColor)))
                                 .labelsHidden()
                             
-                            Text("System-Logs")
+                            Text(isDe ? "System-Logs" : "System Logs")
                             ColorPicker("", selection: colorBinding(forKey: "colorLogSystem", defaultColor: .primary))
                                 .labelsHidden()
                         }
                         
                         GridRow {
-                            Text("WSJT-X Dekodierungen")
+                            Text(isDe ? "WSJT-X Dekodierungen" : "WSJT-X Decodes")
                             ColorPicker("", selection: colorBinding(forKey: "colorLogWsjtxDecode", defaultColor: .green))
                                 .labelsHidden()
                             
-                            Text("WSJT-X Eingehend")
+                            Text(isDe ? "WSJT-X Eingehend" : "WSJT-X Incoming")
                             ColorPicker("", selection: colorBinding(forKey: "colorLogWsjtxIncoming", defaultColor: .blue))
                                 .labelsHidden()
                         }
                         
                         GridRow {
-                            Text("WSJT-X Ausgehend")
+                            Text(isDe ? "WSJT-X Ausgehend" : "WSJT-X Outgoing")
                             ColorPicker("", selection: colorBinding(forKey: "colorLogWsjtxOutgoing", defaultColor: .orange))
                                 .labelsHidden()
                             
-                            Text("Cluster-Spots")
+                            Text(isDe ? "Cluster-Spots" : "Cluster Spots")
                             ColorPicker("", selection: colorBinding(forKey: "colorLogCluster", defaultColor: .primary))
                                 .labelsHidden()
                         }
                     }
                     
-                    Button("Listen-Ansicht auf Standard zurücksetzen") {
+                    Button(isDe ? "Listen-Ansicht auf Standard zurücksetzen" : "Reset Table & Log View to Defaults") {
                         fontSizeTable = 11.0
                         fontSizeLog = 11.0
                         UserDefaults.standard.removeObject(forKey: "colorTableStandard")
@@ -1022,12 +1050,12 @@ struct SettingsView: View {
                 
                 // 3. Landkarten-Ansicht (Maidenhead Grid-Overlay)
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Landkarten-Ansicht (Maidenhead Grid-Overlay)")
+                    Text(isDe ? "Landkarten-Ansicht (Maidenhead Grid-Overlay)" : "Map View (Maidenhead Grid Overlay)")
                         .font(.title2)
                         .bold()
                     
                     HStack {
-                        Text("Gitter Schriftgröße:")
+                        Text(isDe ? "Gitter Schriftgröße:" : "Grid Font Size:")
                             .frame(width: 180, alignment: .leading)
                         Slider(value: $gridOverlayFontSize, in: 8...22, step: 1) { Text("") }
                             .frame(width: 150)
@@ -1037,31 +1065,31 @@ struct SettingsView: View {
                     
                     Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
                         GridRow {
-                            Text("Beschriftung-Farbe:")
+                            Text(isDe ? "Beschriftung-Farbe:" : "Label Color:")
                             ColorPicker("", selection: colorBinding(forKey: "gridOverlayTextColor", defaultColor: Color(red: 1.0, green: 0.85, blue: 0.2)))
                                 .labelsHidden()
                             
-                            Text("Gitterlinien-Farbe:")
+                            Text(isDe ? "Gitterlinien-Farbe:" : "Grid Line Color:")
                             ColorPicker("", selection: colorBinding(forKey: "gridOverlayLineColor", defaultColor: .cyan))
                                 .labelsHidden()
                         }
                         
                         GridRow {
-                            Text("Badge-Hintergrundfarbe:")
+                            Text(isDe ? "Badge-Hintergrundfarbe:" : "Badge Background:")
                             ColorPicker("", selection: colorBinding(forKey: "gridOverlayBadgeColor", defaultColor: .black))
                                 .labelsHidden()
                             
-                            Text("Gearbeitete Grid-Felder:")
+                            Text(isDe ? "Gearbeitete Grid-Felder:" : "Worked Grids:")
                             ColorPicker("", selection: colorBinding(forKey: "workedGridShadeColor", defaultColor: Color(red: 1.0, green: 0.35, blue: 0.15)))
                                 .labelsHidden()
                         }
                     }
                     
-                    Toggle("Dunkle Lesbarkeits-Badges hinter Schrift anzeigen", isOn: $gridOverlayShowPill)
+                    Toggle(isDe ? "Dunkle Lesbarkeits-Badges hinter Schrift anzeigen" : "Show dark readability badges behind labels", isOn: $gridOverlayShowPill)
                         .toggleStyle(.checkbox)
                         .padding(.top, 4)
                     
-                    Button("Karten-Ansicht auf Standard zurücksetzen") {
+                    Button(isDe ? "Karten-Ansicht auf Standard zurücksetzen" : "Reset Map View to Defaults") {
                         gridOverlayFontSize = 11.0
                         gridOverlayShowPill = true
                         UserDefaults.standard.removeObject(forKey: "gridOverlayTextColor")
@@ -1073,6 +1101,40 @@ struct SettingsView: View {
                     .controlSize(.small)
                     .padding(.top, 6)
                 }
+            }
+            
+        // --- 9. Sprache / Language ---
+        case .language:
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(L("settings.language.header"))
+                        .font(.title2)
+                        .bold()
+                    
+                    HStack(spacing: 12) {
+                        Text(L("settings.language.select"))
+                            .font(.headline)
+                        
+                        Picker("", selection: $langManager.selectedLanguage) {
+                            ForEach(AppLanguage.allCases) { lang in
+                                Text(lang.title).tag(lang)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 280)
+                    }
+                    
+                    Text(L("settings.language.desc"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding()
+                .background(Color.blue.opacity(0.06))
+                .cornerRadius(8)
+                
+                Spacer()
             }
         }
     }
@@ -1162,21 +1224,24 @@ struct SettingsView: View {
 /// View zur Bearbeitung, Sortierung und Hinzufügen von DX Cluster Servern
 struct ClusterManagerView: View {
     @ObservedObject var viewModel: DecodeViewModel
+    @ObservedObject private var langManager = LanguageManager.shared
     @State private var newName = ""
     @State private var newHost = ""
     @State private var newPort = "7373"
+    
+    private var isDe: Bool { langManager.isGerman }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Steuerungs-Buttons (Aktionen)
             HStack(spacing: 8) {
-                Button("Zurücksetzen (Restore Defaults)") {
+                Button(isDe ? "Zurücksetzen (Werkseinstellungen)" : "Restore Defaults") {
                     viewModel.restoreDefaultClusters()
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 
-                Button("A-Z sortieren") {
+                Button(isDe ? "A-Z sortieren" : "Sort A-Z") {
                     viewModel.sortClusters()
                 }
                 .buttonStyle(.bordered)
@@ -1185,12 +1250,12 @@ struct ClusterManagerView: View {
             
             // Formularkarte: Neuen Cluster anlegen
             VStack(alignment: .leading, spacing: 6) {
-                Text("Neuen Cluster registrieren:")
+                Text(isDe ? "Neuen Cluster registrieren:" : "Register New Cluster:")
                     .font(.subheadline)
                     .bold()
                 
                 HStack(spacing: 8) {
-                    TextField("Name", text: $newName)
+                    TextField(isDe ? "Name" : "Name", text: $newName)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 140)
                         .controlSize(.small)
@@ -1227,7 +1292,7 @@ struct ClusterManagerView: View {
             
             // Liste der registrierten Cluster mit Bearbeiten-/Löschen-Funktion
             VStack(alignment: .leading, spacing: 6) {
-                Text("Registrierte Cluster:")
+                Text(isDe ? "Registrierte Cluster:" : "Registered Clusters:")
                     .font(.subheadline)
                     .bold()
                 

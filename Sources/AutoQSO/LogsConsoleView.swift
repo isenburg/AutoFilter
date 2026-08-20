@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LogsConsoleView: View {
     @ObservedObject var viewModel: DecodeViewModel
+    @ObservedObject private var langManager = LanguageManager.shared
     @Environment(\.dismiss) private var dismiss
     
     @AppStorage("logConsoleTab") private var consoleTab = 0
@@ -60,13 +61,13 @@ struct LogsConsoleView: View {
             HStack(spacing: 12) {
                 if consoleTab == 1 {
                     HStack(spacing: 8) {
-                        Toggle("Decodes", isOn: $wsjtxShowDecodes)
+                        Toggle(L("logs.filter.decodes"), isOn: $wsjtxShowDecodes)
                             .toggleStyle(.checkbox)
                             .controlSize(.small)
-                        Toggle("Eingang", isOn: $wsjtxShowIncoming)
+                        Toggle(L("logs.filter.in"), isOn: $wsjtxShowIncoming)
                             .toggleStyle(.checkbox)
                             .controlSize(.small)
-                        Toggle("Ausgang", isOn: $wsjtxShowOutgoing)
+                        Toggle(L("logs.filter.out"), isOn: $wsjtxShowOutgoing)
                             .toggleStyle(.checkbox)
                             .controlSize(.small)
                     }
@@ -77,9 +78,9 @@ struct LogsConsoleView: View {
                 Spacer()
                 
                 Picker("", selection: $consoleTab) {
-                    Text("System-Logs").tag(0)
-                    Text("WSJT-X Rohdaten").tag(1)
-                    Text("Cluster-Spots").tag(2)
+                    Text(L("logs.tab.system")).tag(0)
+                    Text(L("logs.tab.wsjtx")).tag(1)
+                    Text(L("logs.tab.cluster")).tag(2)
                 }
                 .pickerStyle(.segmented)
                 .controlSize(.small)
@@ -95,12 +96,12 @@ struct LogsConsoleView: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 .foregroundColor(viewModel.isLogScrollPaused ? .orange : .primary)
-                .help(viewModel.isLogScrollPaused ? "Auto-Scroll fortsetzen" : "Auto-Scroll anhalten")
+                .help(viewModel.isLogScrollPaused ? L("toolbar.freeze.tooltip.resume") : L("toolbar.freeze.tooltip.pause"))
                 
                 HStack(spacing: 4) {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.secondary)
-                    TextField("Protokoll durchsuchen...", text: $viewModel.logConsoleSearchText)
+                    TextField(L("logs.search"), text: $viewModel.logConsoleSearchText)
                         .font(.system(size: 11))
                         .textFieldStyle(.plain)
                         .frame(width: 150)
@@ -125,7 +126,7 @@ struct LogsConsoleView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .help("Befehl an DX-Cluster senden")
+                    .help(L("sidebar.left.sendSpot"))
                 }
                 
                 Button(action: {
@@ -144,9 +145,9 @@ struct LogsConsoleView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .help("Protokoll löschen")
+                .help(L("logs.clear"))
                 
-                Button("Andocken") {
+                Button(L("logs.attach")) {
                     isLogConsoleDetached = false
                     dismiss()
                 }

@@ -1911,13 +1911,13 @@ class DecodeViewModel: ObservableObject {
 
     func continentName(for code: String) -> String {
         switch code.uppercased() {
-        case "EU": return "EUROPE"
-        case "NA": return "NORTH AMERICA"
-        case "AS": return "ASIA"
-        case "SA": return "SOUTH AMERICA"
-        case "AF": return "AFRICA"
-        case "OC": return "OCEANIA"
-        case "AN": return "ANTARCTICA"
+        case "EU": return L("continent.EU").uppercased()
+        case "NA": return L("continent.NA").uppercased()
+        case "AS": return L("continent.AS").uppercased()
+        case "SA": return L("continent.SA").uppercased()
+        case "AF": return L("continent.AF").uppercased()
+        case "OC": return L("continent.OC").uppercased()
+        case "AN": return L("continent.AN").uppercased()
         default: return "OTHER"
         }
     }

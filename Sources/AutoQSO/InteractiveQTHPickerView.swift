@@ -11,6 +11,9 @@ struct InteractiveQTHPickerView: View {
     @State private var selectedGrid: String
     @State private var mapStyleOption: MapStyleOption = .hybrid
 
+    @ObservedObject private var langManager = LanguageManager.shared
+    private var isDe: Bool { langManager.isGerman }
+
     init(myGridLocator: Binding<String>) {
         self._myGridLocator = myGridLocator
         let initialGrid = myGridLocator.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
@@ -46,7 +49,7 @@ struct InteractiveQTHPickerView: View {
                             .font(.headline)
                             .bold()
                     }
-                    Text("Das Maidenhead-Gitter passt sich beim Hineinzoomen automatisch von 2- bis 8-Stellen an.")
+                    Text(isDe ? "Das Maidenhead-Gitter passt sich beim Hineinzoomen automatisch von 2- bis 8-Stellen an." : "The Maidenhead grid dynamically adjusts from 2 to 8 characters when zooming in.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -55,7 +58,7 @@ struct InteractiveQTHPickerView: View {
                 
                 // Selected Grid Indicator
                 HStack(spacing: 6) {
-                    Text("Ausgewählt:")
+                    Text(isDe ? "Ausgewählt:" : "Selected:")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Text(selectedGrid)
@@ -67,12 +70,12 @@ struct InteractiveQTHPickerView: View {
                         .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.yellow, lineWidth: 1.5))
                 }
                 
-                Button("Abbrechen") {
+                Button(L("common.cancel")) {
                     dismiss()
                 }
                 .buttonStyle(.bordered)
                 
-                Button("Übernehmen & Schließen") {
+                Button(L("common.apply")) {
                     myGridLocator = selectedGrid
                     dismiss()
                 }

@@ -10,6 +10,16 @@ enum MapStyleOption: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    var title: String {
+        switch self {
+        case .standard: return L("map.style.standard")
+        case .satellite: return L("map.style.satellite")
+        case .hybrid: return L("map.style.hybrid")
+        case .muted: return "Muted"
+        case .globus: return L("map.style.globe")
+        }
+    }
+
     var mapStyle: MapStyle {
         switch self {
         case .standard:

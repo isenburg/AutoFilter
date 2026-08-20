@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var viewModel: DecodeViewModel
+    @ObservedObject private var langManager = LanguageManager.shared
+    private var isDe: Bool { langManager.isGerman }
     
     @AppStorage("lotwUsername") private var lotwUsername = ""
     @AppStorage("lotwPassword") private var lotwPassword = ""
@@ -158,7 +160,7 @@ struct ContentView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.blue)
-                    .help("Verbindungs-Seitenleiste ausblenden")
+                    .help(L("toolbar.connectionSidebar"))
                 } else {
                     Button(action: {
                         isLeftSidebarVisible.toggle()
@@ -166,7 +168,7 @@ struct ContentView: View {
                         Image(systemName: "sidebar.left")
                     }
                     .buttonStyle(.bordered)
-                    .help("Verbindungs-Seitenleiste einblenden")
+                    .help(L("toolbar.connectionSidebar"))
                 }
             }
             .frame(width: isLeftSidebarVisible ? CGFloat(leftSidebarWidth) : 100, alignment: .leading)
@@ -187,6 +189,7 @@ struct ContentView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(viewModel.isAutoModeEnabled ? .green : .gray)
+                .help(L("toolbar.autoTransmit.tooltip"))
                 
                 // Sort Order & Pause Section
                 Button(action: {
@@ -195,7 +198,7 @@ struct ContentView: View {
                     Image(systemName: isNewestOnTop ? "arrow.up" : "arrow.down")
                 }
                 .buttonStyle(.bordered)
-                .help(isNewestOnTop ? "Sortierung: Neueste unten" : "Sortierung: Neueste oben")
+                .help(isNewestOnTop ? L("toolbar.sort.newestBottom") : L("toolbar.sort.newestTop"))
                 
                 Button(action: {
                     viewModel.isMainTableScrollPaused.toggle()
@@ -204,7 +207,7 @@ struct ContentView: View {
                 }
                 .buttonStyle(.bordered)
                 .foregroundColor(viewModel.isMainTableScrollPaused ? .orange : .primary)
-                .help(viewModel.isMainTableScrollPaused ? "Auto-Scroll fortsetzen" : "Auto-Scroll anhalten")
+                .help(viewModel.isMainTableScrollPaused ? L("toolbar.freeze.tooltip.resume") : L("toolbar.freeze.tooltip.pause"))
                 
                 // Filter Switch: Nur akzeptierte/gefilterte Spots anzeigen (links von Suchen)
                 if showOnlyAcceptedSpots {
@@ -215,7 +218,6 @@ struct ContentView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.blue)
-                    .help("Nur gefilterte Spots anzeigen (Aktiv) – Klicken, um alle Spots anzuzeigen")
                 } else {
                     Button(action: {
                         showOnlyAcceptedSpots.toggle()
@@ -223,14 +225,13 @@ struct ContentView: View {
                         Image(systemName: "line.3.horizontal.decrease.circle")
                     }
                     .buttonStyle(.bordered)
-                    .help("Alle Spots anzeigen – Klicken, um nur gefilterte Spots anzuzeigen")
                 }
 
-                // Search field (shortened placeholder to "Suchen...")
+                // Search field
                 HStack(spacing: 4) {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.secondary)
-                    TextField("Suchen...", text: $viewModel.mainTableSearchText)
+                    TextField(L("toolbar.search.placeholder"), text: $viewModel.mainTableSearchText)
                         .font(.system(size: 11))
                         .textFieldStyle(.plain)
                         .frame(width: 120)
@@ -253,7 +254,7 @@ struct ContentView: View {
                     Image(systemName: "trash")
                 }
                 .buttonStyle(.bordered)
-                .help("Dekodierte Stationen aus der Tabelle löschen")
+                .help(L("toolbar.clearTable.tooltip"))
                 
                 Divider()
                     .frame(height: 20)
@@ -266,7 +267,7 @@ struct ContentView: View {
                         Image(systemName: "book")
                     }
                     .buttonStyle(.bordered)
-                    .help("LoTW Logbuch öffnen")
+                    .help(L("toolbar.logbook"))
 
                     Button(action: {
                         openWindow(id: "propagation_map")
@@ -274,7 +275,7 @@ struct ContentView: View {
                         Image(systemName: "map")
                     }
                     .buttonStyle(.bordered)
-                    .help("Ausbreitungskarte in eigenem Fenster öffnen")
+                    .help(L("toolbar.propMap"))
                     
                     Button(action: {
                         openWindow(id: "new_grid_map")
@@ -282,7 +283,7 @@ struct ContentView: View {
                         Image(systemName: "square.grid.3x3.topleft.filled")
                     }
                     .buttonStyle(.bordered)
-                    .help("Neue 4-Stellen Grid-Karte in eigenem Fenster öffnen")
+                    .help(L("toolbar.gridMap"))
                     
                     Button(action: {
                         toggleCompactMode(toCompact: true)
@@ -290,7 +291,7 @@ struct ContentView: View {
                         Image(systemName: "rectangle.compress.vertical")
                     }
                     .buttonStyle(.bordered)
-                    .help("Kompaktmodus aktivieren")
+                    .help(L("toolbar.compact"))
                     
                     Button(action: {
                         openWindow(id: "settings")
@@ -298,7 +299,7 @@ struct ContentView: View {
                         Image(systemName: "gearshape")
                     }
                     .buttonStyle(.bordered)
-                    .help("Einstellungen öffnen")
+                    .help(L("toolbar.settings"))
                     
                     Button(action: {
                         openWindow(id: "help")
@@ -306,7 +307,7 @@ struct ContentView: View {
                         Image(systemName: "questionmark.circle")
                     }
                     .buttonStyle(.bordered)
-                    .help("Hilfe & Info öffnen")
+                    .help(L("toolbar.help"))
                 }
             }
             
@@ -322,7 +323,7 @@ struct ContentView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.blue)
-                    .help("Filter-Seitenleiste ausblenden")
+                    .help(L("toolbar.filterSidebar"))
                 } else {
                     Button(action: {
                         isSidebarVisible.toggle()
@@ -330,7 +331,7 @@ struct ContentView: View {
                         Image(systemName: "sidebar.right")
                     }
                     .buttonStyle(.bordered)
-                    .help("Filter-Seitenleiste einblenden")
+                    .help(L("toolbar.filterSidebar"))
                 }
             }
             .frame(width: isSidebarVisible ? CGFloat(rightSidebarWidth) : 100, alignment: .trailing)
@@ -402,7 +403,7 @@ struct ContentView: View {
                             .font(.system(size: 12, weight: .semibold, design: .monospaced))
                             .foregroundStyle(.secondary)
                     } else {
-                        Text("Entfernung: -")
+                        Text(L("banner.distance.none"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -415,7 +416,7 @@ struct ContentView: View {
                 Divider()
                     .frame(height: 20)
                 
-                Text("LoTW / QRZ Bänder:")
+                Text(L("banner.bands"))
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(.secondary)
@@ -611,11 +612,11 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 if isLogConsoleDetached {
                     HStack(spacing: 8) {
-                        Text("Logs laufen in separatem Fenster.")
+                        Text(L("logs.detached.banner"))
                             .font(.caption)
                             .foregroundColor(.secondary)
                         Spacer()
-                        Button("Wieder andocken") {
+                        Button(L("logs.attach")) {
                             isLogConsoleDetached = false
                         }
                         .buttonStyle(.bordered)
@@ -644,7 +645,7 @@ struct ContentView: View {
                     }
                     
                     Table(displayDecodes, selection: $tableSelection, columnCustomization: $decodeColumnCustomization) {
-                        TableColumn("Zeit") { decode in
+                        TableColumn(L("table.col.time")) { decode in
                             timeCell(for: decode)
                         }
                         .width(min: 65, ideal: 75, max: 100)
@@ -656,13 +657,13 @@ struct ContentView: View {
                         .width(min: 80, ideal: 105, max: 180)
                         .customizationID("callsign")
                         
-                        TableColumn("Land") { decode in
+                        TableColumn(L("table.col.country")) { decode in
                             landCell(for: decode)
                         }
                         .width(min: 80, ideal: 120, max: 200)
                         .customizationID("country")
                         
-                        TableColumn("Spotter") { decode in
+                        TableColumn(L("table.col.spotter")) { decode in
                             spotterCell(for: decode)
                         }
                         .width(min: 60, ideal: 80, max: 120)
@@ -674,31 +675,31 @@ struct ContentView: View {
                         .width(min: 75, ideal: 95, max: 130)
                         .customizationID("mostwanted")
                         
-                        TableColumn("Entfernung") { decode in
+                        TableColumn(L("table.col.distance")) { decode in
                             distanceCell(for: decode)
                         }
                         .width(min: 65, ideal: 85, max: 120)
                         .customizationID("distance")
                         
-                        TableColumn("SNR") { decode in
+                        TableColumn(L("table.col.snr")) { decode in
                             snrCell(for: decode)
                         }
                         .width(min: 40, ideal: 55, max: 80)
                         .customizationID("snr")
                         
-                        TableColumn("DT") { decode in
+                        TableColumn(L("table.col.dt")) { decode in
                             dtCell(for: decode)
                         }
                         .width(min: 40, ideal: 55, max: 80)
                         .customizationID("dt")
                         
-                        TableColumn("HF (Audio)") { decode in
+                        TableColumn(L("table.col.freq")) { decode in
                             frequencyCell(for: decode)
                         }
                         .width(min: 100, ideal: 130, max: 180)
                         .customizationID("frequency")
                         
-                        TableColumn("Nachricht") { decode in
+                        TableColumn(L("table.col.message")) { decode in
                             messageCell(for: decode)
                         }
                         .width(min: 120, ideal: 260, max: 2000)
@@ -706,7 +707,7 @@ struct ContentView: View {
                     }
                     .layoutPriority(1)
                     
-                    // Dedicated Most Wanted Section under the Main Table — dedupliziert nach Rufzeichen (bestes SNR pro Call)
+                    // Dedicated Most Wanted Section under the Main Table
                     let mostWantedDecodes = viewModel.mostWantedDecodes
                     
                     VStack(alignment: .leading, spacing: 4) {
@@ -716,7 +717,7 @@ struct ContentView: View {
                                 .foregroundColor(.red)
                                 .font(.system(size: 14, weight: .bold))
                             
-                            Text("MOST WANTED STATIONEN (UNGEARBEITET AUF DIESEM BAND)")
+                            Text(L("mostWanted.title"))
                                 .font(.system(size: 11, weight: .bold))
                                 .foregroundColor(.red)
                             
@@ -731,7 +732,7 @@ struct ContentView: View {
                             Spacer()
                             
                             let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
-                            Text("Basis-Locator: \(myGrid)")
+                            Text("QTH: \(myGrid)")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
@@ -746,7 +747,7 @@ struct ContentView: View {
                                 Spacer()
                                 HStack {
                                     Spacer()
-                                    Text("Keine ungearbeiteten Most Wanted Decodes oder Spots empfangen.")
+                                    Text(L("mostWanted.empty"))
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)
                                     Spacer()
@@ -908,7 +909,7 @@ struct ContentView: View {
                 .width(min: 75, ideal: 90, max: 120)
                 .customizationID("callsign")
                 
-                TableColumn("Land") { decode in
+                TableColumn(L("table.col.country")) { decode in
                     landCell(for: decode)
                 }
                 .width(min: 70, ideal: 100, max: 150)
@@ -920,7 +921,7 @@ struct ContentView: View {
                 .width(min: 35, ideal: 45, max: 60)
                 .customizationID("snr")
                 
-                TableColumn("Nachricht") { decode in
+                TableColumn(L("table.col.message")) { decode in
                     messageCell(for: decode)
                 }
                 .width(min: 100, ideal: 200, max: 1000)
@@ -1123,7 +1124,7 @@ struct ContentView: View {
                         .background(Color.red)
                         .foregroundColor(.white)
                         .cornerRadius(3)
-                        .help("SENDET (TX)")
+                        .help(L("status.tx.transmitting"))
                 } else if viewModel.server.isTxEnabled {
                     Text("TX")
                         .font(.system(size: 9, weight: .bold))
@@ -1132,7 +1133,7 @@ struct ContentView: View {
                         .background(Color.orange)
                         .foregroundColor(.white)
                         .cornerRadius(3)
-                        .help("TX BEREIT")
+                        .help(L("status.tx.ready"))
                 } else {
                     Text("TX")
                         .font(.system(size: 9, weight: .bold))
@@ -1141,7 +1142,7 @@ struct ContentView: View {
                         .background(Color.gray)
                         .foregroundColor(.white)
                         .cornerRadius(3)
-                        .help("TX AUS")
+                        .help(L("status.tx.off"))
                 }
             }
         }
@@ -1232,7 +1233,7 @@ struct ContentView: View {
                 Image(systemName: "info.circle.fill")
                     .foregroundColor(.blue)
                     .font(.system(size: 11))
-                Text(viewModel.currentQSOStatus)
+                Text(viewModel.currentQSOStatus == "Bereit" ? L("status.sync.ready") : viewModel.currentQSOStatus)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.primary)
             }
@@ -1260,7 +1261,7 @@ struct ContentView: View {
                         Circle()
                             .fill(Color.red)
                             .frame(width: 6, height: 6)
-                        Text("WSJT-X: Keine Verbindung")
+                        Text(L("status.wsjtx.disconnected"))
                             .font(.system(size: 10, weight: .semibold, design: .monospaced))
                             .foregroundColor(.red.opacity(0.8))
                     }
@@ -1275,7 +1276,7 @@ struct ContentView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "antenna.radiowaves.left.and.right")
                             .font(.system(size: 9, weight: .bold))
-                        Text("SENDET (TX)")
+                        Text(L("status.tx.transmitting"))
                             .font(.system(size: 10, weight: .bold, design: .monospaced))
                     }
                     .padding(.horizontal, 8)
@@ -1289,7 +1290,7 @@ struct ContentView: View {
                         Circle()
                             .fill(Color.orange)
                             .frame(width: 6, height: 6)
-                        Text("TX BEREIT")
+                        Text(L("status.tx.ready"))
                             .font(.system(size: 10, weight: .bold, design: .monospaced))
                     }
                     .padding(.horizontal, 8)
@@ -1302,7 +1303,7 @@ struct ContentView: View {
                         Circle()
                             .fill(Color.gray)
                             .frame(width: 6, height: 6)
-                        Text("TX AUS")
+                        Text(L("status.tx.off"))
                             .font(.system(size: 10, weight: .bold, design: .monospaced))
                     }
                     .padding(.horizontal, 8)
@@ -1510,14 +1511,14 @@ struct ContentView: View {
     @ViewBuilder
     private var rightSidebar: some View {
         VStack(spacing: 0) {
-            Text("Filter")
+            Text(L("sidebar.right.title"))
                 .font(.headline)
                 .padding(.top, 10)
                 .padding(.bottom, 6)
             
             VStack(spacing: 8) {
                 Toggle(isOn: $viewModel.isFiltersEnabled) {
-                    Text("Filter anwenden").bold().font(.caption)
+                    Text(L("common.apply")).bold().font(.caption)
                 }
                 .toggleStyle(.switch)
                 .padding(.horizontal)
@@ -1592,22 +1593,24 @@ struct ContentView: View {
         .cornerRadius(6)
     }
 
-    private let continentCodes: [(code: String, nameKey: String)] = [
-        ("AF", "Afrika"),
-        ("AN", "Antarktis"),
-        ("AS", "Asien"),
-        ("EU", "Europa"),
-        ("NA", "Nordamerika"),
-        ("OC", "Ozeanien"),
-        ("SA", "Südamerika")
-    ]
+    private var continentCodes: [(code: String, nameKey: String)] {
+        [
+            ("AF", L("continent.AF")),
+            ("AN", L("continent.AN")),
+            ("AS", L("continent.AS")),
+            ("EU", L("continent.EU")),
+            ("NA", L("continent.NA")),
+            ("OC", L("continent.OC")),
+            ("SA", L("continent.SA"))
+        ]
+    }
 
     @ViewBuilder
     private var countryFilterContent: some View {
         // 1. Kontinent-Filter
         Section(isExpanded: $isContinentFilterExpanded) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Erlaubte Kontinente an- oder abwählen.")
+                Text(L("filter.continents.desc"))
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
                     .italic()
@@ -1627,21 +1630,21 @@ struct ContentView: View {
             }
 
             HStack {
-                Button("Alle an") { viewModel.setAllContinents(enabled: true) }
+                Button(L("filter.continents.allOn")) { viewModel.setAllContinents(enabled: true) }
                     .buttonStyle(.bordered).controlSize(.small)
-                Button("Alle aus") { viewModel.setAllContinents(enabled: false) }
+                Button(L("filter.continents.allOff")) { viewModel.setAllContinents(enabled: false) }
                     .buttonStyle(.bordered).controlSize(.small)
             }
             .padding(.top, 2)
         } header: {
-            sidebarHeader("Kontinent-Filter", isExpanded: $isContinentFilterExpanded, activeCount: viewModel.disabledContinents.count)
+            sidebarHeader(L("filter.section.continents"), isExpanded: $isContinentFilterExpanded, activeCount: viewModel.disabledContinents.count)
         }
 
         // 2. Gesperrte Länder (Blacklist)
         Section(isExpanded: $isBlockedCountriesExpanded) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Blacklist-Modus").font(.caption).bold()
-                Text("Stationen aus diesen Ländern werden blockiert.")
+                Text(L("filter.blacklist.desc"))
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
                     .italic()
@@ -1660,21 +1663,21 @@ struct ContentView: View {
                 }
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text("Land blockieren").font(.caption2).foregroundColor(.secondary)
+                Text(L("filter.blockCountry.label")).font(.caption2).foregroundColor(.secondary)
                 CountryInputField(text: $newCountry, suggestions: viewModel.countrySuggestions(for: newCountry)) {
                     viewModel.addBlockedCountry(newCountry)
                     newCountry = ""
                 }
             }.padding(.vertical, 4)
         } header: {
-            sidebarHeader("Gesperrte Länder", isExpanded: $isBlockedCountriesExpanded, activeCount: viewModel.blockedCountries.count)
+            sidebarHeader(L("filter.section.blockedCountries"), isExpanded: $isBlockedCountriesExpanded, activeCount: viewModel.blockedCountries.count)
         }
 
         // 3. Erlaubte DX-Länder (Whitelist)
         Section(isExpanded: $isAllowedDXCountriesExpanded) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Whitelist-Modus").font(.caption).bold()
-                Text("Wenn befüllt, werden NUR Signale aus diesen Ländern durchgelassen.")
+                Text(L("filter.whitelist.desc"))
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
                     .italic()
@@ -1694,20 +1697,20 @@ struct ContentView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("DX-Land erlauben").font(.caption2).foregroundColor(.secondary)
+                Text(L("filter.allowCountry.label")).font(.caption2).foregroundColor(.secondary)
                 CountryInputField(text: $newAllowedDXCountry, suggestions: viewModel.countrySuggestions(for: newAllowedDXCountry)) {
                     viewModel.addAllowedCountry(newAllowedDXCountry)
                     newAllowedDXCountry = ""
                 }
             }.padding(.vertical, 4)
         } header: {
-            sidebarHeader("Erlaubte DX-Länder", isExpanded: $isAllowedDXCountriesExpanded, activeCount: viewModel.allowedCountries.count)
+            sidebarHeader(L("filter.section.allowedCountries"), isExpanded: $isAllowedDXCountriesExpanded, activeCount: viewModel.allowedCountries.count)
         }
 
         // 4. Gesperrte CQ-Zonen
         Section(isExpanded: $isBlockedCQZonesExpanded) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Signale aus diesen CQ-Zonen werden blockiert.")
+                Text(L("filter.cqZone.desc"))
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
                     .italic()
@@ -1724,7 +1727,7 @@ struct ContentView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("CQ-Zone blockieren").font(.caption2).foregroundColor(.secondary)
+                Text(L("filter.cqZone.label")).font(.caption2).foregroundColor(.secondary)
                 HStack {
                     TextField("z.B. 14", text: $newCQZone)
                         .textFieldStyle(UnifiedTextFieldStyle())
@@ -1743,13 +1746,13 @@ struct ContentView: View {
                 }
             }.padding(.vertical, 4)
         } header: {
-            sidebarHeader("Gesperrte CQ-Zonen", isExpanded: $isBlockedCQZonesExpanded, activeCount: viewModel.blockedCQZones.count)
+            sidebarHeader(L("filter.section.blockedCQZones"), isExpanded: $isBlockedCQZonesExpanded, activeCount: viewModel.blockedCQZones.count)
         }
 
         // 5. Gesperrte ITU-Zonen
         Section(isExpanded: $isBlockedITUZonesExpanded) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Signale aus diesen ITU-Zonen werden blockiert.")
+                Text(L("filter.ituZone.desc"))
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
                     .italic()
@@ -1766,7 +1769,7 @@ struct ContentView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("ITU-Zone blockieren").font(.caption2).foregroundColor(.secondary)
+                Text(L("filter.ituZone.label")).font(.caption2).foregroundColor(.secondary)
                 HStack {
                     TextField("z.B. 28", text: $newITUZone)
                         .textFieldStyle(UnifiedTextFieldStyle())
@@ -1785,14 +1788,14 @@ struct ContentView: View {
                 }
             }.padding(.vertical, 4)
         } header: {
-            sidebarHeader("Gesperrte ITU-Zonen", isExpanded: $isBlockedITUZonesExpanded, activeCount: viewModel.blockedITUZones.count)
+            sidebarHeader(L("filter.section.blockedITUZones"), isExpanded: $isBlockedITUZonesExpanded, activeCount: viewModel.blockedITUZones.count)
         }
 
         // 6. Erlaubte DX-Rufzeichen
         Section(isExpanded: $isAllowedDXCallsignsExpanded) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Whitelist-Modus").font(.caption).bold()
-                Text("NUR Rufzeichen, die mit diesen Präfixen beginnen, werden durchgelassen.")
+                Text(L("filter.callsigns.desc"))
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
                     .italic()
@@ -1812,7 +1815,7 @@ struct ContentView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("DX-Rufzeichen erlauben").font(.caption2).foregroundColor(.secondary)
+                Text(L("filter.callsigns.label")).font(.caption2).foregroundColor(.secondary)
                 HStack(spacing: 4) {
                     TextField("z.B. DP0, K1, DL1ABC", text: $newAllowedDXCallsign)
                         .textFieldStyle(UnifiedTextFieldStyle())
@@ -1832,7 +1835,7 @@ struct ContentView: View {
                 }
             }.padding(.vertical, 4)
         } header: {
-            sidebarHeader("Erlaubte DX-Rufzeichen", isExpanded: $isAllowedDXCallsignsExpanded, activeCount: viewModel.allowedDXCallsigns.count)
+            sidebarHeader(L("filter.section.allowedCallsigns"), isExpanded: $isAllowedDXCallsignsExpanded, activeCount: viewModel.allowedDXCallsigns.count)
         }
 
         // 7. Gearbeitete Stationen
@@ -1842,13 +1845,13 @@ struct ContentView: View {
                     get: { viewModel.isWorkedBeforeFilterEnabled },
                     set: { viewModel.isWorkedBeforeFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
                 )) {
-                    Text("Gearbeitete Stationen filtern").font(.system(size: 11)).bold()
+                    Text(L("filter.workedBefore.toggle")).font(.system(size: 11)).bold()
                 }
                 .toggleStyle(.switch)
                 .controlSize(.mini)
 
                 HStack(spacing: 6) {
-                    Text("Zeitspanne:").font(.system(size: 10))
+                    Text(L("filter.workedBefore.timespan")).font(.system(size: 10))
                     
                     NumericTextField("1", value: Binding(
                         get: { viewModel.workedBeforeDuration },
@@ -1870,7 +1873,7 @@ struct ContentView: View {
                     .controlSize(.mini)
                 }
 
-                Text("Lässt bereits auf dem Band gearbeitete Stationen nur durch, wenn das letzte QSO mindestens die gewählte Zeitspanne zurückliegt.")
+                Text(L("filter.workedBefore.desc"))
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
                     .italic()
@@ -1881,7 +1884,7 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
         } header: {
-            sidebarHeader("Gearbeitete Stationen", isExpanded: $isWorkedBeforeFilterExpanded, activeCount: viewModel.isWorkedBeforeFilterEnabled ? 1 : 0)
+            sidebarHeader(L("filter.section.workedBefore"), isExpanded: $isWorkedBeforeFilterExpanded, activeCount: viewModel.isWorkedBeforeFilterEnabled ? 1 : 0)
         }
 
         // 8. Maidenhead Grid-Filter
@@ -1891,7 +1894,7 @@ struct ContentView: View {
                     get: { viewModel.isNew4CharGridOnlyFilterEnabled },
                     set: { viewModel.isNew4CharGridOnlyFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
                 )) {
-                    Text("Nur neue 4-Stellen Grids (z.B. JO31)").font(.system(size: 11)).bold()
+                    Text(L("filter.grid.4char")).font(.system(size: 11)).bold()
                 }
                 .toggleStyle(.switch)
                 .controlSize(.mini)
@@ -1900,12 +1903,12 @@ struct ContentView: View {
                     get: { viewModel.isNew6CharGridOnlyFilterEnabled },
                     set: { viewModel.isNew6CharGridOnlyFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
                 )) {
-                    Text("Nur neue 6-Stellen Grids (z.B. JO31aa)").font(.system(size: 11)).bold()
+                    Text(L("filter.grid.6char")).font(.system(size: 11)).bold()
                 }
                 .toggleStyle(.switch)
                 .controlSize(.mini)
 
-                Text("Lässt nur Stationen aus Maidenhead Grids durch, die in dieser Auflösung noch nicht im Logbuch gearbeitet wurden.")
+                Text(L("filter.grid.desc"))
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
                     .italic()
@@ -1916,7 +1919,7 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
         } header: {
-            sidebarHeader("Maidenhead Grid-Filter", isExpanded: $isNewGridFilterExpanded, activeCount: (viewModel.isNew4CharGridOnlyFilterEnabled ? 1 : 0) + (viewModel.isNew6CharGridOnlyFilterEnabled ? 1 : 0))
+            sidebarHeader(L("filter.section.gridFilter"), isExpanded: $isNewGridFilterExpanded, activeCount: (viewModel.isNew4CharGridOnlyFilterEnabled ? 1 : 0) + (viewModel.isNew6CharGridOnlyFilterEnabled ? 1 : 0))
         }
 
         // 9. WSJT-X CQ Filter
@@ -1926,12 +1929,12 @@ struct ContentView: View {
                     get: { viewModel.isWsjtSpecialFilterEnabled },
                     set: { viewModel.isWsjtSpecialFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
                 )) {
-                    Text("Nur CQ, RRR, RR73, 73").font(.system(size: 11)).bold()
+                    Text(L("filter.wsjtCQ.toggle")).font(.system(size: 11)).bold()
                 }
                 .toggleStyle(.switch)
                 .controlSize(.mini)
 
-                Text("Filtert alle Dekodierungen heraus, die keine CQ-Rufe oder QSO-Beendigungen sind.")
+                Text(L("filter.wsjtCQ.desc"))
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
                     .italic()
@@ -1942,7 +1945,7 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
         } header: {
-            sidebarHeader("WSJT-X CQ Filter", isExpanded: $isWsjtSpecialFilterExpanded, activeCount: viewModel.isWsjtSpecialFilterEnabled ? 1 : 0)
+            sidebarHeader(L("filter.section.wsjtCQ"), isExpanded: $isWsjtSpecialFilterExpanded, activeCount: viewModel.isWsjtSpecialFilterEnabled ? 1 : 0)
         }
 
         // 10. Doubletten-Filter
@@ -1952,13 +1955,13 @@ struct ContentView: View {
                     get: { viewModel.isDuplicateFilterEnabled },
                     set: { viewModel.isDuplicateFilterEnabled = $0; viewModel.saveFilters() }
                 )) {
-                    Text("Doubletten ausfiltern").font(.system(size: 11)).bold()
+                    Text(L("filter.duplicates.toggle")).font(.system(size: 11)).bold()
                 }
                 .toggleStyle(.switch)
                 .controlSize(.mini)
 
                 HStack {
-                    Text("Toleranz:").font(.system(size: 10))
+                    Text(L("filter.duplicates.tolerance")).font(.system(size: 10))
                     Picker("", selection: Binding(get: { viewModel.duplicateSpotFrequencyTolerance }, set: { viewModel.duplicateSpotFrequencyTolerance = $0; viewModel.saveFilters() })) {
                         Text("0.5 kHz").tag(0.5)
                         Text("1.0 kHz").tag(1.0)
@@ -1971,7 +1974,7 @@ struct ContentView: View {
                 }
 
                 HStack {
-                    Text("Zeitfenster:").font(.system(size: 10))
+                    Text(L("filter.duplicates.window")).font(.system(size: 10))
                     Picker("", selection: Binding(get: { viewModel.duplicateSpotWindowMinutes }, set: { viewModel.duplicateSpotWindowMinutes = $0; viewModel.saveFilters() })) {
                         Text("1 Min").tag(1)
                         Text("3 Min").tag(3)
@@ -1983,7 +1986,7 @@ struct ContentView: View {
                     .controlSize(.mini)
                 }
 
-                Text("Verhindert doppelte Dekodierungen des gleichen Rufzeichens auf der gleichen Frequenz im gewählten Zeitfenster.")
+                Text(L("filter.duplicates.desc"))
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
                     .italic()
@@ -1994,7 +1997,7 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
         } header: {
-            sidebarHeader("Doubletten-Filter", isExpanded: $isDuplicateFilterExpanded, activeCount: viewModel.isDuplicateFilterEnabled ? 1 : 0)
+            sidebarHeader(L("filter.section.duplicates"), isExpanded: $isDuplicateFilterExpanded, activeCount: viewModel.isDuplicateFilterEnabled ? 1 : 0)
         }
     }
 
@@ -2003,7 +2006,7 @@ struct ContentView: View {
         Section(isExpanded: $isAllowedSpotterCountriesExpanded) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Whitelist-Modus").font(.caption).bold()
-                Text("NUR Dekodierungen, deren lokaler Spotter (Eigene Station) aus diesen Ländern ist, werden durchgelassen.")
+                Text(L("filter.spotter.desc"))
                     .font(.system(size: 9))
                     .foregroundColor(.secondary)
                     .italic()
@@ -2013,7 +2016,7 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
-            
+
             ForEach(viewModel.allowedSpotterCountries, id: \.self) { country in
                 HStack {
                     Text(country).font(.system(size: 11))
@@ -2021,16 +2024,16 @@ struct ContentView: View {
                     Button { viewModel.removeAllowedSpotterCountry(country) } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain)
                 }
             }
-            
+
             VStack(alignment: .leading, spacing: 4) {
-                Text("Spotter-Land erlauben").font(.caption2).foregroundColor(.secondary)
+                Text(L("filter.spotter.label")).font(.caption2).foregroundColor(.secondary)
                 CountryInputField(text: $newSpotterCountry, suggestions: viewModel.countrySuggestions(for: newSpotterCountry)) {
                     viewModel.addAllowedSpotterCountry(newSpotterCountry)
                     newSpotterCountry = ""
                 }
             }.padding(.vertical, 4)
         } header: {
-            sidebarHeader("Erlaubte Spotter-Länder", isExpanded: $isAllowedSpotterCountriesExpanded, activeCount: viewModel.allowedSpotterCountries.count)
+            sidebarHeader(L("filter.section.spotterCountries"), isExpanded: $isAllowedSpotterCountriesExpanded, activeCount: viewModel.allowedSpotterCountries.count)
         }
 
         Section(isExpanded: $isAllowedSpotterCallsignsExpanded) {
@@ -2116,7 +2119,7 @@ struct ContentView: View {
     private var leftSidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("VERBINDUNG & BRIDGE")
+                Text(L("sidebar.left.title").uppercased())
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(.primary)
                 Spacer()
@@ -2165,7 +2168,7 @@ struct ContentView: View {
                                 .cornerRadius(3)
                         }
                         
-                        Button("Neu verbinden / Starten") {
+                        Button(L("sidebar.left.connect")) {
                             viewModel.startServer(port: UInt16(udpPort), address: udpAddress)
                         }
                         .buttonStyle(.borderedProminent)
@@ -2173,24 +2176,24 @@ struct ContentView: View {
                         .frame(maxWidth: .infinity)
                     }
                 } header: {
-                    sidebarHeader("WSJT-X UDP Server", isExpanded: $isWsjtxServerExpanded)
+                    sidebarHeader(L("sidebar.left.wsjtx"), isExpanded: $isWsjtxServerExpanded)
                 }
                 
                 Section(isExpanded: $isUdpBridgeExpanded) {
                     VStack(alignment: .leading, spacing: 8) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Weiterleitungs-Port (Bridge)").font(.caption).foregroundColor(.secondary)
-                            NumericTextField("z.B. 2238 (0 = Aus)", value: $udpBridgePort)
+                            Text(isDe ? "Weiterleitungs-Port (Bridge)" : "Forwarding Port (Bridge)").font(.caption).foregroundColor(.secondary)
+                            NumericTextField(isDe ? "z.B. 2238 (0 = Aus)" : "e.g. 2238 (0 = Off)", value: $udpBridgePort)
                                 .textFieldStyle(UnifiedTextFieldStyle())
                                 .controlSize(.small)
                         }
                         
                         let isBridgeActive = udpBridgePort > 0
                         HStack {
-                            Text("Status:")
+                            Text(isDe ? "Status:" : "Status:")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            Text(isBridgeActive ? "AKTIV (Port \(udpBridgePort))" : "DEAKTIVIERT")
+                            Text(isBridgeActive ? (isDe ? "AKTIV (Port \(udpBridgePort))" : "ACTIVE (Port \(udpBridgePort))") : L("status.cluster.disabled").uppercased())
                                 .font(.system(size: 9, weight: .bold))
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 2)
@@ -2199,14 +2202,14 @@ struct ContentView: View {
                                 .cornerRadius(3)
                         }
                         
-                        Text("Leitet alle empfangenen FT8/FT4 Dekodierungen, welche die aktiven DX-Filter passiert haben, an diesen lokalen UDP-Port (localhost) weiter.")
+                        Text(isDe ? "Leitet alle empfangenen FT8/FT4 Dekodierungen, welche die aktiven DX-Filter passiert haben, an diesen lokalen UDP-Port (localhost) weiter." : "Forwards all received FT8/FT4 decodes passing active DX filters to this local UDP port (localhost).")
                             .font(.system(size: 9))
                             .foregroundColor(.secondary)
                             .lineLimit(nil)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 } header: {
-                    sidebarHeader("UDP Bridge (Weiterleitung)", isExpanded: $isUdpBridgeExpanded, activeCount: udpBridgePort > 0 ? 1 : 0)
+                    sidebarHeader(L("sidebar.left.udpBridge"), isExpanded: $isUdpBridgeExpanded, activeCount: udpBridgePort > 0 ? 1 : 0)
                 }
                 
                 Section(isExpanded: $isDxClusterExpanded) {
@@ -2234,7 +2237,7 @@ struct ContentView: View {
                                     viewModel.reconnectClusters()
                                 }
                             )) {
-                                Text("Deaktiviert").tag(ClusterServer?.none)
+                                Text(L("status.cluster.disabled")).tag(ClusterServer?.none)
                                 ForEach(viewModel.availableClusters) { cluster in
                                     Text(cluster.name).tag(ClusterServer?.some(cluster))
                                 }
@@ -2267,7 +2270,7 @@ struct ContentView: View {
                                     viewModel.reconnectClusters()
                                 }
                             )) {
-                                Text("Deaktiviert").tag(ClusterServer?.none)
+                                Text(L("status.cluster.disabled")).tag(ClusterServer?.none)
                                 ForEach(viewModel.availableClusters) { cluster in
                                     Text(cluster.name).tag(ClusterServer?.some(cluster))
                                 }
@@ -2300,7 +2303,7 @@ struct ContentView: View {
                                     viewModel.reconnectClusters()
                                 }
                             )) {
-                                Text("Deaktiviert").tag(ClusterServer?.none)
+                                Text(L("status.cluster.disabled")).tag(ClusterServer?.none)
                                 ForEach(viewModel.availableClusters) { cluster in
                                     Text(cluster.name).tag(ClusterServer?.some(cluster))
                                 }
@@ -2312,13 +2315,13 @@ struct ContentView: View {
                     }
                 } header: {
                     let activeCount = (isCluster1Enabled ? 1 : 0) + (isCluster2Enabled ? 1 : 0) + (isCluster3Enabled ? 1 : 0)
-                    sidebarHeader("DX Cluster", isExpanded: $isDxClusterExpanded, activeCount: activeCount)
+                    sidebarHeader(L("sidebar.left.cluster"), isExpanded: $isDxClusterExpanded, activeCount: activeCount)
                 }
                 
                 Section(isExpanded: $isTelnetServerExpanded) {
                     VStack(alignment: .leading, spacing: 12) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Telnet Server Port").font(.caption).foregroundColor(.secondary)
+                            Text(L("settings.telnet.port")).font(.caption).foregroundColor(.secondary)
                             TextField("8000", value: $telnetServerPort, format: .number.grouping(.never))
                                 .textFieldStyle(UnifiedTextFieldStyle())
                                 .controlSize(.small)
@@ -2329,10 +2332,10 @@ struct ContentView: View {
                         
                         let isTelnetActive = viewModel.telnetServerError == nil
                         HStack {
-                            Text("Server Status:")
+                            Text(isDe ? "Server Status:" : "Server Status:")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            Text(isTelnetActive ? "AKTIV (Clients: \(viewModel.telnetClientCount))" : "FEHLER")
+                            Text(isTelnetActive ? (isDe ? "AKTIV (Clients: \(viewModel.telnetClientCount))" : "ACTIVE (Clients: \(viewModel.telnetClientCount))") : (isDe ? "FEHLER" : "ERROR"))
                                 .font(.system(size: 9, weight: .bold))
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 2)
@@ -2342,7 +2345,7 @@ struct ContentView: View {
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Rufzeichen für Login").font(.caption).foregroundColor(.secondary)
+                            Text(L("settings.telnet.callsign")).font(.caption).foregroundColor(.secondary)
                             TextField("GUEST", text: $clusterCallsign)
                                 .textFieldStyle(UnifiedTextFieldStyle())
                                 .controlSize(.small)
@@ -2351,13 +2354,13 @@ struct ContentView: View {
                                 }
                         }
                         
-                        Toggle("WSJT-X Decodes über Telnet ausgeben", isOn: $isWsjtTelnetOutputEnabled)
+                        Toggle(L("settings.telnet.forwardDecodes"), isOn: $isWsjtTelnetOutputEnabled)
                             .toggleStyle(.checkbox)
                             .controlSize(.small)
                             .font(.system(size: 10.5))
                     }
                 } header: {
-                    sidebarHeader("Telnet Server", isExpanded: $isTelnetServerExpanded, activeCount: viewModel.telnetClientCount > 0 ? 1 : 0)
+                    sidebarHeader(L("sidebar.left.telnetServer"), isExpanded: $isTelnetServerExpanded, activeCount: viewModel.telnetClientCount > 0 ? 1 : 0)
                 }
             }
             .listStyle(.sidebar)
@@ -2371,13 +2374,13 @@ struct ContentView: View {
             HStack(spacing: 12) {
                 if consoleTab == 1 {
                     HStack(spacing: 8) {
-                        Toggle("Decodes", isOn: $wsjtxShowDecodes)
+                        Toggle(L("logs.filter.decodes"), isOn: $wsjtxShowDecodes)
                             .toggleStyle(.checkbox)
                             .controlSize(.small)
-                        Toggle("Eingang", isOn: $wsjtxShowIncoming)
+                        Toggle(L("logs.filter.in"), isOn: $wsjtxShowIncoming)
                             .toggleStyle(.checkbox)
                             .controlSize(.small)
-                        Toggle("Ausgang", isOn: $wsjtxShowOutgoing)
+                        Toggle(L("logs.filter.out"), isOn: $wsjtxShowOutgoing)
                             .toggleStyle(.checkbox)
                             .controlSize(.small)
                     }
@@ -2388,9 +2391,9 @@ struct ContentView: View {
                 Spacer()
                 
                 Picker("", selection: $consoleTab) {
-                    Text("System-Logs").tag(0)
-                    Text("WSJT-X Rohdaten").tag(1)
-                    Text("Cluster-Spots").tag(2)
+                    Text(L("logs.tab.system")).tag(0)
+                    Text(L("logs.tab.wsjtx")).tag(1)
+                    Text(L("logs.tab.cluster")).tag(2)
                 }
                 .pickerStyle(.segmented)
                 .controlSize(.small)
@@ -2406,13 +2409,13 @@ struct ContentView: View {
                         .foregroundColor(viewModel.isLogScrollPaused ? .orange : .primary)
                 }
                 .buttonStyle(.plain)
-                .help(viewModel.isLogScrollPaused ? "Auto-Scroll fortsetzen" : "Auto-Scroll anhalten")
+                .help(viewModel.isLogScrollPaused ? L("toolbar.freeze.tooltip.resume") : L("toolbar.freeze.tooltip.pause"))
                 .padding(.trailing, 4)
                 
                 HStack(spacing: 4) {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.secondary)
-                    TextField("Protokoll durchsuchen...", text: $viewModel.logConsoleSearchText)
+                    TextField(L("logs.search"), text: $viewModel.logConsoleSearchText)
                         .font(.system(size: 11))
                         .textFieldStyle(.plain)
                         .frame(width: 150)
@@ -2438,7 +2441,7 @@ struct ContentView: View {
                             .foregroundColor(.primary)
                     }
                     .buttonStyle(.plain)
-                    .help("Befehl an DX-Cluster senden")
+                    .help(L("sidebar.left.sendSpot"))
                     .padding(.trailing, 4)
                 }
                 
@@ -2451,7 +2454,7 @@ struct ContentView: View {
                         .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
-                .help("In eigenem Fenster öffnen (ausklappen)")
+                .help(L("logs.detach"))
                 .padding(.trailing, 8)
             }
             .padding(.horizontal, 8)

@@ -21,6 +21,28 @@ enum HelpSection: String, CaseIterable, Identifiable {
     
     var id: String { rawValue }
     
+    var title: String {
+        let isDe = LanguageManager.shared.isGerman
+        switch self {
+        case .overview: return isDe ? "Übersicht" : "Overview"
+        case .quickstart: return isDe ? "Quickstart" : "Quickstart"
+        case .toolbar: return isDe ? "Toolbar & Bedienung" : "Toolbar & Controls"
+        case .wsjtx: return "WSJT-X Setup"
+        case .triggers: return "Auto QSO Triggers"
+        case .cluster: return "DX Cluster"
+        case .telnet: return "Telnet Server"
+        case .propagationMap: return isDe ? "Ausbreitungskarte & Grid-Map" : "Propagation & Grid Map"
+        case .compactMode: return isDe ? "Kompaktmodus" : "Compact Mode"
+        case .logbook: return isDe ? "Logbuch & Sync" : "Logbook & Sync"
+        case .storage: return isDe ? "Speicherort & iCloud" : "Storage & iCloud"
+        case .appearance: return isDe ? "Ansicht & Farbschema" : "Appearance & Theme"
+        case .support: return "Support"
+        case .disclaimer: return isDe ? "Rechtlicher Hinweis" : "Legal Disclaimer"
+        case .changelog: return "Changelog"
+        case .copyright: return isDe ? "Copyright & Lizenz" : "Copyright & License"
+        }
+    }
+    
     var icon: String {
         switch self {
         case .overview: return "info.circle"
@@ -44,6 +66,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
 }
 
 struct HelpView: View {
+    @ObservedObject private var langManager = LanguageManager.shared
     @Environment(\.openWindow) private var openWindow
     @State private var selectedSection: HelpSection = .overview
     
@@ -66,7 +89,7 @@ struct HelpView: View {
                         Image(systemName: section.icon)
                             .foregroundColor(selectedSection == section ? .accentColor : .secondary)
                             .frame(width: 18)
-                        Text(section.rawValue)
+                        Text(section.title)
                             .font(.body)
                     }
                     .tag(section)
@@ -107,13 +130,16 @@ struct HelpView: View {
 
     @ViewBuilder
     private func detailView(for section: HelpSection) -> some View {
+        let isDe = langManager.isGerman
         switch section {
         case .overview:
             VStack(alignment: .leading, spacing: 12) {
-                Text("System-Übersicht")
+                Text(isDe ? "System-Übersicht" : "System Overview")
                     .font(.title2)
                     .bold()
-                Text("AutoQSO ist eine macOS-Anwendung für Funkamateure. Die **Hauptfunktion ist der DX-Filter** zur intelligenten Auswertung, Klassifizierung und Filterung von Spots und Dekodierungen. **Für WSJT-X steht die automatisierte Auto QSO Sende-Engine** zur Verfügung.")
+                Text(isDe ? 
+                    "AutoQSO ist eine macOS-Anwendung für Funkamateure. Die **Hauptfunktion ist der DX-Filter** zur intelligenten Auswertung, Klassifizierung und Filterung von Spots und Dekodierungen. **Für WSJT-X steht die automatisierte Auto QSO Sende-Engine** zur Verfügung." :
+                    "AutoQSO is a macOS application for amateur radio operators. The **main feature is the DX Filter** for intelligent evaluation, classification, and filtering of spots and decodes. **For WSJT-X, the automated Auto QSO Transmit Engine** is available.")
                     .font(.body)
                 
                 // Quickstart Callout
@@ -122,14 +148,14 @@ struct HelpView: View {
                         .font(.title)
                         .foregroundColor(.accentColor)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Neu bei AutoQSO? Schnellstart in 4 Schritten:")
+                        Text(isDe ? "Neu bei AutoQSO? Schnellstart in 4 Schritten:" : "New to AutoQSO? Quickstart in 4 steps:")
                             .font(.headline)
-                        Text("Erfahre, welche Mindesteinstellungen (Rufzeichen, QTH, WSJT-X, Logbuch) du für den Betrieb benötigst.")
+                        Text(isDe ? "Erfahre, welche Mindesteinstellungen (Rufzeichen, QTH, WSJT-X, Logbuch) du für den Betrieb benötigst." : "Learn what minimum settings (callsign, QTH, WSJT-X, logbook) you need for operation.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                     Spacer()
-                    Button("Quickstart öffnen") {
+                    Button(isDe ? "Quickstart öffnen" : "Open Quickstart") {
                         selectedSection = .quickstart
                     }
                     .buttonStyle(.borderedProminent)
@@ -140,22 +166,22 @@ struct HelpView: View {
                 .cornerRadius(8)
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.accentColor.opacity(0.3), lineWidth: 1))
                 
-                Text("Hauptfunktionen:")
+                Text(isDe ? "Hauptfunktionen:" : "Key Features:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 6) {
-                    bullet("DX-Filter (Hauptfunktion): Intelligente Auswertung, Klassifizierung & Weiterleitung von DX-Spots & Decodes")
-                    bullet("Auto QSO für WSJT-X: Automatisierte Sende-Engine für FT8 & FT4")
-                    bullet("Prüfung gegen SQLite-Logbuch (bereits auf Band gearbeitet)")
-                    bullet("Detektieren von CQ, 73, RR73 und RRR Decodes")
-                    bullet("Top 100 Most Wanted DXCC – Rote Hervorhebung (🔥) & Priorität")
-                    bullet("Maidenhead Locator → km Entfernungsberechnung")
-                    bullet("Gesondertes Most-Wanted-Panel (höhenverstellbar via VSplitView) unter der Tabelle")
-                    bullet("DX Cluster Slots (C1, C2, C3) per Dropdown-Picker und Live-Status")
-                    bullet("Laufender Telnet-Server zur Spotting-Weiterleitung an externe Programme")
-                    bullet("Umschaltbare Log-Diagnose (System, WSJT-X-Rohdaten, Cluster-Spots)")
-                    bullet("Abkoppelbare Log-Konsole als eigenständiges, positionierbares Fenster")
-                    bullet("Chronologische Sortierung wählbar (Neueste oben oder unten)")
-                    bullet("Unterstützung von Hell-, Dunkel- und System-Farbschemata")
+                    bullet(isDe ? "DX-Filter (Hauptfunktion): Intelligente Auswertung, Klassifizierung & Weiterleitung von DX-Spots & Decodes" : "DX Filter (Main Feature): Intelligent evaluation, classification & forwarding of DX spots & decodes")
+                    bullet(isDe ? "Auto QSO für WSJT-X: Automatisierte Sende-Engine für FT8 & FT4" : "Auto QSO for WSJT-X: Automated transmit engine for FT8 & FT4")
+                    bullet(isDe ? "Prüfung gegen SQLite-Logbuch (bereits auf Band gearbeitet)" : "Verification against SQLite logbook (already worked on band)")
+                    bullet(isDe ? "Detektieren von CQ, 73, RR73 und RRR Decodes" : "Detection of CQ, 73, RR73, and RRR decodes")
+                    bullet(isDe ? "Top 100 Most Wanted DXCC – Rote Hervorhebung (🔥) & Priorität" : "Top 100 Most Wanted DXCC – Red highlight (🔥) & priority")
+                    bullet(isDe ? "Maidenhead Locator → km Entfernungsberechnung" : "Maidenhead Locator → km distance calculation")
+                    bullet(isDe ? "Gesondertes Most-Wanted-Panel (höhenverstellbar via VSplitView) unter der Tabelle" : "Dedicated Most-Wanted panel (resizable via VSplitView) below the table")
+                    bullet(isDe ? "DX Cluster Slots (C1, C2, C3) per Dropdown-Picker und Live-Status" : "DX Cluster slots (C1, C2, C3) via dropdown pickers and live status")
+                    bullet(isDe ? "Laufender Telnet-Server zur Spotting-Weiterleitung an externe Programme" : "Built-in Telnet server for spot forwarding to external loggers")
+                    bullet(isDe ? "Umschaltbare Log-Diagnose (System, WSJT-X-Rohdaten, Cluster-Spots)" : "Switchable log diagnosis (System, WSJT-X raw data, Cluster spots)")
+                    bullet(isDe ? "Abkoppelbare Log-Konsole als eigenständiges, positionierbares Fenster" : "Detachable log console as a standalone, positionable window")
+                    bullet(isDe ? "Chronologische Sortierung wählbar (Neueste oben oder unten)" : "Chronological sorting selectable (Newest on top or bottom)")
+                    bullet(isDe ? "Unterstützung von Hell-, Dunkel- und System-Farbschemata" : "Support for Light, Dark, and System color schemes")
                 }
             }
             
@@ -163,10 +189,10 @@ struct HelpView: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Quickstart – Mindesteinstellungen")
+                        Text(isDe ? "Quickstart – Mindesteinstellungen" : "Quickstart – Minimum Setup")
                             .font(.title2)
                             .bold()
-                        Text("Vier grundlegende Schritte zum sofortigen Funkbetrieb mit AutoQSO.")
+                        Text(isDe ? "Vier grundlegende Schritte zum sofortigen Funkbetrieb mit AutoQSO." : "Four basic steps for immediate radio operation with AutoQSO.")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -174,7 +200,7 @@ struct HelpView: View {
                     Button(action: { openSettings() }) {
                         HStack(spacing: 6) {
                             Image(systemName: "gearshape.fill")
-                            Text("Einstellungen öffnen ⚙️")
+                            Text(isDe ? "Einstellungen öffnen ⚙️" : "Open Settings ⚙️")
                         }
                     }
                     .buttonStyle(.borderedProminent)
@@ -183,13 +209,13 @@ struct HelpView: View {
                 // 1. Eigenes Rufzeichen & QTH
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Label("1. Eigenes Rufzeichen & Grid-Locator (Heimat-QTH)", systemImage: "location.circle.fill")
+                        Label(isDe ? "1. Eigenes Rufzeichen & Grid-Locator (Heimat-QTH)" : "1. Callsign & Grid Locator (Home QTH)", systemImage: "location.circle.fill")
                             .font(.headline)
                         Spacer()
                         Button(action: { openSettings(to: .telnet) }) {
                             HStack(spacing: 4) {
                                 Image(systemName: "gearshape")
-                                Text("Rufzeichen (Telnet)")
+                                Text(isDe ? "Rufzeichen (Telnet)" : "Callsign (Telnet)")
                             }
                         }
                         .buttonStyle(.bordered)
@@ -204,15 +230,19 @@ struct HelpView: View {
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         
-                        Button("Hilfe") {
+                        Button(isDe ? "Hilfe" : "Help") {
                             selectedSection = .propagationMap
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                     }
-                    Text("• **Eigenes Rufzeichen**: Trage dein Rufzeichen unter **Einstellungen (⚙️) -> Telnet Server** (*Rufzeichen für Login*) ein. Es wird für Cluster-Verbindungen und den integrierten Telnet-Server genutzt.")
+                    Text(isDe ? 
+                        "• **Eigenes Rufzeichen**: Trage dein Rufzeichen unter **Einstellungen (⚙️) -> Telnet Server** (*Rufzeichen für Login*) ein. Es wird für Cluster-Verbindungen und den integrierten Telnet-Server genutzt." :
+                        "• **Callsign**: Enter your callsign under **Settings (⚙️) -> Telnet Server** (*Callsign for login*). It is used for cluster logins and the built-in Telnet server.")
                         .font(.subheadline)
-                    Text("• **Grid-Locator (Heimat-QTH)**: Öffne **Einstellungen (⚙️) -> Eigenes QTH (Maidenhead)** und trage deinen 4- bis 8-stelligen Locator ein (z. B. `JO31AA24`), oder nutze die interaktive Karte mit Drop-Pin (🗺️). Dies ermöglicht die präzise Entfernungs- und Peilungsberechnung zu allen Stationen.")
+                    Text(isDe ? 
+                        "• **Grid-Locator (Heimat-QTH)**: Öffne **Einstellungen (⚙️) -> Eigenes QTH (Maidenhead)** und trage deinen 4- bis 8-stelligen Locator ein (z. B. `JO31AA24`), oder nutze die interaktive Karte mit Drop-Pin (🗺️). Dies ermöglicht die präzise Entfernungs- und Peilungsberechnung zu allen Stationen." :
+                        "• **Grid Locator (Home QTH)**: Open **Settings (⚙️) -> Home QTH (Maidenhead)** and enter your 4- to 8-character locator (e.g. `JO31AA24`), or use the interactive map with drop-pin (🗺️). This enables accurate bearing and distance calculations.")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -224,27 +254,31 @@ struct HelpView: View {
                 // 2. WSJT-X Setup
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Label("2. WSJT-X UDP-Verbindung (Empfang & Auto Transmit)", systemImage: "antenna.radiowaves.left.and.right")
+                        Label(isDe ? "2. WSJT-X UDP-Verbindung (Empfang & Auto Transmit)" : "2. WSJT-X UDP Connection (Rx & Auto Transmit)", systemImage: "antenna.radiowaves.left.and.right")
                             .font(.headline)
                         Spacer()
                         Button(action: { openSettings(to: .udp) }) {
                             HStack(spacing: 4) {
                                 Image(systemName: "gearshape")
-                                Text("UDP-Einstellungen")
+                                Text(isDe ? "UDP-Einstellungen" : "UDP Settings")
                             }
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         
-                        Button("WSJT-X Anleitung") {
+                        Button(isDe ? "WSJT-X Anleitung" : "WSJT-X Guide") {
                             selectedSection = .wsjtx
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                     }
-                    Text("• **Zweck**: Empfängt Live-Dekodierungen (FT8/FT4) und sendet automatische Antwortkommandos (Auto QSO).")
+                    Text(isDe ? 
+                        "• **Zweck**: Empfängt Live-Dekodierungen (FT8/FT4) und sendet automatische Antwortkommandos (Auto QSO)." :
+                        "• **Purpose**: Receives live decodes (FT8/FT4) and sends automated reply commands (Auto QSO).")
                         .font(.subheadline)
-                    Text("• **Einstellung in WSJT-X**: Öffne in WSJT-X **Settings -> Reporting** und aktiviere:\n  1. `Prompt me to log QSO` [x]\n  2. `Accept UDP requests` [x]\n  3. `UDP Server Address: 224.0.0.1` (Multicast) oder `127.0.0.1` (Unicast)\n  4. `UDP Server Port: 2237`")
+                    Text(isDe ? 
+                        "• **Einstellung in WSJT-X**: Öffne in WSJT-X **Settings -> Reporting** und aktiviere:\n  1. `Prompt me to log QSO` [x]\n  2. `Accept UDP requests` [x]\n  3. `UDP Server Address: 224.0.0.1` (Multicast) oder `127.0.0.1` (Unicast)\n  4. `UDP Server Port: 2237`" :
+                        "• **Setup in WSJT-X**: In WSJT-X open **Settings -> Reporting** and check:\n  1. `Prompt me to log QSO` [x]\n  2. `Accept UDP requests` [x]\n  3. `UDP Server Address: 224.0.0.1` (Multicast) or `127.0.0.1` (Unicast)\n  4. `UDP Server Port: 2237`")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -256,27 +290,31 @@ struct HelpView: View {
                 // 3. Logbuch-Sync
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Label("3. Logbuch-Synchronisation (RUMlogNG / LoTW / QRZ.com / ADIF)", systemImage: "book.closed.fill")
+                        Label(isDe ? "3. Logbuch-Synchronisation (RUMlogNG / LoTW / QRZ.com / ADIF)" : "3. Logbook Sync (RUMlogNG / LoTW / QRZ.com / ADIF)", systemImage: "book.closed.fill")
                             .font(.headline)
                         Spacer()
                         Button(action: { openSettings(to: .sync) }) {
                             HStack(spacing: 4) {
                                 Image(systemName: "gearshape")
-                                Text("Sync-Einstellungen")
+                                Text(isDe ? "Sync-Einstellungen" : "Sync Settings")
                             }
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         
-                        Button("Hilfe") {
+                        Button(isDe ? "Hilfe" : "Help") {
                             selectedSection = .logbook
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                     }
-                    Text("• **Zweck**: Gleicht eingehende Stationen in Echtzeit mit bereits getätigten QSOs auf dem Band ab, verhindert Doppel-QSOs und markiert ungearbeitete Länder/Grids farbig.")
+                    Text(isDe ? 
+                        "• **Zweck**: Gleicht eingehende Stationen in Echtzeit mit bereits getätigten QSOs auf dem Band ab, verhindert Doppel-QSOs und markiert ungearbeitete Länder/Grids farbig." :
+                        "• **Purpose**: Cross-references incoming stations in real-time with already worked QSOs on the band, prevents duplicate QSOs, and highlights new DXCCs/grids.")
                         .font(.subheadline)
-                    Text("• **Einstellung**: Öffne **Einstellungen (⚙️) -> Logbuch-Sync**, wähle deine Quelle (**RUMlogNG**, **LoTW** oder **QRZ.com**) und starte den Sync (oder lade ein bestehendes Logbuch über *ADIF-Datei importieren* hoch).")
+                    Text(isDe ? 
+                        "• **Einstellung**: Öffne **Einstellungen (⚙️) -> Logbuch-Sync**, wähle deine Quelle (**RUMlogNG**, **LoTW** oder **QRZ.com**) und starte den Sync (oder lade ein bestehendes Logbuch über *ADIF-Datei importieren* hoch)." :
+                        "• **Setup**: Open **Settings (⚙️) -> Logbook Sync**, choose your source (**RUMlogNG**, **LoTW**, or **QRZ.com**) and start the sync (or upload an existing logbook via *Import ADIF File*).")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -288,27 +326,31 @@ struct HelpView: View {
                 // 4. DX Cluster & Filter
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Label("4. DX Cluster & Filter (Optional)", systemImage: "list.bullet.rectangle.portrait.fill")
+                        Label(isDe ? "4. DX Cluster & Filter (Optional)" : "4. DX Cluster & Filters (Optional)", systemImage: "list.bullet.rectangle.portrait.fill")
                             .font(.headline)
                         Spacer()
                         Button(action: { openSettings(to: .cluster) }) {
                             HStack(spacing: 4) {
                                 Image(systemName: "gearshape")
-                                Text("Cluster-Einstellungen")
+                                Text(isDe ? "Cluster-Einstellungen" : "Cluster Settings")
                             }
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         
-                        Button("Hilfe") {
+                        Button(isDe ? "Hilfe" : "Help") {
                             selectedSection = .cluster
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                     }
-                    Text("• **Zweck**: Paralleler Empfang weltweiter DX-Spots über bis zu drei Cluster (C1, C2, C3) zur Live-Ausbreitungsanalyse.")
+                    Text(isDe ? 
+                        "• **Zweck**: Paralleler Empfang weltweiter DX-Spots über bis zu drei Cluster (C1, C2, C3) zur Live-Ausbreitungsanalyse." :
+                        "• **Purpose**: Parallel reception of worldwide DX spots via up to three clusters (C1, C2, C3) for live propagation analysis.")
                         .font(.subheadline)
-                    Text("• **Einstellung**: Wähle in der linken Seitenleiste oder unter **Einstellungen (⚙️) -> DX Cluster** deine gewünschten Cluster per Dropdown aus.")
+                    Text(isDe ? 
+                        "• **Einstellung**: Wähle in der linken Seitenleiste oder unter **Einstellungen (⚙️) -> DX Cluster** deine gewünschten Cluster per Dropdown aus." :
+                        "• **Setup**: Select your preferred clusters via the dropdown menus in the left sidebar or under **Settings (⚙️) -> DX Cluster**.")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -320,52 +362,52 @@ struct HelpView: View {
             
         case .toolbar:
             VStack(alignment: .leading, spacing: 12) {
-                Text("Toolbar & Bedienung")
+                Text(isDe ? "Toolbar & Bedienung" : "Toolbar & Controls")
                     .font(.title2)
                     .bold()
-                Text("Hier findest du eine Übersicht über alle Steuerungselemente und Interaktionen in AutoQSO.")
+                Text(isDe ? "Hier findest du eine Übersicht über alle Steuerungselemente und Interaktionen in AutoQSO." : "Here you will find an overview of all controls and interactions in AutoQSO.")
                     .font(.body)
                 
-                Text("Bedienelemente der Toolbar:")
+                Text(isDe ? "Bedienelemente der Toolbar:" : "Toolbar Controls:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    iconBullet(icon: "sidebar.left", text: "**Verbindungs-Sidebar**: Blendet die linke Status- und Konfigurations-Seitenleiste ein oder aus.")
-                    iconBullet(icon: "play.circle", text: "**Auto Transmit Toggle (Auto ON/OFF)**: Aktiviert oder deaktiviert die automatische Sende-Engine.")
-                    iconBullet(icon: "pause.circle", text: "**Freeze / Pause Toggle**: Friert die Ansicht der Dekodiertabelle & Logs mit einem statischen Snapshot ein (Auto-Scroll aus). Hintergrunddaten werden weiter empfangen. Erneuter Klick schaltet zurück auf Live-Scrollen.")
-                    iconBullet(icon: "magnifyingglass", text: "**Echtzeit-Suchfeld**: Ermöglicht das sofortige Durchsuchen der Tabelle oder Logs nach Rufzeichen, Land, Spotter, Grid-Locator oder Nachrichten-Text – sowohl im Live- als auch im Freeze-Modus.")
-                    iconBullet(icon: "book", text: "**Logbuch**: Öffnet das LoTW/QRZ-Logbuchfenster zur Ansicht der getätigten QSOs.")
-                    iconBullet(icon: "arrow.up", text: "**Sortierung**: Schaltet die chronologische Sortierung der Tabelleneinträge und Logs um (Neueste oben oder unten).")
-                    iconBullet(icon: "trash", text: "**Tabelle löschen**: Leert die Liste der empfangenen Dekodierungen und Spots.")
-                    iconBullet(icon: "map", text: "**Ausbreitungskarte**: Öffnet die Live-Karte zur Visualisierung empfangener Spots.")
-                    iconBullet(icon: "rectangle.compress.vertical", text: "**Kompaktmodus**: Reduziert das Layout auf eine minimale Steuerleiste und Spot-Tabelle.")
-                    iconBullet(icon: "gearshape", text: "**Einstellungen**: Öffnet den Einstellungsdialog zur Konfiguration der Syncs, Cluster und Farben.")
-                    iconBullet(icon: "questionmark.circle", text: "**Hilfe**: Öffnet dieses Hilfe- und Changelog-Fenster.")
-                    iconBullet(icon: "sidebar.right", text: "**Filter-Sidebar**: Blendet das rechte Panel zur Konfiguration von Rufzeichen-, DX- und Spotter-Filtern ein oder aus.")
+                    iconBullet(icon: "sidebar.left", text: isDe ? "**Verbindungs-Sidebar**: Blendet die linke Status- und Konfigurations-Seitenleiste ein oder aus." : "**Connection Sidebar**: Toggles the left status and connection sidebar.")
+                    iconBullet(icon: "play.circle", text: isDe ? "**Auto Transmit Toggle (Auto ON/OFF)**: Aktiviert oder deaktiviert die automatische Sende-Engine." : "**Auto Transmit Toggle (Auto ON/OFF)**: Activates or deactivates the automated transmit engine.")
+                    iconBullet(icon: "pause.circle", text: isDe ? "**Freeze / Pause Toggle**: Friert die Ansicht der Dekodiertabelle & Logs mit einem statischen Snapshot ein (Auto-Scroll aus). Hintergrunddaten werden weiter empfangen. Erneuter Klick schaltet zurück auf Live-Scrollen." : "**Freeze / Pause Toggle**: Freezes the decode table and logs with a static snapshot (auto-scroll off). Incoming data continues to be received in the background.")
+                    iconBullet(icon: "magnifyingglass", text: isDe ? "**Echtzeit-Suchfeld**: Ermöglicht das sofortige Durchsuchen der Tabelle oder Logs nach Rufzeichen, Land, Spotter, Grid-Locator oder Nachrichten-Text – sowohl im Live- als auch im Freeze-Modus." : "**Real-Time Search Field**: Instantly filters the table or logs by callsign, country, spotter, grid locator, or message text.")
+                    iconBullet(icon: "book", text: isDe ? "**Logbuch**: Öffnet das LoTW/QRZ-Logbuchfenster zur Ansicht der getätigten QSOs." : "**Logbook**: Opens the logbook window to view worked QSOs.")
+                    iconBullet(icon: "arrow.up", text: isDe ? "**Sortierung**: Schaltet die chronologische Sortierung der Tabelleneinträge und Logs um (Neueste oben oder unten)." : "**Sort Order**: Toggles chronological sorting of table entries and logs (newest on top or bottom).")
+                    iconBullet(icon: "trash", text: isDe ? "**Tabelle löschen**: Leert die Liste der empfangenen Dekodierungen und Spots." : "**Clear Table**: Clears the list of received decodes and spots.")
+                    iconBullet(icon: "map", text: isDe ? "**Ausbreitungskarte**: Öffnet die Live-Karte zur Visualisierung empfangener Spots." : "**Propagation Map**: Opens the live map to visualize received spots.")
+                    iconBullet(icon: "rectangle.compress.vertical", text: isDe ? "**Kompaktmodus**: Reduziert das Layout auf eine minimale Steuerleiste und Spot-Tabelle." : "**Compact Mode**: Minimizes the window to an ultra-compact control bar and spot list.")
+                    iconBullet(icon: "gearshape", text: isDe ? "**Einstellungen**: Öffnet den Einstellungsdialog zur Konfiguration der Syncs, Cluster und Farben." : "**Settings**: Opens the settings dialog for sync, cluster, and color configuration.")
+                    iconBullet(icon: "questionmark.circle", text: isDe ? "**Hilfe**: Öffnet dieses Hilfe- und Changelog-Fenster." : "**Help**: Opens this help and changelog window.")
+                    iconBullet(icon: "sidebar.right", text: isDe ? "**Filter-Sidebar**: Blendet das rechte Panel zur Konfiguration von Rufzeichen-, DX- und Spotter-Filtern ein oder aus." : "**Filter Sidebar**: Toggles the right sidebar for DX, zone, and spotter filters.")
                 }
                 
                 Divider()
                     .padding(.vertical, 4)
                 
-                Text("Tastatur- & Maus-Bedienung (Spot-Tabelle):")
+                Text(isDe ? "Tastatur- & Maus-Bedienung (Spot-Tabelle):" : "Mouse & Keyboard Controls (Spot Table):")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**Einfacher Klick**: Wählt eine Station in der Tabelle aus. Dies lädt ihre Details in den Detail-Banner, aktualisiert die QRZ/LoTW-Daten und hebt das Rufzeichen hervor.")
-                    bullet("**Doppelklick**: Löst die manuelle Antwort (**Manual Reply**) aus. AutoQSO sendet ein UDP-Reply-Kommando an WSJT-X, wodurch WSJT-X sofort auf die entsprechende Frequenz springt und den Sendezyklus startet.")
+                    bullet(isDe ? "**Einfacher Klick**: Wählt eine Station in der Tabelle aus. Dies lädt ihre Details in den Detail-Banner, aktualisiert die QRZ/LoTW-Daten und hebt das Rufzeichen hervor." : "**Single Click**: Selects a station in the table. Loads details into the detail banner, updates QRZ/LoTW info, and highlights the callsign.")
+                    bullet(isDe ? "**Doppelklick**: Löst die manuelle Antwort (**Manual Reply**) aus. AutoQSO sendet ein UDP-Reply-Kommando an WSJT-X, wodurch WSJT-X sofort auf die entsprechende Frequenz springt und den Sendezyklus startet." : "**Double Click**: Triggers **Manual Reply**. AutoQSO sends a UDP reply command to WSJT-X, making WSJT-X tune immediately and initiate transmission.")
                 }
             }
             
         case .wsjtx:
             VStack(alignment: .leading, spacing: 12) {
-                Text("WSJT-X Konfiguration")
+                Text(isDe ? "WSJT-X Konfiguration" : "WSJT-X Configuration")
                     .font(.title2)
                     .bold()
-                Text("In WSJT-X unter Settings -> Reporting:")
+                Text(isDe ? "In WSJT-X unter Settings -> Reporting:" : "In WSJT-X under Settings -> Reporting:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    numberedItem("1.", "Option 'Prompt me to log QSO' aktivieren.")
-                    numberedItem("2.", "Option 'Accept UDP requests' aktivieren.")
-                    numberedItem("3.", "UDP Server Address: `224.0.0.1` (Multicast) oder `127.0.0.1` (Unicast).")
-                    numberedItem("4.", "UDP Server Port: `2237`.")
+                    numberedItem("1.", isDe ? "Option 'Prompt me to log QSO' aktivieren." : "Check 'Prompt me to log QSO'.")
+                    numberedItem("2.", isDe ? "Option 'Accept UDP requests' aktivieren." : "Check 'Accept UDP requests'.")
+                    numberedItem("3.", isDe ? "UDP Server Address: `224.0.0.1` (Multicast) oder `127.0.0.1` (Unicast)." : "UDP Server Address: `224.0.0.1` (Multicast) or `127.0.0.1` (Unicast).")
+                    numberedItem("4.", isDe ? "UDP Server Port: `2237`." : "UDP Server Port: `2237`.")
                 }
                 .padding()
                 .background(Color.blue.opacity(0.08))
@@ -374,247 +416,247 @@ struct HelpView: View {
             
         case .triggers:
             VStack(alignment: .leading, spacing: 12) {
-                Text("Auto QSO Trigger Logik")
+                Text(isDe ? "Auto QSO Trigger Logik" : "Auto QSO Trigger Logic")
                     .font(.title2)
                     .bold()
-                Text("AutoQSO analysiert alle empfangenen WSJT-X Decodes in Echtzeit:")
+                Text(isDe ? "AutoQSO analysiert alle empfangenen WSJT-X Decodes in Echtzeit:" : "AutoQSO analyzes all received WSJT-X decodes in real-time:")
                     .font(.body)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**CQ Anrufe**: CQ, CQ DX, CQ POTA, CQ TEST, etc.")
-                    bullet("**73 Nachrichten**: z.B. `DL1ABC G4XYZ 73`")
-                    bullet("**RR73 / RRR Nachrichten**: z.B. `K1ABC W1AW RR73`")
+                    bullet(isDe ? "**CQ Anrufe**: CQ, CQ DX, CQ POTA, CQ TEST, etc." : "**CQ Calls**: CQ, CQ DX, CQ POTA, CQ TEST, etc.")
+                    bullet(isDe ? "**73 Nachrichten**: z.B. `DL1ABC G4XYZ 73`" : "**73 Messages**: e.g. `DL1ABC G4XYZ 73`")
+                    bullet(isDe ? "**RR73 / RRR Nachrichten**: z.B. `K1ABC W1AW RR73`" : "**RR73 / RRR Messages**: e.g. `K1ABC W1AW RR73`")
                 }
                 .padding()
                 .background(Color.blue.opacity(0.1))
                 .cornerRadius(8)
-                Text("Ablauf:")
+                Text(isDe ? "Ablauf:" : "Workflow:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    numberedItem("1.", "Ermittlung des Rufzeichens der sendenden Station.")
-                    numberedItem("2.", "Abgleich mit dem Logbuch (falls auf dem aktuellen Band bereits gearbeitet -> grau hinterlegt und übersprungen).")
-                    numberedItem("3.", "Prüfung auf aktiven Cooldown/Sperre.")
-                    numberedItem("4.", "Senden des Reply-Kommandos an WSJT-X zum automatischen Anruf (WSJTX Auto Transmit).")
+                    numberedItem("1.", isDe ? "Ermittlung des Rufzeichens der sendenden Station." : "Identify transmitting station callsign.")
+                    numberedItem("2.", isDe ? "Abgleich mit dem Logbuch (falls auf dem aktuellen Band bereits gearbeitet -> grau hinterlegt und übersprungen)." : "Check against logbook (if already worked on band -> dimmed and skipped).")
+                    numberedItem("3.", isDe ? "Prüfung auf aktiven Cooldown/Sperre." : "Check active cooldown/lockout timer.")
+                    numberedItem("4.", isDe ? "Senden des Reply-Kommandos an WSJT-X zum automatischen Anruf (WSJTX Auto Transmit)." : "Send reply command to WSJT-X for automated transmit (Auto Transmit).")
                 }
             }
             
         case .cluster:
             VStack(alignment: .leading, spacing: 12) {
-                Text("DX Cluster & Spot-Verarbeitung")
+                Text(isDe ? "DX Cluster & Spot-Verarbeitung" : "DX Cluster & Spot Processing")
                     .font(.title2)
                     .bold()
-                Text("AutoQSO ermöglicht den parallelen Empfang von bis zu drei DX-Cluster-Verbindungen (C1, C2, C3) sowie den WSJT-X Dekodierungen.")
+                Text(isDe ? "AutoQSO ermöglicht den parallelen Empfang von bis zu drei DX-Cluster-Verbindungen (C1, C2, C3) sowie den WSJT-X Dekodierungen." : "AutoQSO allows parallel reception of up to three DX Cluster connections (C1, C2, C3) alongside WSJT-X decodes.")
                     .font(.body)
                 
-                Text("Zuweisung & Status:")
+                Text(isDe ? "Zuweisung & Status:" : "Assignment & Status:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("In der linken Sidebar oder den Einstellungen wählst du die gewünschten Cluster aus einem Dropdown-Menü.")
-                    bullet("**Status-Indikatoren** zeigen an, ob die Verbindung aktiv ist (Grau = Aus, Orange = Verbindungsaufbau, Grün = Verbunden, Rot = Verbindungsfehler).")
-                    bullet("**Universelles Spot-Parsing**: Alle eintreffenden Spots gängiger Knoten-Formate (VE7CC, K3LR, RBNet, AR-Cluster, CC-Cluster, DXSpider) werden automatisch erfasst.")
+                    bullet(isDe ? "In der linken Sidebar oder den Einstellungen wählst du die gewünschten Cluster aus einem Dropdown-Menü." : "Select your desired clusters from dropdown menus in the left sidebar or Settings.")
+                    bullet(isDe ? "**Status-Indikatoren** zeigen an, ob die Verbindung aktiv ist (Grau = Aus, Orange = Verbindungsaufbau, Grün = Verbunden, Rot = Verbindungsfehler)." : "**Status Indicators** show connection health (Gray = Off, Orange = Connecting, Green = Connected, Red = Error).")
+                    bullet(isDe ? "**Universelles Spot-Parsing**: Alle eintreffenden Spots gängiger Knoten-Formate (VE7CC, K3LR, RBNet, AR-Cluster, CC-Cluster, DXSpider) werden automatisch erfasst." : "**Universal Spot Parsing**: All incoming spots from major cluster formats (VE7CC, K3LR, RBNet, AR-Cluster, CC-Cluster, DXSpider) are automatically parsed.")
                 }
                 
-                Text("Vollständige Listenanzeige & Farbkodierung:")
+                Text(isDe ? "Vollständige Listenanzeige & Farbkodierung:" : "Table Display & Color Coding:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**Vollständige Anzeige**: Alle empfangenen Spots und Dekodierungen werden ohne Vorab-Löschung in der Haupttabelle dargestellt.")
-                    bullet("**Grün**: CQ-Anrufe und potenzielle AutoQSO-Kandidaten.")
-                    bullet("**Rot / Fett**: Ungearbeitete seltene Most Wanted Entitäten.")
-                    bullet("**Blasses Rot**: Stationen, die auf dem aktuellen Band bereits im Logbuch stehen.")
-                    bullet("**Grau / Muted**: Von den aktiven DX- oder Spotter-Filtern blockierte Stationen.")
-                    bullet("**Standard**: Normale empfangene Dekodierungen und Spots.")
+                    bullet(isDe ? "**Vollständige Anzeige**: Alle empfangenen Spots und Dekodierungen werden ohne Vorab-Löschung in der Haupttabelle dargestellt." : "**Full Display**: All received spots and decodes are shown in the main table without premature pruning.")
+                    bullet(isDe ? "**Grün**: CQ-Anrufe und potenzielle AutoQSO-Kandidaten." : "**Green**: CQ calls and potential AutoQSO candidates.")
+                    bullet(isDe ? "**Rot / Fett**: Ungearbeitete seltene Most Wanted Entitäten." : "**Red / Bold**: Unworked rare Most Wanted entities.")
+                    bullet(isDe ? "**Blasses Rot**: Stationen, die auf dem aktuellen Band bereits im Logbuch stehen." : "**Pale Red**: Stations already worked on the current band in your logbook.")
+                    bullet(isDe ? "**Grau / Muted**: Von den aktiven DX- oder Spotter-Filtern blockierte Stationen." : "**Gray / Muted**: Stations blocked by active DX or spotter filters.")
+                    bullet(isDe ? "**Standard**: Normale empfangene Dekodierungen und Spots." : "**Standard**: Standard received decodes and spots.")
                 }
                 
-                Text("Länder- & Spotter-Filterung:")
+                Text(isDe ? "Länder- & Spotter-Filterung:" : "Country & Spotter Filtering:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**Intelligente Autovervollständigung**: Beim Tippen in den Länderfeldern (Gesperrte Länder, Erlaubte DX-Länder, Erlaubte Spotter-Länder) werden passende Länder sofort vorgeschlagen.")
-                    bullet("**Teilstring- & Regionenerkennung**: Eingaben wie `Russia` oder `Russland` stimmen automatisch sowohl mit `European Russia` als auch `Asiatic Russia` überein. Genauso lassen sich Teilbegriffe gezielt filtern.")
+                    bullet(isDe ? "**Intelligente Autovervollständigung**: Beim Tippen in den Länderfeldern (Gesperrte Länder, Erlaubte DX-Länder, Erlaubte Spotter-Länder) werden passende Länder sofort vorgeschlagen." : "**Intelligent Autocomplete**: Typing in country fields suggests matching countries immediately.")
+                    bullet(isDe ? "**Teilstring- & Regionenerkennung**: Eingaben wie `Russia` oder `Russland` stimmen automatisch sowohl mit `European Russia` als auch `Asiatic Russia` überein. Genauso lassen sich Teilbegriffe gezielt filtern." : "**Substring Matching**: Inputs like `Russia` automatically match both `European Russia` and `Asiatic Russia`.")
                 }
                 
-                Text("Listen-Manager (Einstellungen -> DX Cluster):")
+                Text(isDe ? "Listen-Manager (Einstellungen -> DX Cluster):" : "List Manager (Settings -> DX Cluster):")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**Hinzufügen & Bearbeiten**: Du kannst eigene Cluster mit Name, Host und Port registrieren.")
-                    bullet("**Drag-and-Drop**: Die Reihenfolge der Cluster kann direkt in der Tabelle per Maus verschoben und angepasst werden.")
-                    bullet("**Zurücksetzen (Restore Defaults)**: Stellt die ursprüngliche Liste der vordefinierten Standard-Cluster wieder her.")
+                    bullet(isDe ? "**Hinzufügen & Bearbeiten**: Du kannst eigene Cluster mit Name, Host und Port registrieren." : "**Add & Edit**: Register custom cluster nodes with Name, Host, and Port.")
+                    bullet(isDe ? "**Drag-and-Drop**: Die Reihenfolge der Cluster kann direkt in der Tabelle per Maus verschoben und angepasst werden." : "**Drag and Drop**: Reorder cluster priority directly via drag and drop.")
+                    bullet(isDe ? "**Zurücksetzen (Restore Defaults)**: Stellt die ursprüngliche Liste der vordefinierten Standard-Cluster wieder her." : "**Restore Defaults**: Restores the default factory list of reliable cluster nodes.")
                 }
             }
             
         case .telnet:
             VStack(alignment: .leading, spacing: 12) {
-                Text("Telnet Server & Spotting-Ausgabe")
+                Text(isDe ? "Telnet Server & Spotting-Ausgabe" : "Telnet Server & Spotting Output")
                     .font(.title2)
                     .bold()
-                Text("AutoQSO läuft als lokaler Telnet-Cluster-Server, an den du externe Log-Software (z.B. MacLoggerDX) koppeln kannst.")
+                Text(isDe ? "AutoQSO läuft als lokaler Telnet-Cluster-Server, an den du externe Log-Software (z.B. MacLoggerDX) koppeln kannst." : "AutoQSO runs as a local Telnet cluster server to feed spots into external logging tools (e.g. MacLoggerDX).")
                     .font(.body)
                 
-                Text("Konfiguration:")
+                Text(isDe ? "Konfiguration:" : "Configuration:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**Port & Login**: Der Server horcht standardmäßig auf Port 8000. Das Login-Rufzeichen (z.B. GUEST) kann in den Einstellungen angepasst werden.")
-                    bullet("**Client-Tracking**: Der Live-Status im linken Sidepanel zeigt die Anzahl der aktuell verbundenen externen Programme an.")
+                    bullet(isDe ? "**Port & Login**: Der Server horcht standardmäßig auf Port 8000. Das Login-Rufzeichen (z.B. GUEST) kann in den Einstellungen angepasst werden." : "**Port & Login**: Listens on port 8000 by default. Login callsign (e.g. GUEST) can be customized in Settings.")
+                    bullet(isDe ? "**Client-Tracking**: Der Live-Status im linken Sidepanel zeigt die Anzahl der aktuell verbundenen externen Programme an." : "**Client Tracking**: Live status in the left sidebar displays the number of connected external clients.")
                 }
                 
-                Text("WSJT-X Spotter Telnet-Ausgabe:")
+                Text(isDe ? "WSJT-X Spotter Telnet-Ausgabe:" : "WSJT-X Decodes Telnet Forwarding:")
                     .font(.headline)
-                bullet("Ist dieser Schalter aktiviert, werden alle gefilterten WSJT-X Dekodierungen als rohe DX-Spots im Telnet-Format ausgegeben, sodass sie sofort in deinem Log-Programm auf der Karte erscheinen. Standardmäßig ist diese Option deaktiviert (keine Ausgabe).")
+                bullet(isDe ? "Ist dieser Schalter aktiviert, werden alle gefilterten WSJT-X Dekodierungen als rohe DX-Spots im Telnet-Format ausgegeben, sodass sie sofort in deinem Log-Programm auf der Karte erscheinen. Standardmäßig ist diese Option deaktiviert (keine Ausgabe)." : "When enabled, all filtered WSJT-X decodes are broadcast as Telnet DX spots, displaying them on external logbook maps in real time.")
             }
             
         case .propagationMap:
             VStack(alignment: .leading, spacing: 14) {
-                Text("Ausbreitungskarte & Maidenhead Grid-Map")
+                Text(isDe ? "Ausbreitungskarte & Maidenhead Grid-Map" : "Propagation Map & Maidenhead Grid Map")
                     .font(.title2)
                     .bold()
-                Text("AutoQSO bietet zwei spezialisierte interaktive Kartenansichten, die über die Toolbar-Buttons **Karte ↗** und **Grid-Map ↗** als eigenständige Fenster geöffnet werden können.")
+                Text(isDe ? "AutoQSO bietet zwei spezialisierte interaktive Kartenansichten, die über die Toolbar-Buttons **Karte ↗** und **Grid-Map ↗** als eigenständige Fenster geöffnet werden können." : "AutoQSO offers two specialized interactive map views available via the **Map ↗** and **Grid Map ↗** toolbar buttons.")
                     .font(.body)
                 
-                Text("1. Ausbreitungskarte (Propagation Map):")
+                Text(isDe ? "1. Ausbreitungskarte (Propagation Map):" : "1. Propagation Map:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**Länder-Cluster**: Stellt aktive DX-Entitäten visuell auf einer Weltkarte dar mit farblich codierten Band-Badges.")
-                    bullet("**Zeitfenster-Steuerung**: Einstellbar von 5 bis 120 Minuten.")
-                    bullet("**Gearbeitete mitzählen**: Umschalter zur Anzeige bereits gearbeiteter Länder auf der Karte.")
-                    bullet("**Seitenleiste**: Übersichtliche Gruppierung nach Kontinent, A–Z oder Spot-Anzahl.")
+                    bullet(isDe ? "**Länder-Cluster**: Stellt aktive DX-Entitäten visuell auf einer Weltkarte dar mit farblich codierten Band-Badges." : "**Country Clusters**: Shows active DX entities visually on a world map with color-coded band badges.")
+                    bullet(isDe ? "**Zeitfenster-Steuerung**: Einstellbar von 5 bis 120 Minuten." : "**Time Window**: Adjustable from 5 to 120 minutes.")
+                    bullet(isDe ? "**Gearbeitete mitzählen**: Umschalter zur Anzeige bereits gearbeiteter Länder auf der Karte." : "**Show Worked**: Toggle to display or hide already worked DXCC entities.")
+                    bullet(isDe ? "**Seitenleiste**: Übersichtliche Gruppierung nach Kontinent, A–Z oder Spot-Anzahl." : "**Sidebar**: Clean grouping by continent, alphabetical, or spot count.")
                 }
                 
-                Text("2. Neue Maidenhead Grid-Map:")
+                Text(isDe ? "2. Neue Maidenhead Grid-Map:" : "2. Maidenhead Grid Map:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**Ungearbeitete Maidenhead Grids**: Visualisiert gezielt noch ungearbeitete 4-Stellen (`JO31`) und 6-Stellen (`JO31AA`) Maidenhead-Lokaltore auf der Weltkarte.")
-                    bullet("**Interaktiver Grid-Inspector (Klick auf Grid)**: Ein Klick auf ein beliebiges Grid-Feld oder Marker-Badge auf der Karte öffnet ein Info-Popover mit Status (gearbeitet/ungearbeitet), Peilung & Distanz, Band-Aufteilung, Liste aller aktiven Stationen inklusive Direktaufruf von QRZ.com und Zentrier-Schaltfläche.")
-                    bullet("**Band-Schnellfilter**: Schwebende Pill-Leiste (`ALL`, `160M`–`6M`), um die Karte und Seitenleiste mit einem Klick auf das gewünschte Band zu filtern.")
-                    bullet("**Peilung & Distanz**: Anzeige von Azimut und Großkreis-Entfernung bezogen auf das eigene Heimat-QTH (`🧭 285° · 4.210 km`) direkt in jeder Zeile.")
-                    bullet("**Spot-Frische & Age-Decay**: Brandneue Spots (< 3 Min.) werden durch ein leuchtendes `⚡ NEU`-Badge und Umrandung hervorgehoben; ältere Spots (> 10 Min.) blenden dezent ab.")
-                    bullet("**Kompakt- / Detail-Umschalter**: Schaltfläche in der Sidebar-Kopfleiste zum Wechseln zwischen einer kompakten 1-Zeilen-Übersicht und einer ausführlichen Detailkarte mit allen Rufzeichen.")
-                    bullet("**Farbkodierung**: 4-Stellen Grids werden grün hervorgehoben, 6-Stellen Grids blau.")
-                    bullet("**Echtzeit-Suchleiste**: Schnellsuche nach Grid-Locatoren oder Rufzeichen in der rechten Seitenleiste.")
-                    bullet("**Fokussierung**: Klick auf eine Zeile oder ein Marker-Badge zentriert die Karte direkt auf den ausgewählten Locator.")
+                    bullet(isDe ? "**Ungearbeitete Maidenhead Grids**: Visualisiert gezielt noch ungearbeitete 4-Stellen (`JO31`) und 6-Stellen (`JO31AA`) Maidenhead-Lokaltore auf der Weltkarte." : "**Unworked Maidenhead Grids**: Visualizes unworked 4-char (`JO31`) and 6-char (`JO31AA`) grids worldwide.")
+                    bullet(isDe ? "**Interaktiver Grid-Inspector (Klick auf Grid)**: Ein Klick auf ein beliebiges Grid-Feld oder Marker-Badge auf der Karte öffnet ein Info-Popover mit Status (gearbeitet/ungearbeitet), Peilung & Distanz, Band-Aufteilung, Liste aller aktiven Stationen inklusive Direktaufruf von QRZ.com und Zentrier-Schaltfläche." : "**Interactive Grid Inspector**: Clicking any grid square or marker opens a popover with worked status, bearing & distance, active stations, and 1-click QRZ.com lookup.")
+                    bullet(isDe ? "**Band-Schnellfilter**: Schwebende Pill-Leiste (`ALL`, `160M`–`6M`), um die Karte und Seitenleiste mit einem Klick auf das gewünschte Band zu filtern." : "**Band Quick Filter**: Floating pill bar (`ALL`, `160M`–`6M`) to filter map and sidebar by band instantly.")
+                    bullet(isDe ? "**Peilung & Distanz**: Anzeige von Azimut und Großkreis-Entfernung bezogen auf das eigene Heimat-QTH (`🧭 285° · 4.210 km`) direkt in jeder Zeile." : "**Bearing & Distance**: Shows azimuth and great-circle distance from home QTH (`🧭 285° · 4,210 km`) in each row.")
+                    bullet(isDe ? "**Spot-Frische & Age-Decay**: Brandneue Spots (< 3 Min.) werden durch ein leuchtendes `⚡ NEU`-Badge und Umrandung hervorgehoben; ältere Spots (> 10 Min.) blenden dezent ab." : "**Spot Age Decay**: Fresh spots (< 3 min) glow with a `⚡ NEW` badge; older spots fade gracefully.")
+                    bullet(isDe ? "**Kompakt- / Detail-Umschalter**: Schaltfläche in der Sidebar-Kopfleiste zum Wechseln zwischen einer kompakten 1-Zeilen-Übersicht und einer ausführlichen Detailkarte mit allen Rufzeichen." : "**Compact / Detail View**: Toggle between 1-line summary and detailed multi-callsign cards.")
+                    bullet(isDe ? "**Farbkodierung**: 4-Stellen Grids werden grün hervorgehoben, 6-Stellen Grids blau." : "**Color Coding**: 4-character grids are green, 6-character grids blue.")
+                    bullet(isDe ? "**Echtzeit-Suchleiste**: Schnellsuche nach Grid-Locatoren oder Rufzeichen in der rechten Seitenleiste." : "**Real-Time Search**: Fast filtering of grids and callsigns in the map sidebar.")
+                    bullet(isDe ? "**Fokussierung**: Klick auf eine Zeile oder ein Marker-Badge zentriert die Karte direkt auf den ausgewählten Locator." : "**Centering**: Clicking a row or badge centers the map on the selected locator.")
                 }
                 
-                Text("3. Dynamisches Maidenhead Grid-Overlay (GridTracker-Stil):")
+                Text(isDe ? "3. Dynamisches Maidenhead Grid-Overlay (GridTracker-Stil):" : "3. Dynamic Maidenhead Grid Overlay:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**Lückenlose Kartenabdeckung**: Hardwarebeschleunigtes Canvas-Gitter im GridTracker-Stil über der gesamten Karte.")
-                    bullet("**Standardmäßig aktiv**: In der Grid-Map beim Öffnen automatisch eingeschaltet (über das Grid-Icon `grid.circle` in der oberen rechten Ecke umschaltbar).")
-                    bullet("**Pixel-dynamische Auflösung**: Automatischer, bildschirmgrößenabhängiger Wechsel von 2-Stellen (`JO`), 4-Stellen (`JO31`), 6-Stellen (`JO31AA`) bis hin zu 8-Stellen Resolution (`JO31AA11`). Verhindert Überlappungen und gewährleistet immer freie Sicht auf Straßen und Satellitenbilder.")
-                    bullet("**Dezente Lesbarkeits-Badges**: Transparente Unterlegungen (`opacity: 0.55`) sorgen für optimale Lesbarkeit, ohne die Karte zu verdecken.")
-                    bullet("**Gearbeitete Grid-Schattierung**: Über das Häkchen-Icon (`checkmark.square`) lassen sich bereits gearbeitete 4-Stellen Grids aus dem Logbuch auf der Karte farbig schattieren. Die Schattierungsfarbe ist in den Einstellungen und in der unteren Leiste anpassbar (Standard: Rot-Orange `#FF5926`).")
-                    bullet("**Klick auf gearbeitetes Grid**: Ein Klick auf ein schattiertes/gearbeitetes Grid-Feld öffnet ein Detailfenster (**WorkedGridDetailView**) mit allen im Logbuch enthaltenen QSOs für diesen Maidenhead-Locator inklusive Such- und Filterfunktion.")
-                    bullet("**Doppelklick für QRZ.com**: Ein Doppelklick auf eine Station im Grid-Logbuchfenster öffnet direkt deren QRZ.com-Seite im Browser. Vor dem Öffnen wird automatisch geprüft, ob eine aktive Internetverbindung besteht; ansonsten erscheint ein nativer Fehlerhinweis.")
-                    bullet("**Schnellsteuerungs-Leiste am Kartenrand**: Live-Anpassung der Schriftgröße (`A-`/`A+`), der Textfarbe, der Gitterlinienfarbe, der Badge-Farbe sowie der Schattierungsfarbe für gearbeitete Grids.")
+                    bullet(isDe ? "**Lückenlose Kartenabdeckung**: Hardwarebeschleunigtes Canvas-Gitter im GridTracker-Stil über der gesamten Karte." : "**Seamless Hardware Canvas**: High-performance GridTracker-style vector grid overlay.")
+                    bullet(isDe ? "**Standardmäßig aktiv**: In der Grid-Map beim Öffnen automatisch eingeschaltet (über das Grid-Icon `grid.circle` in der oberen rechten Ecke umschaltbar)." : "**Active by Default**: Enabled automatically in Grid Map (toggleable via the `grid.circle` icon).")
+                    bullet(isDe ? "**Pixel-dynamische Auflösung**: Automatischer Wechsel von 2-Stellen (`JO`), 4-Stellen (`JO31`), 6-Stellen (`JO31AA`) bis hin zu 8-Stellen Resolution (`JO31AA11`)." : "**Adaptive Resolution**: Dynamically scales from 2-char (`JO`) to 4-char (`JO31`), 6-char (`JO31AA`), and 8-char (`JO31AA11`) based on zoom.")
+                    bullet(isDe ? "**Dezente Lesbarkeits-Badges**: Transparente Unterlegungen (`opacity: 0.55`) sorgen für optimale Lesbarkeit, ohne die Karte zu verdecken." : "**Readability Badges**: Subtle translucent badges guarantee legibility over land and satellite imagery.")
+                    bullet(isDe ? "**Gearbeitete Grid-Schattierung**: Über das Häkchen-Icon (`checkmark.square`) lassen sich bereits gearbeitete 4-Stellen Grids aus dem Logbuch auf der Karte farbig schattieren." : "**Worked Grid Shading**: Highlights worked 4-character grids from your logbook in customizable tint.")
+                    bullet(isDe ? "**Klick auf gearbeitetes Grid**: Ein Klick auf ein schattiertes/gearbeitetes Grid-Feld öffnet ein Detailfenster (**WorkedGridDetailView**) mit allen im Logbuch enthaltenen QSOs für diesen Maidenhead-Locator inklusive Such- und Filterfunktion." : "**Worked Grid Detail**: Clicking a shaded grid opens the QSO history for that square.")
+                    bullet(isDe ? "**Doppelklick für QRZ.com**: Ein Doppelklick auf eine Station im Grid-Logbuchfenster öffnet direkt deren QRZ.com-Seite im Browser." : "**Double Click QRZ Lookup**: Double-clicking any station opens its QRZ.com profile.")
+                    bullet(isDe ? "**Schnellsteuerungs-Leiste am Kartenrand**: Live-Anpassung der Schriftgröße (`A-`/`A+`), der Textfarbe, der Gitterlinienfarbe, der Badge-Farbe sowie der Schattierungsfarbe für gearbeitete Grids." : "**Quick Toolbar**: Real-time adjustments for font size (`A-`/`A+`), text color, grid line color, and shading.")
                 }
                 .padding()
                 .background(Color.blue.opacity(0.08))
                 .cornerRadius(8)
                 
-                Text("Filter-Garantie:")
+                Text(isDe ? "Filter-Garantie:" : "Filter Guarantee:")
                     .font(.headline)
-                bullet("Beide Karten aggregieren ausschließlich Dekodierungen und DX-Spots, die alle deine aktiven DX-Filterregeln erfolgreich bestanden haben.")
+                bullet(isDe ? "Beide Karten aggregieren ausschließlich Dekodierungen und DX-Spots, die alle deine aktiven DX-Filterregeln erfolgreich bestanden haben." : "Both maps strictly display spots and decodes that pass all active DX filter criteria.")
             }
             
         case .compactMode:
             VStack(alignment: .leading, spacing: 12) {
-                Text("Kompaktmodus (Compact Mode)")
+                Text(isDe ? "Kompaktmodus (Compact Mode)" : "Compact Mode")
                     .font(.title2)
                     .bold()
-                Text("Der Kompaktmodus reduziert den Platzbedarf von AutoQSO auf ein absolutes Minimum.")
+                Text(isDe ? "Der Kompaktmodus reduziert den Platzbedarf von AutoQSO auf ein absolutes Minimum." : "Compact Mode minimizes AutoQSO window footprint down to 480x320 pixels.")
                     .font(.body)
                 
-                Text("Funktionsumfang im Kompaktmodus:")
+                Text(isDe ? "Funktionsumfang im Kompaktmodus:" : "Compact Mode Features:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**Kompakte Steuerleiste**: Bietet Zugriff auf Auto Transmit (Auto ON/OFF), den globalen Filter-Schalter, das Öffnen der Ausbreitungskarte und die Verbindungs-/TX-Statuslämpchen.")
-                    bullet("**Reduzierte Tabelle**: Zeigt eine fokussierte Tabelle mit Zeit, DX Call, Land, SNR und Nachricht.")
-                    bullet("**Ticker für Most Wanted**: Unten scrollt eine Zeile mit ungearbeiteten seltenen Stationen durch. Durch Doppelklick/Anklicken kannst du diese anrufen bzw. im Banner fokussieren.")
-                    bullet("**Minimalmaße**: Das Hauptfenster lässt sich bis auf 480x320 Pixel herunterskalieren, um perfekt in einer Bildschirmecke Platz zu finden.")
-                    bullet("**Zurückwechseln**: Über das Pfeilsymbol ganz rechts in der kompakten Leiste gelangst du wieder in die Normalansicht.")
+                    bullet(isDe ? "**Kompakte Steuerleiste**: Bietet Zugriff auf Auto Transmit (Auto ON/OFF), den globalen Filter-Schalter, das Öffnen der Ausbreitungskarte und die Verbindungs-/TX-Statuslämpchen." : "**Compact Control Bar**: Quick toggles for Auto Transmit, Filters, Map window, and TX indicators.")
+                    bullet(isDe ? "**Reduzierte Tabelle**: Zeigt eine fokussierte Tabelle mit Zeit, DX Call, Land, SNR und Nachricht." : "**Streamlined Table**: Focused columns for Time, Callsign, Country, SNR, and Message.")
+                    bullet(isDe ? "**Ticker für Most Wanted**: Unten scrollt eine Zeile mit ungearbeiteten seltenen Stationen durch. Durch Doppelklick/Anklicken kannst du diese anrufen bzw. im Banner fokussieren." : "**Most Wanted Ticker**: Ticker strip at the bottom highlighting rare unworked entities.")
+                    bullet(isDe ? "**Minimalmaße**: Das Hauptfenster lässt sich bis auf 480x320 Pixel herunterskalieren, um perfekt in einer Bildschirmecke Platz zu finden." : "**Ultra-Small Footprint**: Scales down to 480x320 pixels for seamless corner placement.")
+                    bullet(isDe ? "**Zurückwechseln**: Über das Pfeilsymbol ganz rechts in der kompakten Leiste gelangst du wieder in die Normalansicht." : "**Expand Back**: The expand button restores standard window layout instantly.")
                 }
             }
             
         case .logbook:
             VStack(alignment: .leading, spacing: 12) {
-                Text("Logbuch Management & Synchronisation")
+                Text(isDe ? "Logbuch Management & Synchronisation" : "Logbook Management & Sync")
                     .font(.title2)
                     .bold()
                 
-                Text("Logbuch-Quellen (Umschaltbar):")
+                Text(isDe ? "Logbuch-Quellen (Umschaltbar):" : "Logbook Sources (Switchable):")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**RUMlogNG (macOS App)**: Direkte 1-Klick-Synchronisation über die native AppleScript-Schnittstelle von RUMlogNG (`ReadAdif`). RUMlogNG muss lediglich geöffnet sein.")
-                    bullet("**ARRL LoTW**: Automatischer Download deiner bestätigten und hochgeladenen QSOs vom ARRL Logbook of The World.")
-                    bullet("**QRZ.com**: API-basierter Abgleich deiner QSOs über deinen QRZ.com API Key.")
+                    bullet(isDe ? "**RUMlogNG (macOS App)**: Direkte 1-Klick-Synchronisation über die native AppleScript-Schnittstelle von RUMlogNG (`ReadAdif`). RUMlogNG muss lediglich geöffnet sein." : "**RUMlogNG (macOS App)**: Direct 1-click sync via native AppleScript API (`ReadAdif`).")
+                    bullet(isDe ? "**ARRL LoTW**: Automatischer Download deiner bestätigten und hochgeladenen QSOs vom ARRL Logbook of The World." : "**ARRL LoTW**: Automated download of confirmed QSOs from ARRL Logbook of The World.")
+                    bullet(isDe ? "**QRZ.com**: API-basierter Abgleich deiner QSOs über deinen QRZ.com API Key." : "**QRZ.com**: Cloud sync of your logbook using the official QRZ.com Logbook API.")
                 }
                 
-                Text("Vollständiger Sync & Inkrementeller Sync:")
+                Text(isDe ? "Vollständiger Sync & Inkrementeller Sync:" : "Full Sync & Incremental Sync:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**Vollständiger Sync (ab 1900)**: Lädt das gesamte Logbuch ab `1900-01-01` herunter bzw. aus RUMlogNG.")
-                    bullet("**Intelligentes SQLite-Upsert**: Bei bestehenden Einträgen werden fehlende Attribute (wie z. B. Grid-Locatoren) automatisch ergänzt, ohne doppelte QSOs zu erzeugen (`ON CONFLICT DO UPDATE`).")
-                    bullet("**Inkrementeller Sync**: Synchronisiert automatisch nur neuere QSOs ab dem Datum des letzten Logbucheintrags.")
+                    bullet(isDe ? "**Vollständiger Sync (ab 1900)**: Lädt das gesamte Logbuch ab `1900-01-01` herunter bzw. aus RUMlogNG." : "**Full Sync (since 1900)**: Downloads entire QSO history since `1900-01-01`.")
+                    bullet(isDe ? "**Intelligentes SQLite-Upsert**: Bei bestehenden Einträgen werden fehlende Attribute (wie z. B. Grid-Locatoren) automatisch ergänzt, ohne doppelte QSOs zu erzeugen (`ON CONFLICT DO UPDATE`)." : "**Smart SQLite Upsert**: Fills missing attributes without duplicating existing QSO records.")
+                    bullet(isDe ? "**Inkrementeller Sync**: Synchronisiert automatisch nur neuere QSOs ab dem Datum des letzten Logbucheintrags." : "**Incremental Sync**: Efficiently syncs only newer QSOs since the latest log date.")
                 }
                 
-                Text("ADIF-Datei importieren:")
+                Text(isDe ? "ADIF-Datei importieren:" : "Import ADIF File:")
                     .font(.headline)
-                bullet("Über den Button '**ADIF-Datei auswählen & importieren...**' kannst du bestehende Logbücher im `.adi` / `.adif` Format in deine lokale SQLite-Datenbank einspielen. Duplikate werden anhand des eindeutigen Schlüssels (Call, Band, Mode, Zeit) automatisch aussortiert.")
+                bullet(isDe ? "Über den Button '**ADIF-Datei auswählen & importieren...**' kannst du bestehende Logbücher im `.adi` / `.adif` Format in deine lokale SQLite-Datenbank einspielen. Duplikate werden anhand des eindeutigen Schlüssels (Call, Band, Mode, Zeit) automatisch aussortiert." : "Import existing logbooks in `.adi`/`.adif` format directly into the SQLite database. Duplicates are filtered automatically.")
                 
-                Text("Logbuch leeren / Löschen:")
+                Text(isDe ? "Logbuch leeren / Löschen:" : "Clear / Delete Logbook:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**Löschen (🗑️)**: QSOs können im Logbuch-Fenster einzeln oder über Mehrfachauswahl gelöscht werden.")
-                    bullet("**Logbuch löschen**: Der Button in den Einstellungen entfernt alle lokalen QSOs aus der Datenbank nach Bestätigung eines Sicherheitsdialogs.")
+                    bullet(isDe ? "**Löschen (🗑️)**: QSOs können im Logbuch-Fenster einzeln oder über Mehrfachauswahl gelöscht werden." : "**Delete Selected (🗑️)**: Delete individual or batch selections directly in the logbook table.")
+                    bullet(isDe ? "**Logbuch löschen**: Der Button in den Einstellungen entfernt alle lokalen QSOs aus der Datenbank nach Bestätigung eines Sicherheitsdialogs." : "**Purge Logbook**: Removes all local records from SQLite following a safety confirmation.")
                 }
             }
             
         case .storage:
             VStack(alignment: .leading, spacing: 12) {
-                Text("Speicherort & iCloud Synchronisation")
+                Text(isDe ? "Speicherort & iCloud Synchronisation" : "Storage & iCloud Sync")
                     .font(.title2)
                     .bold()
                 
-                Text("Konfiguration im Einstellungen-Dialog (Seitenleiste -> Speicherort & iCloud):")
+                Text(isDe ? "Konfiguration im Einstellungen-Dialog (Seitenleiste -> Speicherort & iCloud):" : "Configuration in Settings (Sidebar -> Storage & iCloud):")
                     .font(.body)
                 
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet("**Standard-Ordner**: Speichert die Datenbank unter `~/Documents/AutoQSO`.")
-                    bullet("**Benutzerdefinierter Ordner**: Freie Wahl eines lokalen Ordners via macOS Dialog.")
-                    bullet("**iCloud Drive**: Speichert in `iCloud Drive/AutoQSO` zur automatischen Synchronisation zwischen mehreren Macs.")
+                    bullet(isDe ? "**Standard-Ordner**: Speichert die Datenbank unter `~/Documents/AutoQSO`." : "**Default Folder**: Stores the SQLite database in `~/Documents/AutoQSO`.")
+                    bullet(isDe ? "**Benutzerdefinierter Ordner**: Freie Wahl eines lokalen Ordners via macOS Dialog." : "**Custom Folder**: Select any local directory via native macOS folder picker.")
+                    bullet(isDe ? "**iCloud Drive**: Speichert in `iCloud Drive/AutoQSO` zur automatischen Synchronisation zwischen mehreren Macs." : "**iCloud Drive**: Stores in `iCloud Drive/AutoQSO` for automatic synchronization across your Macs.")
                 }
                 .padding()
                 .background(Color.blue.opacity(0.08))
                 .cornerRadius(8)
                 
-                Text("Hinweis: Beim Wechsel des Speicherorts wird die bestehende SQLite-Datenbank automatisch an den neuen Zielort kopiert.")
+                Text(isDe ? "Hinweis: Beim Wechsel des Speicherorts wird die bestehende SQLite-Datenbank automatisch an den neuen Zielort kopiert." : "Note: Switching storage locations automatically copies the existing database to the new target.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
         case .appearance:
             VStack(alignment: .leading, spacing: 12) {
-                Text("Ansicht & Farbanpassungen")
+                Text(isDe ? "Ansicht & Farbanpassungen" : "Appearance & Theme Customization")
                     .font(.title2)
                     .bold()
-                Text("Im Einstellungsmenü unter **Ansicht** kannst du das gesamte Erscheinungsbild von AutoQSO deinen individuellen Wünschen anpassen.")
+                Text(isDe ? "Im Einstellungsmenü unter **Ansicht** kannst du das gesamte Erscheinungsbild von AutoQSO deinen individuellen Wünschen anpassen." : "In Settings under **Appearance & Theme**, customize the full visual presentation of AutoQSO.")
                     .font(.body)
                 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("1. Farbschema & Darstellung:")
+                    Text(isDe ? "1. Farbschema & Darstellung:" : "1. Theme & Presentation:")
                         .font(.headline)
-                    bullet("Auswahl zwischen **System**, **Hell** und **Dunkel**.")
-                    bullet("Umschaltung der Sortierrichtung: Neueste Einträge oben oder unten in Haupttabelle und Logfenster.")
+                    bullet(isDe ? "Auswahl zwischen **System**, **Hell** und **Dunkel**." : "Select between **System**, **Light**, and **Dark**.")
+                    bullet(isDe ? "Umschaltung der Sortierrichtung: Neueste Einträge oben oder unten in Haupttabelle und Logfenster." : "Sort order toggle: Newest entries on top or bottom in the main table and log console.")
                     
-                    Text("2. Listen-Ansicht (Haupttabelle & Log-Konsole):")
+                    Text(isDe ? "2. Listen-Ansicht (Haupttabelle & Log-Konsole):" : "2. Table & Log Console Styling:")
                         .font(.headline)
-                    bullet("**Schriftgrößen**: Stufenlose Regelung der Tabellen- und Protokoll-Schriftgrößen (8 pt bis 20 pt).")
-                    bullet("**Farbanpassungen Haupttabelle**: Individuelle Farbwahl für Standard-Text, Most Wanted (🔥), CQ-Aufrufe und bereits gearbeitete Stationen.")
-                    bullet("**Farbanpassungen Log-Konsole**: Einstellbare Farben für Konsolen-Hintergrund, System-Logs, WSJT-X Dekodierungen, eingehenden/ausgehenden Traffic und Cluster-Spots.")
-                    bullet("**Unabhängiges Zurücksetzen**: Eigener Button 'Listen-Ansicht auf Standard zurücksetzen' zur Wiederherstellung der Tabellen- und Logfarben.")
+                    bullet(isDe ? "**Schriftgrößen**: Stufenlose Regelung der Tabellen- und Protokoll-Schriftgrößen (8 pt bis 20 pt)." : "**Font Sizes**: Independent font size sliders for table and log entries (8 pt to 20 pt).")
+                    bullet(isDe ? "**Farbanpassungen Haupttabelle**: Individuelle Farbwahl für Standard-Text, Most Wanted (🔥), CQ-Aufrufe und bereits gearbeitete Stationen." : "**Table Colors**: Custom color pickers for standard text, Most Wanted (🔥), CQ calls, and worked stations.")
+                    bullet(isDe ? "**Farbanpassungen Log-Konsole**: Einstellbare Farben für Konsolen-Hintergrund, System-Logs, WSJT-X Dekodierungen, eingehenden/ausgehenden Traffic und Cluster-Spots." : "**Log Colors**: Customizable colors for background, system logs, decodes, traffic, and spots.")
+                    bullet(isDe ? "**Unabhängiges Zurücksetzen**: Eigener Button 'Listen-Ansicht auf Standard zurücksetzen' zur Wiederherstellung der Tabellen- und Logfarben." : "**Reset Defaults**: Independent button to restore factory font sizes and colors.")
                     
-                    Text("3. Landkarten-Ansicht (Maidenhead Grid-Overlay):")
+                    Text(isDe ? "3. Landkarten-Ansicht (Maidenhead Grid-Overlay):" : "3. Map View (Maidenhead Grid Overlay):")
                         .font(.headline)
-                    bullet("**Gitter-Schriftgröße**: Slider zur Skalierung der Locator-Beschriftungen (8 pt bis 22 pt).")
-                    bullet("**Farb-Customizing**: Separate Farbwahl für Gitter-Beschriftungen, Gitterlinien, Badge-Hintergründe und gearbeitete Grids.")
-                    bullet("**Lesbarkeits-Badges**: Ein- und Ausschalten der dunklen Hintergründe hinter Locator-Texten.")
-                    bullet("**Unabhängiges Zurücksetzen**: Eigener Button 'Karten-Ansicht auf Standard zurücksetzen' für alle Karteneinstellungen.")
+                    bullet(isDe ? "**Gitter-Schriftgröße**: Slider zur Skalierung der Locator-Beschriftungen (8 pt bis 22 pt)." : "**Grid Font Size**: Slider to adjust locator label sizes (8 pt to 22 pt).")
+                    bullet(isDe ? "**Farb-Customizing**: Separate Farbwahl für Gitter-Beschriftungen, Gitterlinien, Badge-Hintergründe und gearbeitete Grids." : "**Custom Colors**: Color pickers for grid labels, lines, badges, and worked grid shading.")
+                    bullet(isDe ? "**Lesbarkeits-Badges**: Ein- und Ausschalten der dunklen Hintergründe hinter Locator-Texten." : "**Readability Badges**: Toggle background pills behind locator labels.")
+                    bullet(isDe ? "**Unabhängiges Zurücksetzen**: Eigener Button 'Karten-Ansicht auf Standard zurücksetzen' für alle Karteneinstellungen." : "**Reset Map Defaults**: Restores all map colors and font settings.")
                 }
                 .padding()
                 .background(Color.blue.opacity(0.08))
@@ -623,19 +665,19 @@ struct HelpView: View {
 
         case .support:
             VStack(alignment: .leading, spacing: 14) {
-                Text("Support & Hilfestellung")
+                Text(isDe ? "Support & Hilfestellung" : "Support & Assistance")
                     .font(.title2)
                     .bold()
                 
-                Text("Hast du Fragen, Probleme oder Feedback zu AutoQSO? Über den unten stehenden Button kannst du direkt eine E-Mail an unseren Support senden.")
+                Text(isDe ? "Hast du Fragen, Probleme oder Feedback zu AutoQSO? Über den unten stehenden Button kannst du direkt eine E-Mail an unseren Support senden." : "Have questions, issues, or feedback regarding AutoQSO? Click the button below to compose a support email.")
                     .font(.body)
                 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Automatisch übermittelte Systeminformationen:")
+                    Text(isDe ? "Automatisch übermittelte Systeminformationen:" : "Automatically Attached Diagnostics:")
                         .font(.headline)
-                    bullet("App Version & Build-Nummer (`AutoQSO v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))`)")
-                    bullet("macOS-Version & Build-Nummer")
-                    bullet("Hardware-Informationen (Mac-Modell/Hostname, Prozessortyp, CPU-Kerne, Arbeitsspeicher)")
+                    bullet("App Version & Build (`AutoQSO v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))`)")
+                    bullet(isDe ? "macOS-Version & Build-Nummer" : "macOS Version & Build Number")
+                    bullet(isDe ? "Hardware-Informationen (Mac-Modell/Hostname, Prozessortyp, CPU-Kerne, Arbeitsspeicher)" : "Hardware Details (Mac Model, Architecture, CPU Cores, RAM)")
                 }
                 .padding()
                 .background(Color.blue.opacity(0.08))
@@ -644,7 +686,7 @@ struct HelpView: View {
                 Button(action: sendSupportEmail) {
                     HStack(spacing: 8) {
                         Image(systemName: "envelope.fill")
-                        Text("Support-E-Mail senden")
+                        Text(isDe ? "Support-E-Mail senden" : "Send Support Email")
                     }
                     .font(.headline)
                     .foregroundColor(.white)
@@ -658,24 +700,30 @@ struct HelpView: View {
             
         case .disclaimer:
             VStack(alignment: .leading, spacing: 12) {
-                Text("Rechtlicher Hinweis & Haftungsausschluss")
+                Text(isDe ? "Rechtlicher Hinweis & Haftungsausschluss" : "Legal Notice & Disclaimer")
                     .font(.title2)
                     .bold()
                 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Nutzung auf eigene Verantwortung:")
+                    Text(isDe ? "Nutzung auf eigene Verantwortung:" : "Operation Under Own Responsibility:")
                         .font(.headline)
-                    Text("Die Nutzung von AutoQSO und insbesondere der automatisierten Sendefunktion (**Auto QSO für WSJT-X**) erfolgt ausschließlich auf eigene Gefahr und Verantwortung des jeweiligen lizenzierten Funkamateurs.")
+                    Text(isDe ? 
+                        "Die Nutzung von AutoQSO und insbesondere der automatisierten Sendefunktion (**Auto QSO für WSJT-X**) erfolgt ausschließlich auf eigene Gefahr und Verantwortung des jeweiligen lizenzierten Funkamateurs." :
+                        "The operation of AutoQSO, and specifically the automated transmission engine (**Auto QSO for WSJT-X**), is strictly at the sole risk and responsibility of the licensed amateur radio control operator.")
                         .font(.body)
                     
-                    Text("Einhaltung der Amateurfunkbestimmungen:")
+                    Text(isDe ? "Einhaltung der Amateurfunkbestimmungen:" : "Regulatory Compliance:")
                         .font(.headline)
-                    Text("Der Betreiber ist verpflichtet, die geltenden Gesetze, Bestimmungen der Bundesnetzagentur (bzw. der zuständigen nationalen Fernmeldebehörde) sowie die IARU-Bandpläne einzuhalten. Eine ständige Beaufsichtigung der Sendestation durch den Funkamateur ist sicherzustellen.")
+                    Text(isDe ? 
+                        "Der Betreiber ist verpflichtet, die geltenden Gesetze, Bestimmungen der Bundesnetzagentur (bzw. der zuständigen nationalen Fernmeldebehörde) sowie die IARU-Bandpläne einzuhalten. Eine ständige Beaufsichtigung der Sendestation durch den Funkamateur ist sicherzustellen." :
+                        "Operators must strictly adhere to national telecommunications laws (e.g. BNetzA, FCC) and IARU band plans. Continuous control and supervision of automated transmissions must be ensured at all times.")
                         .font(.body)
                     
-                    Text("Haftungsausschluss:")
+                    Text(isDe ? "Haftungsausschluss:" : "Limitation of Liability:")
                         .font(.headline)
-                    Text("Der Entwickler übernimmt keinerlei Haftung für direkte oder indirekte Schäden, Frequenzstörungen, Fehlbedienungen, Bandplanverletzungen oder sonstige Nachteile, die aus der Nutzung der Software resultieren.")
+                    Text(isDe ? 
+                        "Der Entwickler übernimmt keinerlei Haftung für direkte oder indirekte Schäden, Frequenzstörungen, Fehlbedienungen, Bandplanverletzungen oder sonstige Nachteile, die aus der Nutzung der Software resultieren." :
+                        "The author accepts no liability for direct or indirect damages, frequency interference, operator error, band plan infractions, or other consequences arising from the use of this software.")
                         .font(.body)
                 }
                 .padding()
@@ -685,20 +733,20 @@ struct HelpView: View {
             
         case .changelog:
             VStack(alignment: .leading, spacing: 16) {
-                Text("Versionshistorie (Changelog)")
+                Text(isDe ? "Versionshistorie (Changelog)" : "Version History (Changelog)")
                     .font(.title2)
                     .bold()
                 
-                // Version 3.6.0
+                // Version 4.0.0
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 3.6.0")
+                        Text("Version 4.0.0")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                        Text("AKTUELL")
+                        Text(isDe ? "AKTUELL" : "CURRENT")
                             .font(.system(size: 10, weight: .bold))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -707,19 +755,44 @@ struct HelpView: View {
                             .cornerRadius(4)
                     }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("✨ Neue Funktionen & Verbesserungen")
+                        Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
-                        bullet("Universal 2 Binary: Vollständige native Unterstützung für Apple Silicon (M1/M2/M3/M4) sowie Intel-basierte Macs (x86_64) unter macOS 14+.", font: .subheadline, color: .secondary)
-                        bullet("Strukturierte Filter-Sidebar: Logische Neuordnung aller Filterbereiche von geografischen Kriterien (Kontinente, gesperrte/erlaubte Länder, Zonen, Rufzeichen) über Logbuch-Historie bis hin zu Signal- und Doubletten-Filtern.", font: .subheadline, color: .secondary)
-                        bullet("Klarere Filterbezeichnung: Der frühere „WSJT-X Spezialfilter“ heißt nun prägnant „WSJT-X CQ Filter“ (Nur CQ, RRR, RR73, 73).", font: .subheadline, color: .secondary)
-                        bullet("Automatisierte Universal-Release-Pipeline: Das Release-Skript und der integrierte Installer bauen und paketieren automatisch universelle Mach-O-Binaries in der DMG.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Mehrsprachige Benutzeroberfläche (Deutsch & Englisch): Vollständige Lokalisierung aller Ansichten, Dialoge, Filter, Tabellenspalten und Menüs." : "Multi-Language Support (German & English): Complete native localization across all views, dialogs, filters, tables, and menus.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Dynamischer Sprachwechsel in den Einstellungen: Direkte Umschaltung zwischen System, Deutsch und English unter Einstellungen -> Sprache ohne Neustart der App." : "Dedicated Language Settings: Instant switching between System, German, and English in Settings -> Language without restarting the app.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Intelligente Einheiten- & Kontinent-Übersetzung: Vollständig synchronisierte Zeiteinheiten (Stunden/Tage/Monate/Jahre bzw. Hours/Days/Months/Years) und Kontinent-Bezeichnungen." : "Synchronized Units & Geographic Names: Localized time units (Hours/Days/Months/Years) and continent names.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Universal 2 Binary: Vollständige native Unterstützung für Apple Silicon (M1/M2/M3/M4) sowie Intel-basierte Macs (x86_64) unter macOS 14+." : "Universal 2 Binary: Native dual-architecture binary for Apple Silicon (M1/M2/M3/M4) and Intel Macs (x86_64) on macOS 14+.", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 }
                 .padding()
                 .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+                
+                Divider()
+
+                // Version 3.6.0
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 3.6.0")
+                            .font(.headline)
+                            .bold()
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
+                            .font(.subheadline)
+                            .bold()
+                        bullet(isDe ? "Universal 2 Binary: Vollständige native Unterstützung für Apple Silicon (M1/M2/M3/M4) sowie Intel-basierte Macs (x86_64) unter macOS 14+." : "Universal 2 Binary Support: Native execution for Apple Silicon and Intel Macs (x86_64).", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Strukturierte Filter-Sidebar: Logische Neuordnung aller Filterbereiche von geografischen Kriterien (Kontinente, gesperrte/erlaubte Länder, Zonen, Rufzeichen) über Logbuch-Historie bis hin zu Signal- und Doubletten-Filtern." : "Structured Filter Sidebar: Logical reordering of filter categories from macro geography to QSO history and signal filters.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Klarere Filterbezeichnung: Der frühere „WSJT-X Spezialfilter“ heißt nun prägnant „WSJT-X CQ Filter“ (Nur CQ, RRR, RR73, 73)." : "WSJT-X CQ Filter Renaming: Renamed former special filter to concise WSJT-X CQ Filter.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Automatisierte Universal-Release-Pipeline: Das Release-Skript und der integrierte Installer bauen und paketieren automatisch universelle Mach-O-Binaries in der DMG." : "Automated Universal Release: Release pipeline automatically packages universal binaries into the DMG.", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.blue.opacity(0.05))
                 .cornerRadius(8)
                 
                 Divider()
@@ -732,13 +805,13 @@ struct HelpView: View {
                             .bold()
                     }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("✨ Neue Funktionen & Verbesserungen")
+                        Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
-                        bullet("Konfigurierbarer Filter für bereits gearbeitete Stationen: Neuer Schalter in der Filter-Sidebar, der gearbeitete Stationen nach einer frei wählbaren Zeitspanne (0 bis 999 Stunden, Tage, Monate oder Jahre) wieder durchlässt und für AutoQSO freigibt.", font: .subheadline, color: .secondary)
-                        bullet("Blitzschnelle O(1) Zeitstempel-Indexierung: AutoQSO indexiert die exakten UTC-Zeitstempel aller QSOs im SQLite-Speicher, sodass Zeitspannen-Prüfungen auch bei zehntausenden Logbucheinträgen in Nanosekunden erfolgen.", font: .subheadline, color: .secondary)
-                        bullet("Flexible Zifferneingabe & Einheiten-Picker: Direkte numerische Eingabe (0–999) im Textfeld kombiniert mit Stunden-, Tage-, Monate- und Jahre-Auswahl.", font: .subheadline, color: .secondary)
-                        bullet("Vollständige Integration in Filter & Auto-Transmit: Einstellbare Wiederholungs-QSOs fließen nahtlos in die DX-Filterung, die automatische Sendeauswahl (Auto Transmit) und das Most-Wanted-Panel ein.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Konfigurierbarer Filter für bereits gearbeitete Stationen: Neuer Schalter in der Filter-Sidebar, der gearbeitete Stationen nach einer frei wählbaren Zeitspanne (0 bis 999 Stunden, Tage, Monate oder Jahre) wieder durchlässt und für AutoQSO freigibt." : "Configurable Worked Station Filter: New toggle in Filter Sidebar allowing worked stations to pass through and become eligible for AutoQSO after a customizable duration (0 to 999 hours, days, months, or years).", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Blitzschnelle O(1) Zeitstempel-Indexierung: AutoQSO indexiert die exakten UTC-Zeitstempel aller QSOs im SQLite-Speicher, sodass Zeitspannen-Prüfungen auch bei zehntausenden Logbucheinträgen in Nanosekunden erfolgen." : "Lightning-Fast O(1) Timestamp Indexing: AutoQSO indexes exact UTC timestamps of all QSOs in SQLite for nanosecond lookups even across tens of thousands of records.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Flexible Zifferneingabe & Einheiten-Picker: Direkte numerische Eingabe (0–999) im Textfeld kombiniert mit Stunden-, Tage-, Monate- und Jahre-Auswahl." : "Flexible Numeric Input & Unit Selector: Direct numeric entry (0–999) combined with Hours, Days, Months, and Years selection.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Vollständige Integration in Filter & Auto-Transmit: Einstellbare Wiederholungs-QSOs fließen nahtlos in die DX-Filterung, die automatische Sendeauswahl (Auto Transmit) und das Most-Wanted-Panel ein." : "Seamless Filter & Auto-Transmit Integration: Re-worked station rules seamlessly integrate into DX filtering, Auto Transmit, and Most Wanted calculations.", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -757,16 +830,16 @@ struct HelpView: View {
                             .bold()
                     }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("✨ Neue Funktionen & Verbesserungen")
+                        Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
-                        bullet("Intelligente 5-Minuten-Zeitfenster-Deduplizierung: Erkennt und verhindert doppelte QSOs durch Start- und Endzeit-Abweichungen (`TIME_ON` vs. `TIME_OFF`) zwischen WSJT-X, RUMlogNG, QRZ.com und LoTW zuverlässig in der SQLite-Datenbank.", font: .subheadline, color: .secondary)
-                        bullet("Automatische Logbuch-Bereinigung: Beim Programmstart werden bestehende doppelte Einträge automatisch fusioniert (fehlende Grid- und DXCC-Informationen ergänzt) und bereinigt.", font: .subheadline, color: .secondary)
-                        bullet("WSJT-X Doppel-Meldungs-Filter: Intelligentes Debouncing verhindert das parallele doppelte Eintragen von QSOs, wenn WSJT-X zeitgleich `loggedAdif`- und `qsoLogged`-UDP-Pakete sendet.", font: .subheadline, color: .secondary)
-                        bullet("Präzise Popover-Verankerung auf der Grid-Karte: Das Grid-Inspector-Popover verankert sich jetzt als Karten-Annotation direkt an der exakten Zentrumskoordinate des angeklickten Planquadrats mit zielgenau ausgerichteter Sprechblase.", font: .subheadline, color: .secondary)
-                        bullet("Dauerhafte Verfügbarkeit der Grid-Karte: Die 2D-Kartenansicht, das Maidenhead-Gitter und der Inspector bleiben auch bei 0 neuen DX-Grids im aktuellen Zeitfenster uneingeschränkt sichtbar und interaktiv bedienbar.", font: .subheadline, color: .secondary)
-                        bullet("Automatische Länderauflösung im Grid-Inspector: Rufzeichen gearbeiteter Grids werden automatisch über den Prefix-Matcher in lesbare Ländernamen (statt numerischer DXCC-IDs) aufgelöst.", font: .subheadline, color: .secondary)
-                        bullet("Aufgeräumte Toolbar: Das Textfeld für die Minutensperre wurde aus der Haupt-Toolbar entfernt und wird nun übersichtlich in den Einstellungen (WSJT-X) verwaltet.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Intelligente 5-Minuten-Zeitfenster-Deduplizierung: Erkennt und verhindert doppelte QSOs durch Start- und Endzeit-Abweichungen (`TIME_ON` vs. `TIME_OFF`) zwischen WSJT-X, RUMlogNG, QRZ.com und LoTW zuverlässig in der SQLite-Datenbank." : "Intelligent 5-Minute Time Window Deduplication: Accurately detects and merges QSO records with start/end time variations (`TIME_ON` vs `TIME_OFF`) across WSJT-X, RUMlogNG, QRZ.com, and LoTW.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Automatische Logbuch-Bereinigung: Beim Programmstart werden bestehende doppelte Einträge automatisch fusioniert (fehlende Grid- und DXCC-Informationen ergänzt) und bereinigt." : "Automated Logbook Hygiene: Existing duplicates are automatically merged and enriched with missing grid locators on app startup.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "WSJT-X Doppel-Meldungs-Filter: Intelligentes Debouncing verhindert das parallele doppelte Eintragen von QSOs, wenn WSJT-X zeitgleich `loggedAdif`- und `qsoLogged`-UDP-Pakete sendet." : "WSJT-X Message Debouncing: Prevents double logging when WSJT-X sends simultaneous `loggedAdif` and `qsoLogged` UDP packets.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Präzise Popover-Verankerung auf der Grid-Karte: Das Grid-Inspector-Popover verankert sich jetzt als Karten-Annotation direkt an der exakten Zentrumskoordinate des angeklickten Planquadrats mit zielgenau ausgerichteter Sprechblase." : "Precise Grid Map Popover Anchoring: Grid Inspector attaches directly to the center coordinate of clicked squares.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Dauerhafte Verfügbarkeit der Grid-Karte: Die 2D-Kartenansicht, das Maidenhead-Gitter und der Inspector bleiben auch bei 0 neuen DX-Grids im aktuellen Zeitfenster uneingeschränkt sichtbar und interaktiv bedienbar." : "Permanent Grid Map Availability: 2D map, Maidenhead grid, and Inspector remain fully interactive even with 0 new DX spots.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Automatische Länderauflösung im Grid-Inspector: Rufzeichen gearbeiteter Grids werden automatisch über den Prefix-Matcher in lesbare Ländernamen (statt numerischer DXCC-IDs) aufgelöst." : "Automatic Country Resolution: Callsigns in worked grids are converted into readable country names via prefix matcher.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Aufgeräumte Toolbar: Das Textfeld für die Minutensperre wurde aus der Haupt-Toolbar entfernt und wird nun übersichtlich in den Einstellungen (WSJT-X) verwaltet." : "Cleaned-Up Toolbar: Minute cooldown field moved to Settings (WSJT-X).", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -785,21 +858,21 @@ struct HelpView: View {
                             .bold()
                     }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("✨ Neue Funktionen & Verbesserungen")
+                        Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
-                        bullet("RUMlogNG AppleScript-Integration: Direkte 1-Klick-Synchronisation des Logbuchs aus der laufenden macOS App RUMlogNG über die native AppleScript-Schnittstelle (`ReadAdif`) – sowohl inkrementell als auch vollständig ab 1900.", font: .subheadline, color: .secondary)
-                        bullet("Umschaltbare Logbuch-Quellen: Flexibler Segmented-Picker in den Einstellungen zum Umschalten zwischen RUMlogNG, ARRL LoTW und QRZ.com inklusive automatischem Post-QSO-Sync für die aktive Quelle.", font: .subheadline, color: .secondary)
-                        bullet("Aktives QSO auf Ausbreitungskarte zentriert: Automatische Zentrierung und optimale Skalierung des Großkreis-Pfads (Great Circle) auf 2D-Karte und 3D-Globus bei jedem aktiven QSO, inklusive 1-Klick Re-Zentrierung über den Status-Banner.", font: .subheadline, color: .secondary)
-                        bullet("Dual-Installer Release-DMG: Bereitstellung von nativer GUI-Installer-App (`AutoQSO Installer.app`) und Terminal-Installationsskript (`Install AutoQSO.command`) im Release-Image.", font: .subheadline, color: .secondary)
-                        bullet("Quickstart Direktsprung-Routing: Direkte Sprungbuttons aus den 4 Quickstart-Schritten zu den jeweiligen Einstellungs-Tabs (Rufzeichen/Telnet, QTH-Locator, UDP-Server, Logbuch-Sync).", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "RUMlogNG AppleScript-Integration: Direkte 1-Klick-Synchronisation des Logbuchs aus der laufenden macOS App RUMlogNG über die native AppleScript-Schnittstelle (`ReadAdif`) – sowohl inkrementell als auch vollständig ab 1900." : "RUMlogNG AppleScript Integration: 1-click sync directly from running macOS RUMlogNG app via AppleScript (`ReadAdif`).", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Umschaltbare Logbuch-Quellen: Flexibler Segmented-Picker in den Einstellungen zum Umschalten zwischen RUMlogNG, ARRL LoTW und QRZ.com inklusive automatischem Post-QSO-Sync für die aktive Quelle." : "Switchable Logbook Sources: Toggle between RUMlogNG, ARRL LoTW, and QRZ.com with auto post-QSO sync.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Aktives QSO auf Ausbreitungskarte zentriert: Automatische Zentrierung und optimale Skalierung des Großkreis-Pfads (Great Circle) auf 2D-Karte und 3D-Globus bei jedem aktiven QSO, inklusive 1-Klick Re-Zentrierung über den Status-Banner." : "Active QSO Centering: Great Circle path auto-centered on 2D map and 3D globe during active QSOs.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Dual-Installer Release-DMG: Bereitstellung von nativer GUI-Installer-App (`AutoQSO Installer.app`) und Terminal-Installationsskript (`Install AutoQSO.command`) im Release-Image." : "Dual-Installer DMG: Includes native macOS GUI Installer app and terminal command script.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Quickstart Direktsprung-Routing: Direkte Sprungbuttons aus den 4 Quickstart-Schritten zu den jeweiligen Einstellungs-Tabs (Rufzeichen/Telnet, QTH-Locator, UDP-Server, Logbuch-Sync)." : "Quickstart Direct Navigation: 1-click shortcut buttons from Quickstart to respective Settings tabs.", font: .subheadline, color: .secondary)
                         
-                        Text("🐞 Fehlerbehebungen & Leistungsverbesserungen")
+                        Text(isDe ? "🐞 Fehlerbehebungen & Leistungsverbesserungen" : "🐞 Bugfixes & Performance")
                             .font(.subheadline)
                             .bold()
                             .padding(.top, 4)
-                        bullet("Crash-Fix Auto-Scroll: Behebung eines Out-of-Bounds-Absturzes beim automatischen Tabellen-Scrollen durch Umstellung auf asynchrones Viewport-Scrolling (`clipView.scroll(to:)`).", font: .subheadline, color: .secondary)
-                        bullet("macOS Automation-Permissions: `NSAppleEventsUsageDescription` und automatisches Ad-hoc-Codesigning in allen Build-Skripten integriert.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Crash-Fix Auto-Scroll: Behebung eines Out-of-Bounds-Absturzes beim automatischen Tabellen-Scrollen durch Umstellung auf asynchrones Viewport-Scrolling (`clipView.scroll(to:)`)." : "Auto-Scroll Crash Fix: Resolved out-of-bounds crash via async viewport scrolling.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "macOS Automation-Permissions: `NSAppleEventsUsageDescription` und automatisches Ad-hoc-Codesigning in allen Build-Skripten integriert." : "macOS Automation Permissions: Integrated `NSAppleEventsUsageDescription` and auto code-signing.", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -818,26 +891,26 @@ struct HelpView: View {
                             .bold()
                     }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("✨ Neue Funktionen & Verbesserungen")
+                        Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
-                        bullet("Nativer macOS GUI-Installer: Grafische Installer-App (`AutoQSO Installer.app`) direkt im `.dmg` ersetzt das Terminal-Skript. Bietet komfortable Zielordner-Auswahl, Gatekeeper-Quarantäne-Entfernung (`xattr -cr`), Code-Signatur-Auffrischung und Sofortstart.", font: .subheadline, color: .secondary)
-                        bullet("Interaktiver Grid-Inspector: Ein Klick auf ein beliebiges Grid-Feld auf der Karte öffnet ein Detail-Popover mit Status (gearbeitet/ungearbeitet), Peilung/Distanz, aktiven Stationen und QRZ.com-Aufruf.", font: .subheadline, color: .secondary)
-                        bullet("Band-Schnellfilter auf Grid-Map: Horizontale Filter-Pill-Leiste (`ALL`, `160M`–`6M`) zum sofortigen Umschalten der angezeigten Grids und Map-Marker nach dem aktiven Band.", font: .subheadline, color: .secondary)
-                        bullet("Peilung & Distanz (Beam Heading / Distance): Anzeige von Azimut und Großkreis-Entfernung bezogen auf das eigene Heimat-QTH (`🧭 285° · 4.210 km`) direkt in jeder Grid-Zeile.", font: .subheadline, color: .secondary)
-                        bullet("Spot-Frische & Age-Decay: Brandneue Spots (< 3 Min.) werden mit `⚡ NEU`-Badge und leuchtender Umrandung hervorgehoben; ältere Spots (> 10 Min.) blenden dezent ab.", font: .subheadline, color: .secondary)
-                        bullet("Kompakt- / Detail-Umschalter: Umschaltbare Grid-Sidebar zwischen einer platzsparenden 1-Zeilen-Übersicht und einer ausführlichen Detailansicht mit Stationen und Zeiten.", font: .subheadline, color: .secondary)
-                        bullet("Pixel-dynamische Maidenhead-Zoomstufen: Das Maidenhead-Gitter berechnet die tatsächliche Pixelgröße der Zellen; Umschaltung auf feinere Stufen erfolgt erst bei ausreichender Pixelbreite (kein Zupflastern der Karte).", font: .subheadline, color: .secondary)
-                        bullet("Getrennte Reset-Buttons: Unabhängige Werkseinstellungs-Buttons für Listen-Ansicht und Karten-Ansicht in den Einstellungen.", font: .subheadline, color: .secondary)
-                        bullet("Cluster Spots in Haupttabelle: Vollständige Anzeige und Farbkodierung von DX Cluster Spots in der Haupttabelle mit Spotter-Spalte und Spotter-Filterung.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Nativer macOS GUI-Installer: Grafische Installer-App (`AutoQSO Installer.app`) direkt im `.dmg` ersetzt das Terminal-Skript. Bietet komfortable Zielordner-Auswahl, Gatekeeper-Quarantäne-Entfernung (`xattr -cr`), Code-Signatur-Auffrischung und Sofortstart." : "Native macOS GUI Installer: Graphical installer app in DMG with destination picker, Gatekeeper quarantine removal (`xattr -cr`), and instant launch.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Interaktiver Grid-Inspector: Ein Klick auf ein beliebiges Grid-Feld auf der Karte öffnet ein Detail-Popover mit Status (gearbeitet/ungearbeitet), Peilung/Distanz, aktiven Stationen und QRZ.com-Aufruf." : "Interactive Grid Inspector: Click any grid square for worked status, bearing/distance, stations, and QRZ lookup.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Band-Schnellfilter auf Grid-Map: Horizontale Filter-Pill-Leiste (`ALL`, `160M`–`6M`) zum sofortigen Umschalten der angezeigten Grids und Map-Marker nach dem aktiven Band." : "Band Quick Filters: Pill selector (`ALL`, `160M`–`6M`) for instant band-specific grid filtering.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Peilung & Distanz (Beam Heading / Distance): Anzeige von Azimut und Großkreis-Entfernung bezogen auf das eigene Heimat-QTH (`🧭 285° · 4.210 km`) direkt in jeder Grid-Zeile." : "Beam Heading & Distance: Azimuth and great-circle distance relative to home QTH in each row.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Spot-Frische & Age-Decay: Brandneue Spots (< 3 Min.) werden mit `⚡ NEU`-Badge und leuchtender Umrandung hervorgehoben; ältere Spots (> 10 Min.) blenden dezent ab." : "Spot Freshness Decay: Fresh spots (< 3 min) glow with `⚡ NEW` badge; older spots fade gracefully.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Kompakt- / Detail-Umschalter: Umschaltbare Grid-Sidebar zwischen einer platzsparenden 1-Zeilen-Übersicht und einer ausführlichen Detailansicht mit Stationen und Zeiten." : "Compact / Detail Toggle: Switchable sidebar between 1-line summary and comprehensive station cards.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Pixel-dynamische Maidenhead-Zoomstufen: Das Maidenhead-Gitter berechnet die tatsächliche Pixelgröße der Zellen; Umschaltung auf feinere Stufen erfolgt erst bei ausreichender Pixelbreite (kein Zupflastern der Karte)." : "Adaptive Pixel Grid Zoom: Scales from 2-char to 8-char resolution based on actual on-screen pixel size.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Getrennte Reset-Buttons: Unabhängige Werkseinstellungs-Buttons für Listen-Ansicht und Karten-Ansicht in den Einstellungen." : "Independent Reset Buttons: Separate factory reset buttons for table and map customization.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Cluster Spots in Haupttabelle: Vollständige Anzeige und Farbkodierung von DX Cluster Spots in der Haupttabelle mit Spotter-Spalte und Spotter-Filterung." : "Cluster Spots in Main Table: Full color-coded display of DX cluster spots with spotter filtering.", font: .subheadline, color: .secondary)
                         
-                        Text("🐞 Fehlerbehebungen & Leistungsverbesserungen")
+                        Text(isDe ? "🐞 Fehlerbehebungen & Leistungsverbesserungen" : "🐞 Bugfixes & Performance")
                             .font(.subheadline)
                             .bold()
                             .padding(.top, 4)
-                        bullet("Behebung des UI-Hangs beim Spaltenverschieben: Korrektur der SwiftUI-Tabellenstruktur zur Beseitigung von Deadlocks beim Umordnen von Spalten.", font: .subheadline, color: .secondary)
-                        bullet("Schnelles Tabellen-Rendering: O(1) Cache-Evaluierung für Zellenfarben beseitigt Ruckeln beim schnellen Scrollen.", font: .subheadline, color: .secondary)
-                        bullet("Karten-Performance: Entkopplung der Map-Sidebars via EquatableView (keine Re-Layouts bei Pan/Zoom) und Beseitigung synchroner I/O im Canvas-Rendering.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Behebung des UI-Hangs beim Spaltenverschieben: Korrektur der SwiftUI-Tabellenstruktur zur Beseitigung von Deadlocks beim Umordnen von Spalten." : "Fixed Column Reordering Hang: Resolved UI deadlocks during drag-and-drop column rearrangement.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Schnelles Tabellen-Rendering: O(1) Cache-Evaluierung für Zellenfarben beseitigt Ruckeln beim schnellen Scrollen." : "Fast Table Rendering: O(1) cached color evaluation eliminates scroll stutter.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Karten-Performance: Entkopplung der Map-Sidebars via EquatableView (keine Re-Layouts bei Pan/Zoom) und Beseitigung synchroner I/O im Canvas-Rendering." : "Map Performance: EquatableView sidebar decoupling eliminates re-layout cycles during pan/zoom.", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -856,26 +929,15 @@ struct HelpView: View {
                             .bold()
                     }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("✨ Neue Funktionen & Verbesserungen")
+                        Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
-                        bullet("3D-Globus-Projektion & Maidenhead-Gitter: Maidenhead-Grid-Linien und gearbeitete 4-Stellen Planquadrate werden in der 3D-Globusansicht nativ als 3D-Polylines und 3D-Polygone auf die Erdkugel projiziert.", font: .subheadline, color: .secondary)
-                        bullet("Aktiver QSO-Pfad auf Ausbreitungskarte: Zeichnet bei einem aktiven WSJT-X Anruf/QSO eine leuchtend gelbe Großkreis-Verbindungslinie zwischen eigenem QTH (minimalistisches 🏠 Symbol) und der Zielstation auf der 2D-Karte und dem 3D-Globus inklusive Live-Statusbanner (⚡ AKTIVES QSO).", font: .subheadline, color: .secondary)
-                        bullet("Einstellungsbereich Eigenes QTH & Interaktiver QTH Picker: Neuer Einstellungsreiter 'Eigenes QTH (Maidenhead)' (max. 8-Stellen-Präzision) mit Echtzeit-Standortanalyse und nativer interaktiver Karte (InteractiveQTHPickerView) mit Google-Style Drop-Pin.", font: .subheadline, color: .secondary)
-                        bullet("Interaktiver Installer & macOS Gatekeeper Lösung: Doppelklickbares Skript (`Install AutoQSO.command`) direkt im `.dmg`, das den Zielordner (`/Applications`, `~/Applications` oder Finder-Dialog) abfragt, Quarantäne-Attribute (`xattr -cr`) entfernt, Code-Signatur auffrischt und AutoQSO direkt startet.", font: .subheadline, color: .secondary)
-                        bullet("Kompaktmodus Toolbar-Schaltflächen: Alle 6 Icon-Buttons (Logbuch, Ausbreitungskarte, Grid-Map, Normalmodus, Einstellungen, Hilfe) sind jetzt direkt in der Toolbar des Kompaktmodus verfügbar.", font: .subheadline, color: .secondary)
-                        bullet("Kartenstil Dropdown-Menü: Neues kompaktes, kontrastreiches Dropdown-Menü (.ultraThinMaterial Pill) für alle Kartenansichten ohne störende Text-Labels.", font: .subheadline, color: .secondary)
-                        bullet("3D Grid-Interaktivität & Spots: Gearbeitete Felder auf dem 3D-Globus sind anklickbar und öffnen das Logbuch-Detailfenster (`WorkedGridDetailView`). Spots werden als 3D-Marker auf dem Globus dargestellt.", font: .subheadline, color: .secondary)
-                        bullet("Unabhängige Kartenstile: Kartenstil-Einstellungen (`propagationMapStyle` und `newGridMapStyle`) werden für Ausbreitungskarte und Grid-Karte getrennt gespeichert.", font: .subheadline, color: .secondary)
-                        
-                        Text("🐞 Fehlerbehebungen & Performance-Optimierungen")
-                            .font(.subheadline)
-                            .bold()
-                            .padding(.top, 4)
-                        bullet("Signifikante Performance-Optimierung: Teure Logbuch-Iterationen (`worked4CharGrids`) gecacht, Canvas-Rendering mit Viewport-Bounding-Box Pre-Filter beschleunigt und Overlay-Updates auf Dirty-Flagging umgestellt.", font: .subheadline, color: .secondary)
-                        bullet("Globus Region-Debouncing: 0.2s Debounce bei sichtbaren Region-Änderungen verhindert unnötige SwiftUI-Update-Kaskaden während flüssiger Globus-Rotationen.", font: .subheadline, color: .secondary)
-                        bullet("Cluster-Befehle ohne Unterbrechung: Beim Senden von Befehlen an den DX Cluster im ClusterSendDialog bleibt das Live-Scrollen aktiv.", font: .subheadline, color: .secondary)
-                        bullet("Karten-Projektionsstreifen beseitigt: Wrap-Around-Filterung im Canvas-Renderer verhindert visuelle Querstufen über die Datumsgrenze.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "3D-Globus-Projektion & Maidenhead-Gitter: Maidenhead-Grid-Linien und gearbeitete 4-Stellen Planquadrate werden in der 3D-Globusansicht nativ als 3D-Polylines und 3D-Polygone auf die Erdkugel projiziert." : "3D Globe Projection: Maidenhead grid lines and worked squares projected onto interactive 3D sphere.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Aktiver QSO-Pfad auf Ausbreitungskarte: Zeichnet bei einem aktiven WSJT-X Anruf/QSO eine leuchtend gelbe Großkreis-Verbindungslinie zwischen eigenem QTH (minimalistisches 🏠 Symbol) und der Zielstation auf der 2D-Karte und dem 3D-Globus inklusive Live-Statusbanner (⚡ AKTIVES QSO)." : "Active QSO Great Circle Path: Displays glowing connection line from home QTH to target station.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Einstellungsbereich Eigenes QTH & Interaktiver QTH Picker: Neuer Einstellungsreiter 'Eigenes QTH (Maidenhead)' (max. 8-Stellen-Präzision) mit Echtzeit-Standortanalyse und nativer interaktiver Karte (InteractiveQTHPickerView) mit Google-Style Drop-Pin." : "Home QTH Settings & Picker: Up to 8-character locator resolution with interactive map and drop-pin.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Interaktiver Installer & macOS Gatekeeper Lösung: Doppelklickbares Skript (`Install AutoQSO.command`) direkt im `.dmg`, das den Zielordner abfragt, Quarantäne-Attribute entfernt und AutoQSO startet." : "Interactive Installer: Automates installation and quarantine clearance.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Kompaktmodus Toolbar-Schaltflächen: Alle 6 Icon-Buttons (Logbuch, Ausbreitungskarte, Grid-Map, Normalmodus, Einstellungen, Hilfe) sind jetzt direkt in der Toolbar des Kompaktmodus verfügbar." : "Compact Mode Toolbar: Access Logbook, Propagation Map, Grid Map, Normal View, Settings, and Help.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Kartenstil Dropdown-Menü: Neues kompaktes, kontrastreiches Dropdown-Menü (.ultraThinMaterial Pill) für alle Kartenansichten ohne störende Text-Labels." : "Map Style Menu: Compact translucent pill dropdown for MapKit styles.", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -894,27 +956,15 @@ struct HelpView: View {
                             .bold()
                     }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("✨ Neue Funktionen & Verbesserungen")
+                        Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
-                        bullet("Schattierung gearbeiteter Grids: Umschaltbare farbige Unterlegung (`checkmark.square`) aller im Logbuch vorhandenen 4-Stellen-Grids auf der Maidenhead Grid-Map mit anpassbarem Farbton (Standard: `#FF5926` Rot-Orange).", font: .subheadline, color: .secondary)
-                        bullet("Interaktives Grid-Logbuchfenster: Einzelklick auf ein beliebiges gearbeitetes Grid-Feld auf der Karte öffnet ein Detailfenster (WorkedGridDetailView) mit allen im Logbuch gespeicherten QSOs für diesen Maidenhead-Locator inklusive Such- und Filterfunktion.", font: .subheadline, color: .secondary)
-                        bullet("Doppelklick QRZ.com-Aufruf: Doppelklick auf eine Station im Grid-Logbuchfenster öffnet direkt deren QRZ.com-Detailseite im Browser. Vorab wird automatisch geprüft, ob eine aktive Internetverbindung besteht (NWPathMonitor); ansonsten erscheint ein Fehlerhinweis.", font: .subheadline, color: .secondary)
-                        bullet("Vollständiger Logbuch-Sync (ab 1900): QRZ.com und LoTW Sync laden bei Bedarf das gesamte Logbuch ab 1900 herunter. Intelligentes SQLite-Upsert (ON CONFLICT DO UPDATE) reichert bestehende QSOs nachträglich mit fehlenden Grid-Locatoren an, ohne Duplikate zu erzeugen.", font: .subheadline, color: .secondary)
-                        bullet("Maidenhead Grid-Filter (4 & 6 Stellen): Neue Filterregeln zum gezielten Filtern nach bisher ungearbeiteten 4-Stellen (`JO31`) und 6-Stellen (`JO31AA`) Maidenhead-Lokaltoren.", font: .subheadline, color: .secondary)
-                        bullet("Neue Maidenhead Grid-Map: Separates interaktives Kartenfenster (`Grid-Map ↗`) zur Visualisierung aller ungearbeiteten 4-Stellen (grün) und 6-Stellen (blau) Grids inklusive Echtzeit-Suchleiste und einklappbaren Kontinent-Gruppen.", font: .subheadline, color: .secondary)
-                        bullet("Vollständiges GridTracker-Overlay: Hardwarebeschleunigtes Maidenhead-Gitter (2- bis 8-Stellen Resolution) im GridTracker-Stil mit Lesbarkeits-Badges über Ozeanen.", font: .subheadline, color: .secondary)
-                        bullet("Schnellsteuerungs-Leiste am Kartenrand: Live-Anpassung der Gitter-Schriftgröße (`A-`/`A+`), Textfarbe, Gitterlinienfarbe, Badge-Farbe sowie der Schattierungsfarbe für gearbeitete Grids.", font: .subheadline, color: .secondary)
-                        bullet("Logbuch-Tabelle mit Grid-Spalte: Die Logbuch-Ansicht wurde um eine eigene Spalte für Maidenhead Grid-Locatoren erweitert.", font: .subheadline, color: .secondary)
-                        
-                        Text("🐞 Fehlerbehebungen & Optimierungen")
-                            .font(.subheadline)
-                            .bold()
-                            .padding(.top, 4)
-                        bullet("Schutz vor Doppel-Anrufen: Automatische Cooldown-Sperre (blacklistedCalls) beim Empfang von 73/RR73-Signalen sowie beim QSO-Loggen verhindert ein versehentliches zweites Anrufen derselben Station.", font: .subheadline, color: .secondary)
-                        bullet("Karten-Projektionsstreifen beseitigt: Wrap-Around-Filterung im Canvas-Renderer verhindert visuelle Querstufen über die Datumsgrenze und Projektionsränder.", font: .subheadline, color: .secondary)
-                        bullet("Grid MarkerView Positionskorrektur: Stationen werden in die obere rechte Ecke der Grid-Zellen positioniert; redundante System-Textballons wurden entfernt.", font: .subheadline, color: .secondary)
-                        bullet("Propagation Chart Default: Standardansicht auf 'Propagation by Continent' (isStacked = false) umgestellt.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Schattierung gearbeiteter Grids: Umschaltbare farbige Unterlegung (`checkmark.square`) aller im Logbuch vorhandenen 4-Stellen-Grids auf der Maidenhead Grid-Map mit anpassbarem Farbton (Standard: `#FF5926` Rot-Orange)." : "Worked Grid Shading: Highlights all worked 4-character grids on the map with customizable tint.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Interaktives Grid-Logbuchfenster: Einzelklick auf ein beliebiges gearbeitetes Grid-Feld auf der Karte öffnet ein Detailfenster (WorkedGridDetailView) mit allen im Logbuch gespeicherten QSOs für diesen Maidenhead-Locator inklusive Such- und Filterfunktion." : "Worked Grid History: Single-click on any worked square displays all logged QSOs for that locator.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Doppelklick QRZ.com-Aufruf: Doppelklick auf eine Station im Grid-Logbuchfenster öffnet direkt deren QRZ.com-Detailseite im Browser." : "Double-Click QRZ Lookup: Instantly opens callsign profile on QRZ.com with connection checks.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Vollständiger Logbuch-Sync (ab 1900): QRZ.com und LoTW Sync laden bei Bedarf das gesamte Logbuch ab 1900 herunter. Intelligentes SQLite-Upsert (ON CONFLICT DO UPDATE) reichert bestehende QSOs nachträglich mit fehlenden Grid-Locatoren an, ohne Duplikate zu erzeugen." : "Full Logbook Sync (since 1900): Downloads complete history and enriches missing locators via SQLite upsert.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Maidenhead Grid-Filter (4 & 6 Stellen): Neue Filterregeln zum gezielten Filtern nach bisher ungearbeiteten 4-Stellen (`JO31`) und 6-Stellen (`JO31AA`) Maidenhead-Lokaltoren." : "Maidenhead Grid Filters: Filter decodes for unworked 4-char (`JO31`) and 6-char (`JO31AA`) squares.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Neue Maidenhead Grid-Map: Separates interaktives Kartenfenster (`Grid-Map ↗`) zur Visualisierung aller ungearbeiteten 4-Stellen (grün) und 6-Stellen (blau) Grids." : "Maidenhead Grid Map: Interactive window displaying unworked 4-char (green) and 6-char (blue) squares.", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -923,88 +973,32 @@ struct HelpView: View {
                 .background(Color.blue.opacity(0.05))
                 .cornerRadius(8)
                                 
-                                Divider()
+                Divider()
                                 
-                                // Version 3.2.1
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack(spacing: 8) {
-                                        Text("Version 3.2.1")
-                                            .font(.headline)
-                                            .bold()
-                                    }
-                                    VStack(alignment: .leading, spacing: 5) {
-                                        Text("✨ Neue Funktionen & Verbesserungen")
-                                            .font(.subheadline)
-                                            .bold()
-                                        bullet("Freeze-Snapshot-Modus: Pause-Button friert die Dekodierliste & Protokolle mit einem statischen Snapshot ein. Hintergrunddaten werden weiter empfangen; das freie Scrollen in historischen Daten ist ohne automatisches Zurückspringen möglich.", font: .subheadline, color: .secondary)
-                                        bullet("Echtzeit-Suchfeld: Neue Suchfelder in der Hauptleiste und Log-Konsole filtern Einträge in Echtzeit nach Rufzeichen, Land, Spotter, Grid-Locator oder Nachrichten-Text.", font: .subheadline, color: .secondary)
-                                        bullet("Vollständige Tabellenanzeige & Farbkodierung: Alle empfangenen Decodes und DX-Spots erscheinen in der Haupttabelle. Filter-Regeln löschen keine Einträge mehr, sondern steuern die farbliche Hervorhebung (z.B. Grau für blockiert) und automatische Aktionen.", font: .subheadline, color: .secondary)
-                                        bullet("Universelles Spot-Parsing: Unterstützung für DX-Spots aller gängigen Cluster-Knotentypen (VE7CC, K3LR, RBNet, AR-Cluster, CC-Cluster, DXSpider).", font: .subheadline, color: .secondary)
-                                        bullet("Erweiterte Länderfilterung: Teilstring- und Regionen-Matching (z.B. `Russia` / `Russland` erkennt sowohl `European Russia` als auch `Asiatic Russia`) inklusive verbesserter Autovervollständigung.", font: .subheadline, color: .secondary)
-                                        
-                                        Text("🐞 Fehlerbehebungen (Bugfixes)")
-                                            .font(.subheadline)
-                                            .bold()
-                                            .padding(.top, 4)
-                                        bullet("Eingabefelder: Behebung eines SwiftUI-Bugs unter macOS, bei dem die Eingabe von Portnummern und Cooldowns während des Tippens zurückgesetzt wurde.", font: .subheadline, color: .secondary)
-                                        bullet("Auto-Scroll: Korrektur der Sortier- und Scrollrichtung bei Umschaltung zwischen \"Neueste oben\" und \"Neueste unten\".", font: .subheadline, color: .secondary)
-                                        bullet("Log-Löschen: Schaltfläche (Papierkorb) in der Toolbar des Hauptfensters sowie in der abgekoppelten Log-Konsole hinzugefügt.", font: .subheadline, color: .secondary)
-                                    }
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                }
-                                .padding()
-                                .background(Color.blue.opacity(0.05))
-                                .cornerRadius(8)
-                                
-                                Divider()
-                
-     /*
                 // Version 3.2.1
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
                         Text("Version 3.2.1")
                             .font(.headline)
                             .bold()
-                        Text("(Build \(APP_BUILD_NUMBER))")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text("AKTUELL")
-                            .font(.system(size: 10, weight: .bold))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.green)
-                            .foregroundColor(.white)
-                            .cornerRadius(4)
                     }
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("✨ Neue Funktionen & Verbesserungen")
+                        Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
-                        bullet("Freeze-Snapshot-Modus: Pause-Button friert die Dekodierliste & Protokolle mit einem statischen Snapshot ein. Hintergrunddaten werden weiter empfangen; das freie Scrollen in historischen Daten ist ohne automatisches Zurückspringen möglich.", font: .subheadline, color: .secondary)
-                        bullet("Echtzeit-Suchfeld: Neue Suchfelder in der Hauptleiste und Log-Konsole filtern Einträge in Echtzeit nach Rufzeichen, Land, Spotter, Grid-Locator oder Nachrichten-Text.", font: .subheadline, color: .secondary)
-                        bullet("Vollständige Tabellenanzeige & Farbkodierung: Alle empfangenen Decodes und DX-Spots erscheinen in der Haupttabelle. Filter-Regeln löschen keine Einträge mehr, sondern steuern die farbliche Hervorhebung (z.B. Grau für blockiert) und automatische Aktionen.", font: .subheadline, color: .secondary)
-                        bullet("Universelles Spot-Parsing: Unterstützung für DX-Spots aller gängigen Cluster-Knotentypen (VE7CC, K3LR, RBNet, AR-Cluster, CC-Cluster, DXSpider).", font: .subheadline, color: .secondary)
-                        bullet("Erweiterte Länderfilterung: Teilstring- und Regionen-Matching (z.B. `Russia` / `Russland` erkennt sowohl `European Russia` als auch `Asiatic Russia`) inklusive verbesserter Autovervollständigung.", font: .subheadline, color: .secondary)
-                        
-                        Text("🐞 Fehlerbehebungen (Bugfixes)")
-                            .font(.subheadline)
-                            .bold()
-                            .padding(.top, 4)
-                        bullet("Eingabefelder: Behebung eines SwiftUI-Bugs unter macOS, bei dem die Eingabe von Portnummern und Cooldowns während des Tippens zurückgesetzt wurde.", font: .subheadline, color: .secondary)
-                        bullet("Auto-Scroll: Korrektur der Sortier- und Scrollrichtung bei Umschaltung zwischen \"Neueste oben\" und \"Neueste unten\".", font: .subheadline, color: .secondary)
-                        bullet("Log-Löschen: Schaltfläche (Papierkorb) in der Toolbar des Hauptfensters sowie in der abgekoppelten Log-Konsole hinzugefügt.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Freeze-Snapshot-Modus: Pause-Button friert die Dekodierliste & Protokolle mit einem statischen Snapshot ein. Hintergrunddaten werden weiter empfangen; das freie Scrollen in historischen Daten ist ohne automatisches Zurückspringen möglich." : "Freeze Snapshot Mode: Pause button takes a static snapshot of decode tables and logs without pausing background reception.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Echtzeit-Suchfeld: Neue Suchfelder in der Hauptleiste und Log-Konsole filtern Einträge in Echtzeit nach Rufzeichen, Land, Spotter, Grid-Locator oder Nachrichten-Text." : "Real-Time Search: Live search in main toolbar and log console by callsign, country, spotter, grid, or text.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Vollständige Tabellenanzeige & Farbkodierung: Alle empfangenen Decodes und DX-Spots erscheinen in der Haupttabelle. Filter-Regeln steuern die farbliche Hervorhebung (z.B. Grau für blockiert) und automatische Aktionen." : "Full Table Display & Color Coding: All decodes and DX spots shown; filter rules apply intelligent highlights without deleting data.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Universelles Spot-Parsing: Unterstützung für DX-Spots aller gängigen Cluster-Knotentypen (VE7CC, K3LR, RBNet, AR-Cluster, CC-Cluster, DXSpider)." : "Universal Spot Parsing: Automatic parsing for VE7CC, K3LR, RBNet, AR-Cluster, CC-Cluster, and DXSpider nodes.", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.green.opacity(0.08))
+                .background(Color.blue.opacity(0.05))
                 .cornerRadius(8)
                 
                 Divider()
-                
-             */
                 
                 // Version 3.2.0
                 VStack(alignment: .leading, spacing: 8) {
@@ -1012,18 +1006,14 @@ struct HelpView: View {
                         Text("Version 3.2.0")
                             .font(.headline)
                             .bold()
-                        Text("(Build 190)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
                     }
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("⚡ Performance & UI/UX Optimierungen")
+                        Text(isDe ? "⚡ Performance & UI/UX Optimierungen" : "⚡ Performance & UI/UX Enhancements")
                             .font(.subheadline)
                             .bold()
-                        bullet("Flüssige UI-Updates: Debouncing von Decodes und Cluster-Spots um 300ms verhindert UI-Ruckler während dichter FT8-Decode-Bursts.", font: .subheadline, color: .secondary)
-                        bullet("Schneller App-Start: Das Parsen der CTY.DAT-Länderdatenbank wurde in den Hintergrund verlagert und blockiert nicht mehr den Start der Anwendung.", font: .subheadline, color: .secondary)
-                        bullet("Reduzierte CPU-Last: Durch Vorab-Berechnung statischer Spot-Metadaten und Caching des Most-Wanted-Rankings wird die CPU-Auslastung bei Listendarstellung drastisch minimiert.", font: .subheadline, color: .secondary)
-                        bullet("Optimierte Log-Anzeige: Umstellung der System- und WSJT-X-Konsolen auf LazyVStack spart signifikant Rendering-Zeit für Offscreen-Texte.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Flüssige UI-Updates: Debouncing von Decodes und Cluster-Spots um 300ms verhindert UI-Ruckler während dichter FT8-Decode-Bursts." : "Smooth UI Updates: 300ms burst debouncing prevents UI lag during heavy FT8 cycles.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Schneller App-Start: Das Parsen der CTY.DAT-Länderdatenbank wurde in den Hintergrund verlagert und blockiert nicht mehr den Start der Anwendung." : "Fast Startup: Background parsing of CTY.DAT country database.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Optimierte Log-Anzeige: Umstellung der System- und WSJT-X-Konsolen auf LazyVStack spart signifikant Rendering-Zeit für Offscreen-Texte." : "Optimized Log Console: LazyVStack reduces memory and rendering overhead.", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -1040,19 +1030,15 @@ struct HelpView: View {
                         Text("Version 3.1.0")
                             .font(.headline)
                             .bold()
-                        Text("(Build 174)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
                     }
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("🗺️ Ausbreitungskarte, persistente Spot-Auswahl & zentriertes Layout")
+                        Text(isDe ? "🗺️ Ausbreitungskarte & DX Cluster Integration" : "🗺️ Propagation Map & DX Cluster Integration")
                             .font(.subheadline)
                             .bold()
-                        bullet("Ausbreitungskarte (Propagation Map): Vollständige Live-Visualisierung von spots und decodes auf einer Weltkarte. Die Karte lässt sich über das Menü FENSTER -> \"Karte ↗\" als eigenständiges macOS-Fenster öffnen.", font: .subheadline, color: .secondary)
-                        bullet("Persistente Spot-Auswahl: Manuell selektierte Spots bleiben im Info-Banner permanent sichtbar und werden erst dann überschrieben, wenn die Auto-Transmit-Automatik eine neue Zielstation anruft.", font: .subheadline, color: .secondary)
-                        bullet("Zentriertes Konsolen-Layout: Der Segment-Umschalter für die Log-Tabellen ist nun sowohl im Hauptfenster als auch im abgetrennten Konsolenfenster exakt zentriert.", font: .subheadline, color: .secondary)
-                        bullet("Sende-Schalter Umbenennung: Der Hauptschalter für das automatische Senden wurde kompakter benannt und heißt nun \"Auto ON\" / \"Auto OFF\".", font: .subheadline, color: .secondary)
-                        bullet("Dynamische Schriftgrößen: Die Schriftgrößen der Länderlisten und Kartentexte skalieren automatisch mit der Tabellen-Schriftgröße mit. Die Anzeige für den Telnet-Login wurde leicht verkleinert, um ein Abschneiden langer Texte zu vermeiden.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Ausbreitungskarte (Propagation Map): Vollständige Live-Visualisierung von Spots und Decodes auf einer Weltkarte." : "Propagation Map: Full live visualization of spots and decodes on a world map.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Persistente Spot-Auswahl: Manuell selektierte Spots bleiben im Info-Banner permanent sichtbar." : "Persistent Selection: Manually selected stations stay pinned in the detail banner.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Zentriertes Konsolen-Layout: Segment-Umschalter für die Log-Tabellen exakt zentriert." : "Centered Console Layout: Clean segmented control in log console.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Sende-Schalter: Hauptschalter kompakt benannt als \"Auto ON\" / \"Auto OFF\"." : "Auto Transmit Toggle: Clean \"Auto ON\" / \"Auto OFF\" switch.", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -1069,131 +1055,22 @@ struct HelpView: View {
                         Text("Version 3.0.0")
                             .font(.headline)
                             .bold()
-                        Text("(Build 166)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
                     }
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("🌐 Detektierbare Logs, DX Cluster Manager & Layout-Flexibilität")
+                        Text(isDe ? "🌐 Losgelöste Logs, DX Cluster Manager & Layout-Flexibilität" : "🌐 Detachable Logs, DX Cluster Manager & Layout Options")
                             .font(.subheadline)
                             .bold()
-                        bullet("Losgelöste Log-Konsole: Das Diagnosefenster lässt sich abkoppeln und dockt beim Schließen wieder im Hauptfenster an.", font: .subheadline, color: .secondary)
-                        bullet("Integrierter Cluster-Manager: Hinzufügen, Editieren, Löschen und per Drag-and-Drop Sortieren von Clustern in den Einstellungen.", font: .subheadline, color: .secondary)
-                        bullet("Telnet Server Splittung: DX Cluster und Telnet Server sind eigenständige Abschnitte in Sidebar und Einstellungen.", font: .subheadline, color: .secondary)
-                        bullet("ADIF Datei Import: Bequemer Import von QSOs via `.adi`/`.adif`-Dateien direkt über die Einstellungen.", font: .subheadline, color: .secondary)
-                        bullet("Ansichtsoptionen: Freie Wahl der chronologischen Sortierung (Neueste oben/unten), Farbschemas (Hell/Dunkel/System) sowie anpassbare Farben und Schriftgrößen in der Liste und in den Logs.", font: .subheadline, color: .secondary)
-                        bullet("Höhenerhalt: Speichert die Höhen des Log- und Most Wanted-Panels permanent ab, um ein flüssiges Wiederöffnen zu sichern.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Losgelöste Log-Konsole: Das Diagnosefenster lässt sich abkoppeln und dockt beim Schließen wieder im Hauptfenster an." : "Detachable Log Console: Open logs in standalone window with auto-docking.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Integrierter Cluster-Manager: Hinzufügen, Editieren, Löschen und per Drag-and-Drop Sortieren von Clustern in den Einstellungen." : "DX Cluster Manager: Add, edit, delete, and reorder cluster nodes via drag and drop.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Telnet Server Splittung: DX Cluster und Telnet Server sind eigenständige Abschnitte." : "Telnet Server Architecture: Split DX cluster clients and Telnet server into modular sections.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "ADIF Datei Import: Bequemer Import von QSOs via `.adi`/`.adif`-Dateien direkt über die Einstellungen." : "ADIF File Import: Direct import of `.adi`/`.adif` logbooks with duplicate checks.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Ansichtsoptionen: Freie Wahl der chronologischen Sortierung, Farbschemas (Hell/Dunkel/System) sowie anpassbare Farben und Schriftgrößen." : "Appearance Customizer: Dark/Light modes, custom fonts, and colors.", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 }
                 .padding()
                 .background(Color.blue.opacity(0.05))
-                .cornerRadius(8)
-                
-                Divider()
-                
-                // Version 2.0.4
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        Text("Version 2.0.4")
-                            .font(.headline)
-                            .bold()
-                    }
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("⚡ Stabilitäts- & Timing-Verbesserungen")
-                            .font(.subheadline)
-                            .bold()
-                        bullet("200ms Sendeverzögerung vermindert Paketverluste bei hoher CPU-Last in WSJT-X", font: .subheadline, color: .secondary)
-                        bullet("Smarte Wiederholung (max. 3-mal, 3s Takt) falls WSJT-X den TX-Trigger verwirft", font: .subheadline, color: .secondary)
-                        bullet("Detaillierte Live-Konsole zur Nachverfolgung übersprungener Stationen", font: .subheadline, color: .secondary)
-                        bullet("Sicherheits-Filter verhindert das Anrufen des eigenen Rufzeichens", font: .subheadline, color: .secondary)
-                    }
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                }
-                .padding()
-                .background(Color.blue.opacity(0.05))
-                .cornerRadius(8)
-                
-                Divider()
-                
-                // Version 2.0.3
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        Text("Version 2.0.3")
-                            .font(.headline)
-                            .bold()
-                        Text("(Build 120)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("🎯 Strikter DXCC-Filter & TX-Triggering")
-                            .font(.subheadline)
-                            .bold()
-                        bullet("Option \"Ausschließlich Most Wanted Stationen anrufen\" in den Einstellungen", font: .subheadline, color: .secondary)
-                        bullet("Senden des Shift Modifiers (0x01) erzwingt jetzt zuverlässig \"Enable TX = ON\" in WSJT-X", font: .subheadline, color: .secondary)
-                    }
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                }
-                .padding()
-                .background(Color.blue.opacity(0.06))
-                .cornerRadius(8)
-                
-                Divider()
-                
-                // Version 2.0.2
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        Text("Version 2.0.2")
-                            .font(.headline)
-                            .bold()
-                        Text("(Build 111)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("🛠️ UDP-Protokoll & TX-Steuerung")
-                            .font(.subheadline)
-                            .bold()
-                        bullet("WSJT-X Clear-Nachricht (Typ 3) als Signal für den Start eines neuen Decode-Fensters", font: .subheadline, color: .secondary)
-                        bullet("Verwerfen von empfangenen EnableTx & Reply-Paketen auf dem UDP-Port", font: .subheadline, color: .secondary)
-                        bullet("Replay-Decodes (isNew=false) verwerfen die Liste nicht mehr fälschlicherweise", font: .subheadline, color: .secondary)
-                        bullet("SQLite Logbuch Import-Deduplizierung & Key-Normalisierung", font: .subheadline, color: .secondary)
-                        bullet("Banner-Selektion synchronisiert per einfachem Klick auf die Decodier-Tabelle", font: .subheadline, color: .secondary)
-                        bullet("Layout-Harmonisierung der Toolbar (AUTO MODE, SYNCHRONISATION, LOGBUCH, FENSTER)", font: .subheadline, color: .secondary)
-                        bullet("Integriertes Release-Skript für automatische macOS .dmg Erstellung & GitHub Upload", font: .subheadline, color: .secondary)
-                    }
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                }
-                .padding()
-                .background(Color.blue.opacity(0.06))
-                .cornerRadius(8)
-                
-                Divider()
-                
-                // Version 2.0.1
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        Text("Version 2.0.1")
-                            .font(.headline)
-                            .bold()
-                    }
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("🐛 Bugfixes & Präzision")
-                            .font(.subheadline)
-                            .bold()
-                        bullet("Präzise Callsign-Validierung für ambige Präfixe (KG4, KH1/3/4/5/9, KP1/5, ST, 3C, VP6)", font: .subheadline, color: .secondary)
-                        bullet("No duplicates im Most-Wanted-Panel — pro Rufzeichen nur ein Eintrag (bestes SNR)", font: .subheadline, color: .secondary)
-                    }
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                }
-                .padding()
-                .background(Color.blue.opacity(0.06))
                 .cornerRadius(8)
                 
                 Divider()
@@ -1204,39 +1081,15 @@ struct HelpView: View {
                         Text("Version 2.0.0")
                             .font(.headline)
                             .bold()
-                        Text("(Build 90)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
                     }
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("🔥 Most Wanted & Entfernungspriorisierung")
+                        Text(isDe ? "🔥 Most Wanted & Entfernungspriorisierung" : "🔥 Most Wanted & Distance Prioritization")
                             .font(.subheadline)
                             .bold()
-                        bullet("Club Log Top 100 Most Wanted DXCC integriert (P5, KH3, KH7K, CE0X, FT/X, 3Y/B, Bouvet, etc.)", font: .subheadline, color: .secondary)
-                        bullet("Rote Hervorhebung (🔥 #Rang) in der Decodier-Tabelle für ungearbeitete Most Wanted Stationen", font: .subheadline, color: .secondary)
-                        bullet("Gesondertes Most-Wanted-Panel unterhalb der Tabelle – nur Stationen die auf diesem Band noch nicht gearbeitet wurden", font: .subheadline, color: .secondary)
-                        bullet("Panel-Höhe mit der Maus stufenlos verstellbar (50–500 pt), Größe wird dauerhaft gespeichert", font: .subheadline, color: .secondary)
-                        bullet("Maidenhead Locator → Großkreis-Entfernung (km) via Haversine-Formel", font: .subheadline, color: .secondary)
-                        bullet("Entfernungsspalte in der Haupttabelle", font: .subheadline, color: .secondary)
-                        bullet("Entfernung & Grid-Square im Stations-Banner (Evaluierungsleiste)", font: .subheadline, color: .secondary)
-                        bullet("Most Wanted Rang-Badge im Stations-Banner bei seltenen Entitäten", font: .subheadline, color: .secondary)
-                        
-                        Text("🎯 Prioritätsreihenfolge (Auto QSO Engine)")
-                            .font(.subheadline)
-                            .bold()
-                            .padding(.top, 4)
-                        bullet("Priorität 1: Most Wanted Entitäten zuerst (Rang #1 = höchste Priorität)", font: .subheadline, color: .secondary)
-                        bullet("Priorität 2: Weiteste Entfernung (km) zuerst", font: .subheadline, color: .secondary)
-                        bullet("Priorität 3: Stärkstes Signal (SNR dB) als Fallback", font: .subheadline, color: .secondary)
-                        
-                        Text("⚙️ Einstellungen (Most Wanted & Priorität)")
-                            .font(.subheadline)
-                            .bold()
-                            .padding(.top, 4)
-                        bullet("Eigener Maidenhead Grid Locator (z.B. JO31 oder JO31AA)", font: .subheadline, color: .secondary)
-                        bullet("Schalter: Most Wanted rot hervorheben", font: .subheadline, color: .secondary)
-                        bullet("Schalter: Priorität nach Most Wanted & Entfernung", font: .subheadline, color: .secondary)
-                        bullet("Schwelle: Top 10 / 20 / 50 / 100 Most Wanted", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Club Log Top 100 Most Wanted DXCC integriert (P5, KH3, KH7K, CE0X, FT/X, 3Y/B, etc.)" : "Club Log Top 100 Most Wanted DXCC integration (P5, KH3, KH7K, CE0X, FT/X, 3Y/B, etc.)", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Rote Hervorhebung (🔥 #Rang) in der Decodier-Tabelle für ungearbeitete Most Wanted Stationen" : "Red highlight (🔥 #Rank) in table for unworked rare entities", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Gesondertes Most-Wanted-Panel unterhalb der Tabelle" : "Dedicated Most Wanted panel below table", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Maidenhead Locator → Großkreis-Entfernung (km) via Haversine-Formel" : "Maidenhead Locator → Great Circle distance (km) calculation", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -1253,16 +1106,12 @@ struct HelpView: View {
                         .font(.headline)
                         .bold()
                     VStack(alignment: .leading, spacing: 4) {
-                        bullet("Auto QSO Trigger für CQ, 73, RR73 und RRR Decodes", font: .subheadline, color: .secondary)
-                        bullet("Inkrementeller LoTW & QRZ Sync (2 Tage vor letztem QSO, UTC)", font: .subheadline, color: .secondary)
-                        bullet("Duplicate Prevention via SQLite uniqueKey", font: .subheadline, color: .secondary)
-                        bullet("Reset Sync-Startdatum auf 1900 & Logbuch-Neuinitialisierung", font: .subheadline, color: .secondary)
-                        bullet("Zeilenweises & Mehrfach-Löschen (🗑️, Kontextmenü, Tastatur)", font: .subheadline, color: .secondary)
-                        bullet("Freie Speicherort-Wahl & iCloud Drive Sync", font: .subheadline, color: .secondary)
-                        bullet("Einstellungen mit linker Sidebar-Navigation", font: .subheadline, color: .secondary)
-                        bullet("Hilfe-Fenster mit Seitenleiste", font: .subheadline, color: .secondary)
-                        bullet("3D Retina App Icon für macOS App-Bundle & DMG", font: .subheadline, color: .secondary)
-                        bullet("Release-Skript: Versioniertes .dmg, Git-Tagging & GitHub Releases", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Auto QSO Trigger für CQ, 73, RR73 und RRR Decodes" : "Auto QSO triggers for CQ, 73, RR73, and RRR decodes", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Inkrementeller LoTW & QRZ Sync" : "Incremental LoTW & QRZ logbook sync", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Duplicate Prevention via SQLite uniqueKey" : "Duplicate prevention via SQLite unique keys", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Freie Speicherort-Wahl & iCloud Drive Sync" : "Custom storage location & iCloud Drive sync", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Einstellungen mit linker Sidebar-Navigation" : "Settings window with sidebar navigation", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Hilfe-Fenster mit Seitenleiste" : "Help & documentation window with sidebar", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -1274,7 +1123,7 @@ struct HelpView: View {
             
         case .copyright:
             VStack(alignment: .leading, spacing: 12) {
-                Text("Copyright & Urheberrecht")
+                Text(isDe ? "Copyright & Urheberrecht" : "Copyright & License")
                     .font(.title)
                     .bold()
                 VStack(alignment: .leading, spacing: 8) {
@@ -1284,7 +1133,7 @@ struct HelpView: View {
                         .font(.title3)
                         .fontWeight(.semibold)
                         .foregroundStyle(.primary)
-                    Text("Alle Rechte vorbehalten.")
+                    Text(isDe ? "Alle Rechte vorbehalten." : "All rights reserved.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -1297,12 +1146,13 @@ struct HelpView: View {
     }
 
     private func sendSupportEmail() {
-        let recipient = "support@autoqso.app" // Hier Ziel-E-Mail eintragen
-        let subject = "AutoQSO Support Anfrage - v\(APP_VERSION)"
+        let isDe = langManager.isGerman
+        let recipient = "support@autoqso.app"
+        let subject = isDe ? "AutoQSO Support Anfrage - v\(APP_VERSION)" : "AutoQSO Support Request - v\(APP_VERSION)"
         
         // System & Hardware Details ermitteln
         let osVersion = ProcessInfo.processInfo.operatingSystemVersionString
-        let hostName = Host.current().localizedName ?? Host.current().name ?? "Unbekannter Mac"
+        let hostName = Host.current().localizedName ?? Host.current().name ?? (isDe ? "Unbekannter Mac" : "Unknown Mac")
         let processorCount = ProcessInfo.processInfo.processorCount
         let physicalMemoryGB = String(format: "%.1f GB", Double(ProcessInfo.processInfo.physicalMemory) / (1024 * 1024 * 1024))
         
@@ -1312,7 +1162,7 @@ struct HelpView: View {
         let architecture = "Intel (x86_64)"
         #endif
 
-        let bodyText = """
+        let bodyText = isDe ? """
         Hallo AutoQSO Support-Team,
 
         [Bitte beschreibe hier dein Anliegen oder Problem]
@@ -1327,6 +1177,22 @@ struct HelpView: View {
         Architektur:      \(architecture)
         CPU Kerne:        \(processorCount)
         Arbeitsspeicher:  \(physicalMemoryGB)
+        --------------------------------------------------
+        """ : """
+        Hello AutoQSO Support Team,
+
+        [Please describe your inquiry or issue here]
+
+
+        --------------------------------------------------
+        SYSTEM DIAGNOSTICS (Automatically Generated)
+        --------------------------------------------------
+        App Version:      AutoQSO v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))
+        macOS Version:    \(osVersion)
+        Device Name:      \(hostName)
+        Architecture:     \(architecture)
+        CPU Cores:        \(processorCount)
+        RAM:              \(physicalMemoryGB)
         --------------------------------------------------
         """
 

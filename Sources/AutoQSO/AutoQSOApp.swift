@@ -4,7 +4,10 @@ import SwiftUI
 struct AutoQSOApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var viewModel = DecodeViewModel()
+    @ObservedObject private var langManager = LanguageManager.shared
     @AppStorage("appColorScheme") private var appColorScheme = "system"
+    
+    private var isDe: Bool { langManager.isGerman }
     
     var preferredScheme: ColorScheme? {
         switch appColorScheme {
@@ -22,7 +25,7 @@ struct AutoQSOApp: App {
         .commands {
             // App-Menü: Über AutoQSO mit Copyright-Info
             CommandGroup(replacing: .appInfo) {
-                Button("Über AutoQSO") {
+                Button(isDe ? "Über AutoQSO" : "About AutoQSO") {
                     AppDelegate.showAboutPanel()
                 }
             }
@@ -34,13 +37,13 @@ struct AutoQSOApp: App {
             CommandGroup(replacing: .importExport) { }
             
             // Steuerung Menu
-            CommandMenu("Steuerung") {
-                Button(viewModel.isAutoModeEnabled ? "Auto-Senden deaktivieren" : "Auto-Senden aktivieren") {
+            CommandMenu(isDe ? "Steuerung" : "Control") {
+                Button(viewModel.isAutoModeEnabled ? (isDe ? "Auto-Senden deaktivieren" : "Disable Auto Transmit") : (isDe ? "Auto-Senden aktivieren" : "Enable Auto Transmit")) {
                     viewModel.isAutoModeEnabled.toggle()
                 }
                 .keyboardShortcut("t", modifiers: [.command, .shift])
                 
-                Button(viewModel.isFiltersEnabled ? "DX-Filter ausschalten" : "DX-Filter einschalten") {
+                Button(viewModel.isFiltersEnabled ? (isDe ? "DX-Filter ausschalten" : "Disable DX Filters") : (isDe ? "DX-Filter einschalten" : "Enable DX Filters")) {
                     viewModel.isFiltersEnabled.toggle()
                     viewModel.saveFilters()
                     viewModel.clearBlockedDecodes()
@@ -49,20 +52,20 @@ struct AutoQSOApp: App {
             }
             
             // Ansicht Menu
-            CommandMenu("Ansicht") {
-                Button("Kompaktmodus umschalten") {
+            CommandMenu(isDe ? "Ansicht" : "View") {
+                Button(isDe ? "Kompaktmodus umschalten" : "Toggle Compact Mode") {
                     NotificationCenter.default.post(name: NSNotification.Name("ToggleCompactMode"), object: nil)
                 }
                 .keyboardShortcut("k", modifiers: [.command, .option])
                 
                 Divider()
                 
-                Button("Verbindungs-Seitenleiste ein-/ausblenden") {
+                Button(isDe ? "Verbindungs-Seitenleiste ein-/ausblenden" : "Toggle Connection Sidebar") {
                     NotificationCenter.default.post(name: NSNotification.Name("ToggleLeftSidebar"), object: nil)
                 }
                 .keyboardShortcut("1", modifiers: [.command, .option])
                 
-                Button("Filter-Seitenleiste ein-/ausblenden") {
+                Button(isDe ? "Filter-Seitenleiste ein-/ausblenden" : "Toggle Filter Sidebar") {
                     NotificationCenter.default.post(name: NSNotification.Name("ToggleRightSidebar"), object: nil)
                 }
                 .keyboardShortcut("2", modifiers: [.command, .option])
@@ -71,27 +74,27 @@ struct AutoQSOApp: App {
             // Custom additions to Window menu list
             CommandGroup(after: .windowList) {
                 Divider()
-                Button("Einstellungen...") {
+                Button(isDe ? "Einstellungen..." : "Settings...") {
                     NotificationCenter.default.post(name: NSNotification.Name("OpenSettingsWindow"), object: nil)
                 }
                 .keyboardShortcut(",", modifiers: .command)
                 
-                Button("LoTW Logbuch") {
+                Button(isDe ? "LoTW Logbuch" : "LoTW Logbook") {
                     NotificationCenter.default.post(name: NSNotification.Name("OpenLogbookWindow"), object: nil)
                 }
                 .keyboardShortcut("l", modifiers: [.command, .shift])
                 
-                Button("Ausbreitungskarte") {
+                Button(isDe ? "Ausbreitungskarte" : "Propagation Map") {
                     NotificationCenter.default.post(name: NSNotification.Name("OpenPropagationMapWindow"), object: nil)
                 }
                 .keyboardShortcut("m", modifiers: [.command, .shift])
                 
-                Button("Neue Maidenhead-Grids Karte") {
+                Button(isDe ? "Neue Maidenhead-Grids Karte" : "New Maidenhead Grids Map") {
                     NotificationCenter.default.post(name: NSNotification.Name("OpenNewGridMapWindow"), object: nil)
                 }
                 .keyboardShortcut("g", modifiers: [.command, .shift])
                 
-                Button("Logs & Rohdaten") {
+                Button(isDe ? "Logs & Rohdaten" : "Logs & Raw Data") {
                     NotificationCenter.default.post(name: NSNotification.Name("OpenLogsRawWindow"), object: nil)
                 }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
@@ -99,41 +102,41 @@ struct AutoQSOApp: App {
             
             // Hilfe-Menü: Standard-Help-Eintrag mit eigenem Hilfe-Fenster verbinden
             CommandGroup(replacing: .help) {
-                Button("AutoQSO Hilfe") {
+                Button(isDe ? "AutoQSO Hilfe" : "AutoQSO Help") {
                     NotificationCenter.default.post(name: NSNotification.Name("OpenHelpWindow"), object: nil)
                 }
                 .keyboardShortcut("?", modifiers: .command)
             }
         }
         
-        Window("LoTW Logbuch", id: "logbook") {
+        Window(isDe ? "LoTW Logbuch" : "LoTW Logbook", id: "logbook") {
             LogbookView(viewModel: viewModel)
                 .preferredColorScheme(preferredScheme)
         }
         
-        Window("Hilfe & Info", id: "help") {
+        Window(isDe ? "Hilfe & Info" : "Help & Info", id: "help") {
             HelpView()
                 .preferredColorScheme(preferredScheme)
         }
         .windowResizability(.contentSize)
         
-        Window("Einstellungen", id: "settings") {
+        Window(isDe ? "Einstellungen" : "Settings", id: "settings") {
             SettingsView(viewModel: viewModel)
                 .preferredColorScheme(preferredScheme)
         }
         .windowResizability(.contentSize)
         
-        Window("Logs & Rohdaten", id: "logs_raw") {
+        Window(isDe ? "Logs & Rohdaten" : "Logs & Raw Data", id: "logs_raw") {
             LogsConsoleView(viewModel: viewModel)
                 .preferredColorScheme(preferredScheme)
         }
         
-        Window("Ausbreitungskarte", id: "propagation_map") {
+        Window(isDe ? "Ausbreitungskarte" : "Propagation Map", id: "propagation_map") {
             PropagationMapView(viewModel: viewModel)
                 .preferredColorScheme(preferredScheme)
         }
 
-        Window("Neue Maidenhead-Grids", id: "new_grid_map") {
+        Window(isDe ? "Neue Maidenhead-Grids" : "New Maidenhead Grids", id: "new_grid_map") {
             NewGridMapView(viewModel: viewModel)
                 .preferredColorScheme(preferredScheme)
         }

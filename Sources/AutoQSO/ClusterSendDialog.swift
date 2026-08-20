@@ -74,7 +74,7 @@ struct ClusterSendDialog: View {
             
             HStack {
                 Spacer()
-                Button("Schließen") {
+                Button(L("common.close")) {
                     dismiss()
                 }
                 .buttonStyle(.borderedProminent)
