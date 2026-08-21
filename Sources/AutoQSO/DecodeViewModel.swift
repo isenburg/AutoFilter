@@ -1192,7 +1192,7 @@ class DecodeViewModel: ObservableObject {
             
             self.totalReceived += 1
             
-            let accepted = self.shouldAccept(decode: decode, recordDuplicates: false)
+            let accepted = self.shouldAccept(decode: decode, recordDuplicates: true)
             if !self.isFiltersEnabled || accepted {
                 self.totalForwarded += 1
                 let resolvedCountry = self.matcher.country(for: call)
@@ -1220,10 +1220,6 @@ class DecodeViewModel: ObservableObject {
                 self.telnetServer.broadcast(spot: spot)
             }
             
-            self.totalReceived += 1
-            if accepted {
-                self.totalForwarded += 1
-            }
             self.updatePropagationClusters()
         }
     }
@@ -1639,20 +1635,20 @@ class DecodeViewModel: ObservableObject {
     }
 
     private let usSynonyms = Set(["usa", "united states", "us"])
-    private let usRegions = ["alaska", "hawaii", "puerto rico", "virgin islands", "guam"]
 
     private func countryMatches(_ country: String, in filters: [String]) -> Bool {
         let cleanCountry = country.trimmingCharacters(in: .whitespaces).lowercased()
         return filters.contains(where: { filter in
             let cleanFilter = filter.trimmingCharacters(in: .whitespaces).lowercased()
             if cleanFilter.isEmpty { return false }
+            if cleanCountry == cleanFilter { return true }
             if cleanCountry.contains(cleanFilter) || cleanFilter.contains(cleanCountry) { return true }
             if cleanFilter == "deutschland" && cleanCountry.contains("germany") { return true }
             if cleanFilter == "russia" || cleanFilter == "russland" {
                 if cleanCountry.contains("russia") { return true }
             }
             if usSynonyms.contains(cleanFilter) {
-                if cleanCountry.contains("united states") || usRegions.contains(where: { cleanCountry.contains($0) }) { return true }
+                if cleanCountry.contains("united states") { return true }
             }
             return false
         })
