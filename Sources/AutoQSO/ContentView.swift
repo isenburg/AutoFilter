@@ -617,7 +617,7 @@ struct ContentView: View {
                         }
                     )
                     .onPreferenceChange(LeftSidebarWidthPreferenceKey.self) { width in
-                        guard isLeftSidebarVisible else { return }
+                        guard !isTransitioningMode, isLeftSidebarVisible else { return }
                         if width >= 220 {
                             leftSidebarWidth = Double(width)
                         }
@@ -654,6 +654,7 @@ struct ContentView: View {
                                 }
                             )
                             .onPreferenceChange(ConsoleHeightPreferenceKey.self) { height in
+                                guard !isTransitioningMode else { return }
                                 if height >= 80 {
                                     logConsoleHeight = Double(height)
                                 }
@@ -867,11 +868,13 @@ struct ContentView: View {
                         }
                     )
                     .onPreferenceChange(MostWantedHeightPreferenceKey.self) { height in
+                        guard !isTransitioningMode else { return }
                         if height >= 80 {
                             mostWantedPanelHeight = Double(height)
                         }
                     }
                 }
+                .id("normal_vsplit_\(isCompactMode)_\(isTransitioningMode)")
             }
             .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
             .layoutPriority(1)
@@ -887,7 +890,7 @@ struct ContentView: View {
                         }
                     )
                     .onPreferenceChange(RightSidebarWidthPreferenceKey.self) { width in
-                        guard isSidebarVisible else { return }
+                        guard !isTransitioningMode, isSidebarVisible else { return }
                         if width >= 250 {
                             rightSidebarWidth = Double(width)
                         }
@@ -895,6 +898,7 @@ struct ContentView: View {
                     .layoutPriority(0)
             }
         }
+        .id("normal_hsplit_\(isCompactMode)_\(isTransitioningMode)")
         .background(Color(NSColor.windowBackgroundColor))
         
         Divider()
@@ -954,11 +958,13 @@ struct ContentView: View {
                     }
                 )
                 .onPreferenceChange(CompactMostWantedHeightPreferenceKey.self) { height in
+                    guard !isTransitioningMode else { return }
                     if height >= 50 {
                         compactMostWantedHeight = Double(height)
                     }
                 }
         }
+        .id("compact_vsplit_\(isCompactMode)_\(isTransitioningMode)")
     }
 
     @ViewBuilder

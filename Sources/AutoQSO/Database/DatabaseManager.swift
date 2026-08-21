@@ -9,6 +9,10 @@ class DatabaseManager {
     
     private(set) var currentDbPath: String = ""
     
+    private var userDefaultsObserver: NSObjectProtocol?
+    private var isSyncingFromDB = false
+    private var debounceWorkItem: DispatchWorkItem?
+    
     static func getStorageDirectory() -> URL {
         let mode = UserDefaults.standard.string(forKey: "storageLocationMode") ?? "default"
         
@@ -38,9 +42,20 @@ class DatabaseManager {
         createTables()
         migrateJSONIfNeeded()
         cleanupExistingDuplicates()
+        
+        // Initialer Abgleich zwischen SQLite Datenbank und UserDefaults
+        let existingSettings = getAllSettings()
+        if !existingSettings.isEmpty {
+            syncDatabaseToUserDefaults()
+        } else {
+            syncUserDefaultsToDatabase()
+        }
+        
+        startObservingUserDefaults()
     }
     
     deinit {
+        stopObservingUserDefaults()
         if db != nil {
             sqlite3_close(db)
         }
@@ -62,6 +77,8 @@ class DatabaseManager {
         
         guard newPath != currentDbPath else { return }
         
+        stopObservingUserDefaults()
+        
         let oldPath = currentDbPath
         dbQueue.sync {
             if db != nil {
@@ -82,6 +99,15 @@ class DatabaseManager {
             }
         }
         createTables()
+        
+        let existingSettings = getAllSettings()
+        if !existingSettings.isEmpty {
+            syncDatabaseToUserDefaults()
+        } else {
+            syncUserDefaultsToDatabase()
+        }
+        
+        startObservingUserDefaults()
     }
     
     private func createTables() {
@@ -99,12 +125,19 @@ class DatabaseManager {
         );
         CREATE INDEX IF NOT EXISTS idx_call_band ON qsos(callsign, band);
         CREATE INDEX IF NOT EXISTS idx_unique_key ON qsos(unique_key);
+        
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(key);
         """
         
         var errMsg: UnsafeMutablePointer<CChar>?
         if sqlite3_exec(db, createTableSQL, nil, nil, &errMsg) != SQLITE_OK {
             if let error = errMsg {
-                print("Fehler beim Erstellen der Tabelle: \(String(cString: error))")
+                print("Fehler beim Erstellen der Tabellen: \(String(cString: error))")
                 sqlite3_free(errMsg)
             }
         }
@@ -515,4 +548,288 @@ class DatabaseManager {
         }
         return count
     }
+    
+    // MARK: - Einstellungen & Konfiguration (Settings in SQLite)
+    
+    /// Prüft, ob ein UserDefaults-Schlüssel zu den anwendungsrelevanten Einstellungen von AutoQSO gehört
+    static func isAppSettingKey(_ key: String) -> Bool {
+        if key.hasPrefix("NS") ||
+           key.hasPrefix("Apple") ||
+           key.hasPrefix("AK") ||
+           key.hasPrefix("com.apple") ||
+           key.hasPrefix("WebKit") ||
+           key.hasPrefix("PK") ||
+           key.hasPrefix("Metal") ||
+           key.hasPrefix("CA_") ||
+           key.hasPrefix("NSToolbar") {
+            return false
+        }
+        return true
+    }
+    
+    /// Kodiert beliebige Einstellungswerte in ein typsicheres JSON-Objekt für die SQLite-Datenbank
+    static func encodeSettingValue(_ value: Any) -> String? {
+        var dict: [String: Any] = [:]
+        
+        if let data = value as? Data {
+            dict = ["type": "data", "val": data.base64EncodedString()]
+        } else if let date = value as? Date {
+            dict = ["type": "date", "val": ISO8601DateFormatter().string(from: date)]
+        } else if let str = value as? String {
+            dict = ["type": "string", "val": str]
+        } else if let num = value as? NSNumber {
+            if CFGetTypeID(num) == CFBooleanGetTypeID() {
+                dict = ["type": "bool", "val": num.boolValue]
+            } else if CFNumberIsFloatType(num as CFNumber) {
+                dict = ["type": "double", "val": num.doubleValue]
+            } else {
+                dict = ["type": "int", "val": num.intValue]
+            }
+        } else if let arr = value as? [String] {
+            dict = ["type": "stringArray", "val": arr]
+        } else if let arr = value as? [Int] {
+            dict = ["type": "intArray", "val": arr]
+        } else if let arr = value as? [Double] {
+            dict = ["type": "json", "val": arr]
+        } else if let d = value as? [String: Any], JSONSerialization.isValidJSONObject(d) {
+            dict = ["type": "json", "val": d]
+        } else if let a = value as? [Any], JSONSerialization.isValidJSONObject(a) {
+            dict = ["type": "json", "val": a]
+        } else {
+            return nil
+        }
+        
+        if let jsonData = try? JSONSerialization.data(withJSONObject: dict, options: []),
+           let jsonStr = String(data: jsonData, encoding: .utf8) {
+            return jsonStr
+        }
+        return nil
+    }
+    
+    /// Liest eine einzelne Einstellung aus der SQLite-Datenbank
+    func getSetting(key: String) -> String? {
+        var result: String?
+        dbQueue.sync {
+            let querySQL = "SELECT value FROM settings WHERE key = ? LIMIT 1;"
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(db, querySQL, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, (key as NSString).utf8String, -1, nil)
+                if sqlite3_step(statement) == SQLITE_ROW {
+                    result = String(cString: sqlite3_column_text(statement, 0))
+                }
+                sqlite3_finalize(statement)
+            }
+        }
+        return result
+    }
+    
+    /// Liest alle gespeicherten Einstellungen aus der SQLite-Datenbank
+    func getAllSettings() -> [String: String] {
+        var results = [String: String]()
+        dbQueue.sync {
+            let querySQL = "SELECT key, value FROM settings;"
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(db, querySQL, -1, &statement, nil) == SQLITE_OK {
+                while sqlite3_step(statement) == SQLITE_ROW {
+                    let k = String(cString: sqlite3_column_text(statement, 0))
+                    let v = String(cString: sqlite3_column_text(statement, 1))
+                    results[k] = v
+                }
+                sqlite3_finalize(statement)
+            }
+        }
+        return results
+    }
+    
+    /// Gibt alle in der SQLite-Datenbank vorhandenen Einstellungsschlüssel zurück
+    func getAllSettingKeys() -> [String] {
+        var keys = [String]()
+        dbQueue.sync {
+            let querySQL = "SELECT key FROM settings;"
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(db, querySQL, -1, &statement, nil) == SQLITE_OK {
+                while sqlite3_step(statement) == SQLITE_ROW {
+                    let k = String(cString: sqlite3_column_text(statement, 0))
+                    keys.append(k)
+                }
+                sqlite3_finalize(statement)
+            }
+        }
+        return keys
+    }
+    
+    /// Speichert oder aktualisiert eine Einstellung in der SQLite-Datenbank
+    func setSetting(key: String, value: Any) {
+        guard let encoded = DatabaseManager.encodeSettingValue(value) else { return }
+        let now = ISO8601DateFormatter().string(from: Date())
+        dbQueue.sync {
+            let insertSQL = """
+            INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;
+            """
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(db, insertSQL, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, (key as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(statement, 2, (encoded as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(statement, 3, (now as NSString).utf8String, -1, nil)
+                sqlite3_step(statement)
+                sqlite3_finalize(statement)
+            }
+        }
+    }
+    
+    /// Löscht eine Einstellung aus der SQLite-Datenbank
+    func deleteSetting(key: String) {
+        dbQueue.sync {
+            let deleteSQL = "DELETE FROM settings WHERE key = ?;"
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(db, deleteSQL, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, (key as NSString).utf8String, -1, nil)
+                sqlite3_step(statement)
+                sqlite3_finalize(statement)
+            }
+        }
+    }
+    
+    /// Lädt alle in der SQLite-Datenbank gespeicherten Einstellungen in UserDefaults.standard
+    func syncDatabaseToUserDefaults() {
+        isSyncingFromDB = true
+        defer { isSyncingFromDB = false }
+        
+        let all = getAllSettings()
+        guard !all.isEmpty else { return }
+        
+        let defaults = UserDefaults.standard
+        for (key, jsonString) in all {
+            guard let data = jsonString.data(using: .utf8),
+                  let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let type = dict["type"] as? String,
+                  let val = dict["val"] else {
+                continue
+            }
+            
+            switch type {
+            case "bool":
+                if let b = val as? Bool { defaults.set(b, forKey: key) }
+            case "int":
+                if let n = val as? NSNumber { defaults.set(n.intValue, forKey: key) }
+            case "double":
+                if let n = val as? NSNumber { defaults.set(n.doubleValue, forKey: key) }
+            case "string":
+                if let s = val as? String { defaults.set(s, forKey: key) }
+            case "stringArray":
+                if let arr = val as? [String] { defaults.set(arr, forKey: key) }
+            case "intArray":
+                if let arr = val as? [Int] { defaults.set(arr, forKey: key) }
+            case "data":
+                if let b64 = val as? String, let d = Data(base64Encoded: b64) {
+                    defaults.set(d, forKey: key)
+                }
+            case "date":
+                if let iso = val as? String, let d = ISO8601DateFormatter().date(from: iso) {
+                    defaults.set(d, forKey: key)
+                }
+            case "json":
+                defaults.set(val, forKey: key)
+            default:
+                defaults.set(val, forKey: key)
+            }
+        }
+        
+        DispatchQueue.main.async {
+            LanguageManager.shared.reloadLanguageFromDefaults()
+        }
+    }
+    
+    /// Schreibt alle anwendungsrelevanten Einstellungen aus UserDefaults.standard in die SQLite-Datenbank
+    func syncUserDefaultsToDatabase() {
+        guard !isSyncingFromDB else { return }
+        let defaults = UserDefaults.standard
+        let currentDefaults = defaults.dictionaryRepresentation()
+        let now = ISO8601DateFormatter().string(from: Date())
+        
+        var toSave: [(key: String, value: String)] = []
+        for (key, value) in currentDefaults {
+            guard DatabaseManager.isAppSettingKey(key) else { continue }
+            if let encoded = DatabaseManager.encodeSettingValue(value) {
+                toSave.append((key: key, value: encoded))
+            }
+        }
+        
+        let dbKeys = getAllSettingKeys()
+        var toDelete: [String] = []
+        for dbKey in dbKeys {
+            if DatabaseManager.isAppSettingKey(dbKey) && currentDefaults[dbKey] == nil {
+                toDelete.append(dbKey)
+            }
+        }
+        
+        guard !toSave.isEmpty || !toDelete.isEmpty else { return }
+        
+        dbQueue.sync {
+            sqlite3_exec(db, "BEGIN TRANSACTION;", nil, nil, nil)
+            
+            if !toSave.isEmpty {
+                let sql = """
+                INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;
+                """
+                var stmt: OpaquePointer?
+                if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+                    for item in toSave {
+                        sqlite3_bind_text(stmt, 1, (item.key as NSString).utf8String, -1, nil)
+                        sqlite3_bind_text(stmt, 2, (item.value as NSString).utf8String, -1, nil)
+                        sqlite3_bind_text(stmt, 3, (now as NSString).utf8String, -1, nil)
+                        sqlite3_step(stmt)
+                        sqlite3_reset(stmt)
+                    }
+                    sqlite3_finalize(stmt)
+                }
+            }
+            
+            if !toDelete.isEmpty {
+                let deleteSql = "DELETE FROM settings WHERE key = ?;"
+                var delStmt: OpaquePointer?
+                if sqlite3_prepare_v2(db, deleteSql, -1, &delStmt, nil) == SQLITE_OK {
+                    for delKey in toDelete {
+                        sqlite3_bind_text(delStmt, 1, (delKey as NSString).utf8String, -1, nil)
+                        sqlite3_step(delStmt)
+                        sqlite3_reset(delStmt)
+                    }
+                    sqlite3_finalize(delStmt)
+                }
+            }
+            
+            sqlite3_exec(db, "COMMIT;", nil, nil, nil)
+        }
+    }
+    
+    private func startObservingUserDefaults() {
+        stopObservingUserDefaults()
+        userDefaultsObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: UserDefaults.standard,
+            queue: nil
+        ) { [weak self] _ in
+            guard let self = self, !self.isSyncingFromDB else { return }
+            self.debounceSyncToDatabase()
+        }
+    }
+    
+    private func stopObservingUserDefaults() {
+        if let observer = userDefaultsObserver {
+            NotificationCenter.default.removeObserver(observer)
+            userDefaultsObserver = nil
+        }
+    }
+    
+    private func debounceSyncToDatabase() {
+        debounceWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.syncUserDefaultsToDatabase()
+        }
+        debounceWorkItem = workItem
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.15, execute: workItem)
+    }
 }
+

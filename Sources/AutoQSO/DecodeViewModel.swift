@@ -343,15 +343,7 @@ class DecodeViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     init() {
-        if let data = UserDefaults.standard.data(forKey: "availableClusters"),
-           let list = try? JSONDecoder().decode([ClusterServer].self, from: data) {
-            self.availableClusters = list
-        } else {
-            self.availableClusters = ClusterServer.defaultClusters
-            if let data = try? JSONEncoder().encode(ClusterServer.defaultClusters) {
-                UserDefaults.standard.set(data, forKey: "availableClusters")
-            }
-        }
+        loadAvailableClusters()
         
         // Load filter settings from UserDefaults
         loadFilters()
@@ -1286,6 +1278,26 @@ class DecodeViewModel: ObservableObject {
                 self.addLog("CTY.DAT erfolgreich im Hintergrund aktualisiert.")
             }
         }.resume()
+    }
+    
+    func loadAvailableClusters() {
+        if let data = UserDefaults.standard.data(forKey: "availableClusters"),
+           let list = try? JSONDecoder().decode([ClusterServer].self, from: data) {
+            self.availableClusters = list
+        } else {
+            self.availableClusters = ClusterServer.defaultClusters
+            if let data = try? JSONEncoder().encode(ClusterServer.defaultClusters) {
+                UserDefaults.standard.set(data, forKey: "availableClusters")
+            }
+        }
+    }
+    
+    /// Lädt alle Einstellungen und Zustände neu aus den synchronisierten Speichern
+    func reloadAllSettingsFromStorage() {
+        loadAvailableClusters()
+        loadFilters()
+        reconnectClusters()
+        lotwManager.loadLog()
     }
 
     func loadFilters() {

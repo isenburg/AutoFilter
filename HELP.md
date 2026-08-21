@@ -115,9 +115,12 @@ AutoQSO enthält einen eigenen Telnet-Cluster-Server, an den sich externe Log- o
 
 ---
 
-## 7. Logbuch-Sync & ADIF-Import
+## 7. Logbuch-Sync, SQLite-Datenbank & Einstellungen
 
-Sämtliche Logbuch-Optionen wurden im Einstellungsreiter **Logbuch-Sync** konsolidiert:
+AutoQSO speichert nicht nur alle QSOs, sondern auch **sämtliche Konfigurationen, Filter-Regeln und Einstellungen direkt in der SQLite-Datenbank (`autoqso_log.sqlite`)**:
+- **Persistent in SQLite**: Alle Filter-Reihenfolgen, Whitelists/Blacklists, UDP/Telnet/Cluster-Parameter, Farbanpassungen und UI-Zustände werden in einer dedizierten `settings`-Tabelle gespeichert.
+- **Echtzeit-Synchronisation**: Änderungen über `@AppStorage` oder die Einstellungen werden in Echtzeit in die SQLite-Datenbank gespiegelt.
+- **iCloud & Multi-Geräte Sync**: Beim Umschalten auf iCloud Drive (`iCloud Drive/AutoQSO`) oder einen benutzerdefinierten Ordner werden alle Einstellungen nahtlos aus der Datenbank geladen und auf jedem Mac übernommen.
 - **RUMlogNG (macOS App)**: 1-Klick-Synchronisation über die native macOS AppleScript-Schnittstelle von RUMlogNG (`ReadAdif`).
 - **LoTW & QRZ.com**: Eingabe der Zugangsdaten und Abgleich (Vollständig ab 1900 oder inkrementell).
 - **ADIF-Datei importieren**: Du kannst deine QSOs aus Drittprogrammen über eine ADIF-Datei (`.adi` oder `.adif`) importieren. AutoQSO liest die Datei ein, filtert Duplikate heraus und fügt neue QSOs in die lokale SQLite-Datenbank ein.
@@ -165,6 +168,7 @@ Zur Diagnose und Rohdaten-Überwachung verfügt die App über drei umschaltbare 
 - Blendet Log-Konsolen und Seitenleisten aus.
 - Kompakte Steuerleiste oben mit schnellem Zugriff auf Auto ON/OFF, Filter AN/AUS, Karte ↗ und Status-Indikatoren.
 - Platzsparender Most-Wanted-Ticker am unteren Fensterrand.
+- **Präzise Layout-Wiederherstellung**: Beim Verlassen des Kompaktmodus werden alle Trennlinien-Positionen (`VSplitView`-Höhen für Log-Konsole und Most-Wanted-Panel) sowie Seitenleistenbreiten exakt wiederhergestellt.
 
 ---
 

@@ -727,7 +727,7 @@ struct HelpView: View {
                     bullet(isDe ? "**Reduzierte Tabelle**: Zeigt eine fokussierte Tabelle mit Zeit, DX Call, Land, SNR und Nachricht." : "**Streamlined Table**: Focused columns for Time, Callsign, Country, SNR, and Message.")
                     bullet(isDe ? "**Ticker für Most Wanted**: Unten scrollt eine Zeile mit ungearbeiteten seltenen Stationen durch. Durch Doppelklick/Anklicken kannst du diese anrufen bzw. im Banner fokussieren." : "**Most Wanted Ticker**: Ticker strip at the bottom highlighting rare unworked entities.")
                     bullet(isDe ? "**Minimalmaße**: Das Hauptfenster lässt sich bis auf 480x320 Pixel herunterskalieren, um perfekt in einer Bildschirmecke Platz zu finden." : "**Ultra-Small Footprint**: Scales down to 480x320 pixels for seamless corner placement.")
-                    bullet(isDe ? "**Zurückwechseln**: Über das Pfeilsymbol ganz rechts in der kompakten Leiste gelangst du wieder in die Normalansicht." : "**Expand Back**: The expand button restores standard window layout instantly.")
+                    bullet(isDe ? "**Zurückwechseln & Layout-Wiederherstellung**: Über das Pfeilsymbol ganz rechts in der kompakten Leiste gelangst du wieder in die Normalansicht. Sämtliche Trennlinien (Log-Konsole, Most-Wanted-Panel) und Seitenleistenbreiten werden exakt wiederhergestellt." : "**Expand Back & Layout Restoration**: The expand button restores standard window layout instantly. All inner split dividers (Log Console, Most Wanted Panel) and sidebar widths are preserved and restored cleanly.")
                 }
             }
             
@@ -767,23 +767,26 @@ struct HelpView: View {
             
         case .storage:
             VStack(alignment: .leading, spacing: 12) {
-                Text(isDe ? "Speicherort & iCloud Synchronisation" : "Storage & iCloud Sync")
+                Text(isDe ? "Speicherort, SQLite-Datenbank & iCloud Sync" : "Storage, SQLite Database & iCloud Sync")
                     .font(.title2)
                     .bold()
                 
-                Text(isDe ? "Konfiguration im Einstellungen-Dialog (Seitenleiste -> Speicherort & iCloud):" : "Configuration in Settings (Sidebar -> Storage & iCloud):")
+                Text(isDe ? "AutoQSO speichert alle QSOs, Konfigurationen und Einstellungen in einer einheitlichen SQLite-Datenbank (`autoqso_log.sqlite`)." : "AutoQSO stores all QSOs, configurations, and settings in a single unified SQLite database (`autoqso_log.sqlite`).")
                     .font(.body)
+                
+                Text(isDe ? "Konfiguration im Einstellungen-Dialog (Seitenleiste -> Speicherort & iCloud):" : "Configuration in Settings (Sidebar -> Storage & iCloud):")
+                    .font(.headline)
                 
                 VStack(alignment: .leading, spacing: 8) {
                     bullet(isDe ? "**Standard-Ordner**: Speichert die Datenbank unter `~/Documents/AutoQSO`." : "**Default Folder**: Stores the SQLite database in `~/Documents/AutoQSO`.")
                     bullet(isDe ? "**Benutzerdefinierter Ordner**: Freie Wahl eines lokalen Ordners via macOS Dialog." : "**Custom Folder**: Select any local directory via native macOS folder picker.")
-                    bullet(isDe ? "**iCloud Drive**: Speichert in `iCloud Drive/AutoQSO` zur automatischen Synchronisation zwischen mehreren Macs." : "**iCloud Drive**: Stores in `iCloud Drive/AutoQSO` for automatic synchronization across your Macs.")
+                    bullet(isDe ? "**iCloud Drive**: Speichert in `iCloud Drive/AutoQSO` zur automatischen Synchronisation von QSOs, Filtern und Einstellungen zwischen mehreren Macs." : "**iCloud Drive**: Stores in `iCloud Drive/AutoQSO` for automatic synchronization of QSOs, filters, and settings across your Macs.")
                 }
                 .padding()
                 .background(Color.blue.opacity(0.08))
                 .cornerRadius(8)
                 
-                Text(isDe ? "Hinweis: Beim Wechsel des Speicherorts wird die bestehende SQLite-Datenbank automatisch an den neuen Zielort kopiert." : "Note: Switching storage locations automatically copies the existing database to the new target.")
+                Text(isDe ? "Hinweis: Sämtliche Einstellungen werden in Echtzeit mit der Datenbank synchronisiert. Beim Wechsel des Speicherorts wird die bestehende Datenbank automatisch an den neuen Zielort kopiert und alle Konfigurationen sofort übernommen." : "Note: All settings are synchronized with the database in real time. Switching storage locations automatically copies the existing database and applies all configurations immediately.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -895,10 +898,10 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                // Version 4.1.0
+                // Version 4.1.1
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 4.1.0")
+                        Text("Version 4.1.1")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -916,6 +919,33 @@ struct HelpView: View {
                         Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
+                        bullet(isDe ? "Konfiguration & Einstellungen in SQLite-Datenbank: Sämtliche App-Einstellungen, Filter-Regeln, UDP/Telnet/Cluster-Konfigurationen, Farbschemata und UI-Optionen werden nun persistent in der SQLite-Datenbank (`autoqso_log.sqlite`) gespeichert und in Echtzeit synchronisiert." : "Configuration & Settings in SQLite Database: All application settings, filter rules, UDP/Telnet/Cluster configurations, color themes, and UI options are now persistently stored in the SQLite database (`autoqso_log.sqlite`) with real-time synchronization.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Nahtlose iCloud & Multi-Geräte Synchronisation: Beim Wechsel des Speicherorts oder Synchronisieren via iCloud Drive werden alle Konfigurationen automatisch aus der Datenbank geladen und übernommen." : "Seamless iCloud & Multi-Device Sync: When changing the storage location or syncing via iCloud Drive, all configurations are automatically loaded and applied from the database.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Präzise Trennlinien-Wiederherstellung (Kompaktmodus): Beim Verlassen des Kompaktmodus werden alle Trennlinien (Log-Konsole, Most-Wanted-Panel) und Seitenleistenbreiten exakt auf die zuvor eingestellten Maße zurückgesetzt." : "Precise Split Divider Restoration (Compact Mode): Exiting compact mode cleanly restores all inner window dividers (Log Console, Most Wanted Panel) and sidebar widths to their saved dimensions.", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+                
+                Divider()
+
+                // Version 4.1.0
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 4.1.0")
+                            .font(.headline)
+                            .bold()
+                        Text("(Build 478)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
+                            .font(.subheadline)
+                            .bold()
                         bullet(isDe ? "VIP: Erlaubte Maidenhead-Grids Filter: Neuer Filter für Einzel-Grids (`DN71`), Bounding-Box Bereiche (`DN61-DN74`, `KN64-KN71`) und Listen (`DN61-DN74, EN10`) mit sofortigem VIP-Pass bei Treffer und neutraler Weiterleitung an nachfolgende Filter bei Nicht-Treffer." : "VIP: Allowed Maidenhead Grids Filter: Dedicated filter for single grids (`DN71`), bounding-box ranges (`DN61-DN74`, `KN64-KN71`), and lists (`DN61-DN74, EN10`) with instant VIP pass on match and clean passthrough to next filters on non-match.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Sortierbare Filter-Pipeline & First-Match Boolean-Logik: Alle 12 Filter-Sektionen der rechten Seitenleiste sind per Drag & Drop (`☰`) in beliebiger Reihenfolge anordenbar. Die Auswertung erfolgt sequentiell von oben nach unten (First-Match)." : "Sortable Filter Pipeline & First-Match Boolean Logic: All 12 filter sections in the right sidebar can be freely reordered via drag & drop (`☰`). Evaluation proceeds sequentially from top to bottom (First-Match).", font: .subheadline, color: .secondary)
                         bullet(isDe ? "VIP-First Standard-Reihenfolge & Umschalt-Presets (Default vs. Custom): Das Default-Preset platziert VIP-Ausnahmen (Grids, Rufzeichen, Länder) an Position 1–3 über Makro-Ländersperren, sodass Ausnahmen sofort greifen. Umschalter wechselt nahtlos zwischen Default und Custom." : "VIP-First Standard Order & Presets (Default vs. Custom): The Default preset places VIP exceptions (Grids, Calls, Countries) on positions 1–3 above general country blocks for instant exception overrides. Presets toggle seamlessly.", font: .subheadline, color: .secondary)
@@ -927,7 +957,7 @@ struct HelpView: View {
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.green.opacity(0.08))
+                .background(Color.gray.opacity(0.06))
                 .cornerRadius(8)
                 
                 Divider()

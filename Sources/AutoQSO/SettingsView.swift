@@ -874,7 +874,7 @@ struct SettingsView: View {
                     .pickerStyle(.radioGroup)
                     .onChange(of: storageLocationMode) { _, _ in
                         DatabaseManager.shared.switchStorageLocation()
-                        viewModel.lotwManager.loadLog()
+                        viewModel.reloadAllSettingsFromStorage()
                     }
                 }
                 
@@ -1220,7 +1220,7 @@ struct SettingsView: View {
             customStoragePath = url.path
             storageLocationMode = "custom"
             DatabaseManager.shared.switchStorageLocation()
-            viewModel.lotwManager.loadLog()
+            viewModel.reloadAllSettingsFromStorage()
         }
     }
     

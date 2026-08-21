@@ -38,6 +38,15 @@ public class LanguageManager: ObservableObject {
         self.selectedLanguage = AppLanguage(rawValue: saved) ?? .system
     }
     
+    /// Lädt die Spracheinstellung bei Datenbank-Aktualisierungen neu aus UserDefaults
+    public func reloadLanguageFromDefaults() {
+        let saved = UserDefaults.standard.string(forKey: userDefaultsKey) ?? AppLanguage.system.rawValue
+        let newLang = AppLanguage(rawValue: saved) ?? .system
+        if selectedLanguage != newLang {
+            selectedLanguage = newLang
+        }
+    }
+    
     /// Gibt die effektiv aktive Sprache (de oder en) zurück
     public var effectiveLanguage: AppLanguage {
         switch selectedLanguage {
