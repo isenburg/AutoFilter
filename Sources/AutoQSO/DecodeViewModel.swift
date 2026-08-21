@@ -1672,18 +1672,24 @@ class DecodeViewModel: ObservableObject {
     }
 
     private func isSpotterBlocked(_ spotter: String) -> Bool {
+        let cleanSpotter = spotter.components(separatedBy: "-")[0].trimmingCharacters(in: .whitespaces).uppercased()
+        
+        // Explizit erlaubte Spotter-Rufzeichen erhalten sofortigen VIP-Pass
+        if !allowedSpotterCallsigns.isEmpty && callsignMatches(cleanSpotter, in: allowedSpotterCallsigns) {
+            return false
+        }
+        
+        // Falls Spotter-Länder-Whitelist aktiv ist
         if !allowedSpotterCountries.isEmpty {
-            let spotterCountry = matcher.country(for: spotter)
+            let spotterCountry = matcher.country(for: cleanSpotter)
             if !countryMatches(spotterCountry, in: allowedSpotterCountries) {
                 return true
             }
+        } else if !allowedSpotterCallsigns.isEmpty {
+            // Nur Rufzeichen-Whitelist aktiv und Spotter nicht drin
+            return true
         }
-        if !allowedSpotterCallsigns.isEmpty {
-            let cleanSpotter = spotter.components(separatedBy: "-")[0].trimmingCharacters(in: .whitespaces).uppercased()
-            if !callsignMatches(cleanSpotter, in: allowedSpotterCallsigns) {
-                return true
-            }
-        }
+        
         return false
     }
 
@@ -1913,52 +1919,6 @@ class DecodeViewModel: ObservableObject {
         }
     }
     
-    // Conflict checking
-    struct FilterConflict {
-        let callsign: String
-        let callsignCountry: String
-        let allowedCountriesText: String
-        let isTotalConflict: Bool
-    }
-
-    var spotterFilterConflict: FilterConflict? {
-        guard !allowedSpotterCountries.isEmpty, !allowedSpotterCallsigns.isEmpty else { return nil }
-        var conflictingCallsigns: [(callsign: String, country: String)] = []
-        var matchingCount = 0
-        for callsign in allowedSpotterCallsigns {
-            let cleanCall = callsign.components(separatedBy: "-")[0].trimmingCharacters(in: .whitespaces).uppercased()
-            let country = matcher.country(for: cleanCall)
-            if countryMatches(country, in: allowedSpotterCountries) {
-                matchingCount += 1
-            } else {
-                conflictingCallsigns.append((callsign: callsign, country: country))
-            }
-        }
-        guard let firstConflict = conflictingCallsigns.first else { return nil }
-        let countriesStr = allowedSpotterCountries.joined(separator: ", ")
-        let isTotal = (matchingCount == 0)
-        return FilterConflict(callsign: firstConflict.callsign, callsignCountry: firstConflict.country, allowedCountriesText: countriesStr, isTotalConflict: isTotal)
-    }
-
-    var dxCallFilterConflict: FilterConflict? {
-        guard !allowedCountries.isEmpty, !allowedDXCallsigns.isEmpty else { return nil }
-        var conflictingCallsigns: [(callsign: String, country: String)] = []
-        var matchingCount = 0
-        for callsign in allowedDXCallsigns {
-            let cleanCall = callsign.components(separatedBy: "-")[0].trimmingCharacters(in: .whitespaces).uppercased()
-            let country = matcher.country(for: cleanCall)
-            if countryMatches(country, in: allowedCountries) {
-                matchingCount += 1
-            } else {
-                conflictingCallsigns.append((callsign: callsign, country: country))
-            }
-        }
-        guard let firstConflict = conflictingCallsigns.first else { return nil }
-        let countriesStr = allowedCountries.joined(separator: ", ")
-        let isTotal = (matchingCount == 0)
-        return FilterConflict(callsign: firstConflict.callsign, callsignCountry: firstConflict.country, allowedCountriesText: countriesStr, isTotalConflict: isTotal)
-    }
-
     func updatePropagationClusters() {
         scheduleRecalculations()
     }

@@ -88,12 +88,14 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 
 ## 📝 Changelog
 
-### Version 4.1.0 (Build 470)
-- **Allowed Maidenhead Grids (Whitelist) Filter**: New dedicated filter section supporting single grids (`DN71`), bounding-box ranges (`DN61-DN74`, `KN64-KN71`), and comma-separated lists (`DN61-DN74, EN10`) with instant First-Match VIP exception pass.
-- **Sortable Filter Pipeline & First-Match Boolean Evaluation**: All 12 filter sections in the right sidebar are fully reorderable via drag & drop (`☰`). Evaluation follows a sequential **First-Match rule from top to bottom**:
-  - **Whitelists as VIP/Exception Overrides (`return true`)**: Placing *Allowed Maidenhead Grids*, *Allowed DX Callsigns*, or *Allowed Countries* higher than *Blocked Countries* allows specific regional exceptions (e.g. general USA blacklist on position 2, but Wyoming grids `DN61-DN74` on position 1 -> Wyoming stations pass immediately without checking the USA blacklist).
-  - **Blacklists (`return false`)**: Any match in blocked countries, disabled continents, blocked zones, worked before, or duplicate filters immediately drops the station.
-- **Filter Order Presets (Default vs. Custom)**: Dedicated footer buttons in the sidebar switch instantly between the standard geographic order (Continents → Countries → Zones → Callsigns → Grids → Filters) and a persistent user custom reordering.
+### Version 4.1.0 (Build 473)
+- **VIP: Allowed Maidenhead Grids Filter**: New dedicated filter section supporting single grids (`DN71`), bounding-box ranges (`DN61-DN74`, `KN64-KN71`), and comma-separated lists (`DN61-DN74, EN10`) with instant First-Match VIP exception pass.
+- **Sortable Filter Pipeline & First-Match Boolean Evaluation**: All 12 filter sections in the right sidebar are fully reorderable via smooth drag & drop (`☰`). Evaluation follows a sequential **First-Match rule from top to bottom**:
+  - **VIP Whitelists (Instant Pass & Passthrough)**: Matching signals in *VIP: Allowed Maidenhead Grids*, *VIP: Allowed DX Callsigns*, or *VIP: Allowed DX Countries* receive an instant VIP pass (`PASS / return true`), bypassing subsequent blacklists. Non-matches cleanly fall through to lower filter sections.
+  - **Blacklists (Instant Drop)**: Any match in blocked countries, disabled continents, blocked zones, worked before, or duplicate filters immediately drops the station (`DROP / return false`).
+- **VIP-First Standard Default Order & Presets (Default vs. Custom)**: Default pipeline order places VIP exceptions on positions 1–3 directly above general country blocks for instant exception overrides. Presets toggle seamlessly between Default and Custom.
+- **Debounced Cycle Evaluation & Diagnostic Throttling**: Auto-QSO candidate search is debounced by 350 ms to process whole decode bursts at cycle end once, with throttled summary diagnostics.
+- **Removed Obsolete Conflict Warnings**: Cleaned up legacy conflict checks in favor of deterministic multi-tier First-Match VIP exception evaluation.
 - **Real-Time Filter Tracing in System Logs**: Toggleable `Filter-Tracing` checkbox in the *System Logs* console displays real-time evaluation paths with color codes (✅ Green = PASS, ❌ Red = DROP), matching rule name, and pipeline position number.
 - **Automatic QSO Abort without Cooldown (HaltTx)**: If an active target station answers a third party, AutoQSO immediately sends a `HaltTx` command to WSJT-X, cancels transmission without cooldown quarantine, and prepares for the next trigger.
 

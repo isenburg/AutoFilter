@@ -1565,16 +1565,6 @@ struct ContentView: View {
                 Divider()
             }
 
-            if rightSidebarTab == 0, let conflict = viewModel.dxCallFilterConflict {
-                conflictBanner(conflict)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-            } else if rightSidebarTab == 1, let conflict = viewModel.spotterFilterConflict {
-                conflictBanner(conflict)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-            }
-
             List {
                 if rightSidebarTab == 0 {
                     countryFilterContent
@@ -1634,36 +1624,6 @@ struct ContentView: View {
         }
     }
 
-    @ViewBuilder
-    private func conflictBanner(_ conflict: DecodeViewModel.FilterConflict) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 4) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundColor(.orange)
-                Text(conflict.isTotalConflict ? "Filter-Konflikt: Blockiert alles!" : "Filter-Warnung")
-                    .font(.caption).bold()
-                    .foregroundColor(.orange)
-            }
-            Text(String(format: conflict.isTotalConflict ? 
-                (rightSidebarTab == 0 ? 
-                    "Erlaubtes DX-Rufzeichen '%@' ist aus %@, was nicht in den erlaubten Ländern (%@) enthalten ist." :
-                    "Erlaubter Spotter '%@' ist aus %@, was nicht in den erlaubten Ländern (%@) enthalten ist.") :
-                (rightSidebarTab == 0 ? 
-                    "DX-Rufzeichen '%@' ist aus %@, was nicht in den erlaubten Ländern (%@) enthalten ist." :
-                    "Spotter '%@' ist aus %@, was nicht in den erlaubten Ländern (%@) enthalten ist."),
-                conflict.callsign, conflict.callsignCountry, conflict.allowedCountriesText))
-                .font(.system(size: 10, weight: .medium))
-                .foregroundColor(.primary)
-                .lineLimit(nil)
-                .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(8)
-        .background(Color.orange.opacity(0.12))
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.orange.opacity(0.4), lineWidth: 1))
-        .cornerRadius(6)
-    }
 
     private var continentCodes: [(code: String, nameKey: String)] {
         [
