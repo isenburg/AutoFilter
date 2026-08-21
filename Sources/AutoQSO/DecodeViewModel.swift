@@ -115,6 +115,43 @@ public enum LogbookProvider: String, CaseIterable, Identifiable {
     }
 }
 
+public enum DXFilterSectionId: String, CaseIterable, Codable, Identifiable {
+    case continents = "continents"
+    case blockedCountries = "blockedCountries"
+    case allowedCountries = "allowedCountries"
+    case blockedCQZones = "blockedCQZones"
+    case blockedITUZones = "blockedITUZones"
+    case allowedCallsigns = "allowedCallsigns"
+    case allowedGrids = "allowedGrids"
+    case mostWantedOnly = "mostWantedOnly"
+    case workedBefore = "workedBefore"
+    case gridFilter = "gridFilter"
+    case wsjtCQ = "wsjtCQ"
+    case duplicates = "duplicates"
+    
+    public var id: String { rawValue }
+    
+    public static let defaultOrder: [DXFilterSectionId] = [
+        .allowedGrids,
+        .allowedCallsigns,
+        .allowedCountries,
+        .continents,
+        .blockedCountries,
+        .blockedCQZones,
+        .blockedITUZones,
+        .mostWantedOnly,
+        .workedBefore,
+        .gridFilter,
+        .wsjtCQ,
+        .duplicates
+    ]
+}
+
+public enum FilterOrderMode: String, Codable {
+    case defaultOrder = "default"
+    case custom = "custom"
+}
+
 class DecodeViewModel: ObservableObject {
     @Published var server = WSJTXServer()
     @Published var lotwManager = LoTWManager()
@@ -140,6 +177,7 @@ class DecodeViewModel: ObservableObject {
     // Filter Settings
     @Published var blockedCountries: [String] = []
     @Published var allowedCountries: [String] = []
+    @Published var allowedGrids: [String] = []
     @Published var allowedSpotterCountries: [String] = []
     @Published var allowedDXCallsigns: [String] = []
     @Published var allowedSpotterCallsigns: [String] = []
@@ -160,6 +198,52 @@ class DecodeViewModel: ObservableObject {
     @Published var isDuplicateFilterEnabled: Bool = true
     @Published var duplicateSpotWindowMinutes: Int = 1
     @Published var duplicateSpotFrequencyTolerance: Double = 0.5
+    @Published var isFilterDebugLoggingEnabled: Bool = false
+    
+    // Filter Order & Presets (First-Match Pipeline)
+    @Published var activeFilterOrderMode: FilterOrderMode = .defaultOrder
+    @Published var customFilterOrder: [DXFilterSectionId] = DXFilterSectionId.defaultOrder
+    
+    var activeFilterOrder: [DXFilterSectionId] {
+        activeFilterOrderMode == .defaultOrder ? DXFilterSectionId.defaultOrder : customFilterOrder
+    }
+    
+    func setFilterOrderMode(_ mode: FilterOrderMode) {
+        activeFilterOrderMode = mode
+        saveFilters()
+    }
+    
+    func moveFilterSection(from source: IndexSet, to destination: Int) {
+        var newOrder = activeFilterOrder
+        newOrder.move(fromOffsets: source, toOffset: destination)
+        customFilterOrder = newOrder
+        activeFilterOrderMode = .custom
+        saveFilters()
+    }
+    
+    func moveFilterSection(id: DXFilterSectionId, direction: Int) {
+        var current = activeFilterOrder
+        guard let idx = current.firstIndex(of: id) else { return }
+        let targetIdx = idx + direction
+        guard targetIdx >= 0 && targetIdx < current.count else { return }
+        let item = current.remove(at: idx)
+        current.insert(item, at: targetIdx)
+        customFilterOrder = current
+        activeFilterOrderMode = .custom
+        saveFilters()
+    }
+    
+    func moveFilterSection(dragged: DXFilterSectionId, to target: DXFilterSectionId) {
+        var order = activeFilterOrder
+        guard let fromIndex = order.firstIndex(of: dragged),
+              let toIndex = order.firstIndex(of: target),
+              fromIndex != toIndex else { return }
+        order.remove(at: fromIndex)
+        order.insert(dragged, at: toIndex)
+        customFilterOrder = order
+        activeFilterOrderMode = .custom
+        saveFilters()
+    }
     
     let matcher = PrefixMatcher.shared
     
@@ -350,11 +434,10 @@ class DecodeViewModel: ObservableObject {
         }
         
         server.objectWillChange
+            .debounce(for: .milliseconds(350), scheduler: RunLoop.main)
             .sink { [weak self] _ in
-                DispatchQueue.main.async {
-                    self?.objectWillChange.send()
-                    self?.evaluateAutoQSO()
-                }
+                self?.objectWillChange.send()
+                self?.evaluateAutoQSO()
             }
             .store(in: &cancellables)
             
@@ -662,7 +745,7 @@ class DecodeViewModel: ObservableObject {
             if totalCQsOr73s > 0 {
                 let reasons = skippedCounts.map { "\($0.key): \($0.value)" }.joined(separator: ", ")
                 let targetType = isAutoModeOnlyCQEnabled ? "CQs" : "CQs/73s"
-                addLog("Auswertung: Keine Anruf-Kandidaten unter \(totalCQsOr73s) \(targetType) gefunden (\(reasons))")
+                logFilterDecision("Auswertung: Keine Anruf-Kandidaten unter \(totalCQsOr73s) \(targetType) gefunden (\(reasons))")
             }
             return
         }
@@ -1214,6 +1297,7 @@ class DecodeViewModel: ObservableObject {
         isFiltersEnabled = defaults.object(forKey: "dx_filters_enabled_global") as? Bool ?? true
         blockedCountries = defaults.stringArray(forKey: "blockedCountries") ?? []
         allowedCountries = defaults.stringArray(forKey: "allowedCountries") ?? []
+        allowedGrids = defaults.stringArray(forKey: "allowedGrids") ?? []
         allowedSpotterCountries = defaults.stringArray(forKey: "allowedSpotterCountries") ?? []
         allowedDXCallsigns = defaults.stringArray(forKey: "allowedDXCallsigns") ?? []
         allowedSpotterCallsigns = defaults.stringArray(forKey: "allowedSpotterCallsigns") ?? []
@@ -1243,6 +1327,26 @@ class DecodeViewModel: ObservableObject {
         if duplicateSpotWindowMinutes == 0 { duplicateSpotWindowMinutes = 1 }
         duplicateSpotFrequencyTolerance = defaults.double(forKey: "duplicateSpotFrequencyTolerance")
         if duplicateSpotFrequencyTolerance == 0.0 { duplicateSpotFrequencyTolerance = 0.5 }
+        isFilterDebugLoggingEnabled = defaults.bool(forKey: "isFilterDebugLoggingEnabled")
+        
+        if let modeStr = defaults.string(forKey: "filterOrderMode"), let mode = FilterOrderMode(rawValue: modeStr) {
+            activeFilterOrderMode = mode
+        } else {
+            activeFilterOrderMode = .defaultOrder
+        }
+        
+        if let savedCustom = defaults.stringArray(forKey: "customFilterOrder") {
+            let parsed = savedCustom.compactMap { DXFilterSectionId(rawValue: $0) }
+            var completeOrder = parsed
+            for section in DXFilterSectionId.defaultOrder {
+                if !completeOrder.contains(section) {
+                    completeOrder.append(section)
+                }
+            }
+            customFilterOrder = completeOrder
+        } else {
+            customFilterOrder = DXFilterSectionId.defaultOrder
+        }
     }
     
     func saveFilters() {
@@ -1250,6 +1354,7 @@ class DecodeViewModel: ObservableObject {
         defaults.set(isFiltersEnabled, forKey: "dx_filters_enabled_global")
         defaults.set(blockedCountries, forKey: "blockedCountries")
         defaults.set(allowedCountries, forKey: "allowedCountries")
+        defaults.set(allowedGrids, forKey: "allowedGrids")
         defaults.set(allowedSpotterCountries, forKey: "allowedSpotterCountries")
         defaults.set(allowedDXCallsigns, forKey: "allowedDXCallsigns")
         defaults.set(allowedSpotterCallsigns, forKey: "allowedSpotterCallsigns")
@@ -1269,11 +1374,30 @@ class DecodeViewModel: ObservableObject {
         defaults.set(isDuplicateFilterEnabled, forKey: "isDuplicateFilterEnabled")
         defaults.set(duplicateSpotWindowMinutes, forKey: "duplicateSpotWindowMinutes")
         defaults.set(duplicateSpotFrequencyTolerance, forKey: "duplicateSpotFrequencyTolerance")
+        defaults.set(isFilterDebugLoggingEnabled, forKey: "isFilterDebugLoggingEnabled")
+        
+        defaults.set(activeFilterOrderMode.rawValue, forKey: "filterOrderMode")
+        defaults.set(customFilterOrder.map { $0.rawValue }, forKey: "customFilterOrder")
+        
         clearEvaluationCache()
         scheduleRecalculations()
     }
 
-    func shouldAccept(decode: WSJTXDecode, recordDuplicates: Bool = false) -> Bool {
+    private var lastLoggedFilterMessages: [String: Date] = [:]
+    
+    private func logFilterDecision(_ message: String) {
+        let now = Date()
+        if let last = lastLoggedFilterMessages[message], now.timeIntervalSince(last) < 2.0 {
+            return
+        }
+        lastLoggedFilterMessages[message] = now
+        if lastLoggedFilterMessages.count > 150 {
+            lastLoggedFilterMessages = lastLoggedFilterMessages.filter { now.timeIntervalSince($0.value) < 5.0 }
+        }
+        addLog(message)
+    }
+
+    func shouldAccept(decode: WSJTXDecode, recordDuplicates: Bool = false, isTrace: Bool = false) -> Bool {
         guard isFiltersEnabled else { return true }
         
         let call = decode.callsign.uppercased()
@@ -1284,99 +1408,143 @@ class DecodeViewModel: ObservableObject {
         let cq = matcher.cqZone(for: call)
         let itu = matcher.ituZone(for: call)
         
-        // 1. Continent Filter
-        if disabledContinents.contains(continent) {
-            return false
-        }
+        // Logge NUR bei neu eintreffenden Dekodierungen (recordDuplicates: true) oder explizitem Trace, niemals bei UI-Renders
+        let shouldLog = isTrace || (isFilterDebugLoggingEnabled && recordDuplicates)
         
-        // 2. Blocked Countries (Blacklist)
-        if isCountryBlocked(country) {
-            return false
-        }
-        
-        // 3. Allowed DX Countries (Whitelist)
-        if !allowedCountries.isEmpty && !countryMatches(country, in: allowedCountries) {
-            return false
-        }
-        
-        // 4. Blocked CQ Zones
-        if let cqVal = cq, blockedCQZones.contains(cqVal) {
-            return false
-        }
-        
-        // 5. Blocked ITU Zones
-        if let ituVal = itu, blockedITUZones.contains(ituVal) {
-            return false
-        }
-        
-        // 6. Allowed DX Callsigns (Whitelist)
-        if !allowedDXCallsigns.isEmpty && !callsignMatches(call, in: allowedDXCallsigns) {
-            return false
-        }
-        
-        // 6.5. Most Wanted Only Filter
-        if isOnlyMostWantedFilterEnabled {
-            if !MostWantedManager.shared.isMostWanted(callsign: call, maxRank: maxMostWantedRank) {
-                return false
-            }
-        }
-        
-        // 7. Spotter Filter (applied to decode.spotter for clusters)
+        // Spotter Filter (angewendet auf decode.spotter bei Cluster-Spots)
         if decode.isClusterSpot {
             let spotter = decode.spotter
             if isSpotterBlocked(spotter) {
+                if shouldLog { logFilterDecision("[Filter ❌ DROP] Spot \(call) verworfen: Spotter \(spotter) gesperrt") }
                 return false
             }
         }
         
-        // 8. WSJT Special Filter (Show only CQ, RR, RR73, RRR, 73)
-        if isWsjtSpecialFilterEnabled {
-            let upper = comment.uppercased()
-            let tokens = upper.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
-            var passed = false
-            for token in tokens {
-                if token.hasPrefix("CQ") || token == "RR73" || token == "RRR" || token == "73" || token == "RR" {
-                    passed = true
-                    break
+        // First-Match Auswertungs-Pipeline gemäß aktiver Reihenfolge
+        for (index, section) in activeFilterOrder.enumerated() {
+            let pos = index + 1
+            switch section {
+            case .allowedCallsigns:
+                if !allowedDXCallsigns.isEmpty {
+                    if callsignMatches(call, in: allowedDXCallsigns) {
+                        if shouldLog { logFilterDecision("[Filter ✅ PASS] \(call) (\(country)) passiert via Pos. \(pos) (Erlaubte DX-Rufzeichen)") }
+                        return true // Whitelist-Treffer -> Sofort-Pass (Bypass / Ausnahme)
+                    }
+                }
+                
+            case .allowedCountries:
+                if !allowedCountries.isEmpty {
+                    if countryMatches(country, in: allowedCountries) {
+                        if shouldLog { logFilterDecision("[Filter ✅ PASS] \(call) (\(country)) passiert via Pos. \(pos) (Erlaubte DX-Länder: \(country))") }
+                        return true // Whitelist-Treffer -> Sofort-Pass (Bypass / Ausnahme)
+                    }
+                }
+                
+            case .allowedGrids:
+                if !allowedGrids.isEmpty {
+                    if let g = decode.grid, gridMatches(g, in: allowedGrids) {
+                        let g4 = String(g.prefix(4)).uppercased()
+                        if shouldLog { logFilterDecision("[Filter ✅ PASS] \(call) (Grid \(g4)) passiert via Pos. \(pos) (Erlaubte Grids)") }
+                        return true // Whitelist-Treffer -> Sofort-Pass (Bypass / Ausnahme)
+                    }
+                }
+                
+            case .blockedCountries:
+                if isCountryBlocked(country) {
+                    if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Gesperrtes Land: \(country))") }
+                    return false
+                }
+                
+            case .continents:
+                if !continent.isEmpty && disabledContinents.contains(continent) {
+                    if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Gesperrter Kontinent: \(continent))") }
+                    return false
+                }
+                
+            case .blockedCQZones:
+                if let cqVal = cq, blockedCQZones.contains(cqVal) {
+                    if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Gesperrte CQ-Zone: \(cqVal))") }
+                    return false
+                }
+                
+            case .blockedITUZones:
+                if let ituVal = itu, blockedITUZones.contains(ituVal) {
+                    if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Gesperrte ITU-Zone: \(ituVal))") }
+                    return false
+                }
+                
+            case .mostWantedOnly:
+                if isOnlyMostWantedFilterEnabled {
+                    if !MostWantedManager.shared.isMostWanted(callsign: call, maxRank: maxMostWantedRank) {
+                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Nicht in Most-Wanted Top \(maxMostWantedRank))") }
+                        return false
+                    }
+                }
+                
+            case .workedBefore:
+                if isWorkedBeforeFilterEnabled {
+                    if lotwManager.hasWorkedRecently(callsign: call, band: decode.band, duration: workedBeforeDuration, unit: workedBeforeUnit) {
+                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Bereits auf \(decode.band) gearbeitet)") }
+                        return false
+                    }
+                }
+                
+            case .gridFilter:
+                if isNew4CharGridOnlyFilterEnabled {
+                    guard let g = decode.grid, g.count >= 4 else {
+                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Kein 4-Stellen Grid)") }
+                        return false
+                    }
+                    let grid4 = String(g.prefix(4)).uppercased()
+                    if lotwManager.hasWorkedGrid(grid4) {
+                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (4-Stellen Grid \(grid4) bereits gearbeitet)") }
+                        return false
+                    }
+                }
+                if isNew6CharGridOnlyFilterEnabled {
+                    guard let g = decode.grid, g.count >= 6 else {
+                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Kein 6-Stellen Grid)") }
+                        return false
+                    }
+                    let grid6 = String(g.prefix(6)).uppercased()
+                    if lotwManager.hasWorkedGrid6(grid6) {
+                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (6-Stellen Grid \(grid6) bereits gearbeitet)") }
+                        return false
+                    }
+                }
+                
+            case .wsjtCQ:
+                if isWsjtSpecialFilterEnabled {
+                    let upper = comment.uppercased()
+                    let tokens = upper.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
+                    var passed = false
+                    for token in tokens {
+                        if token.hasPrefix("CQ") || token == "RR73" || token == "RRR" || token == "73" || token == "RR" {
+                            passed = true
+                            break
+                        }
+                    }
+                    if !passed {
+                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Kein CQ/73-Signal: \"\(comment)\")") }
+                        return false
+                    }
+                }
+                
+            case .duplicates:
+                if isDuplicateFilterEnabled {
+                    let freqMhz = Double(decode.dialFrequency) / 1_000_000.0 + Double(decode.deltaFrequency) / 1_000_000.0
+                    let freqKhz = freqMhz * 1000.0
+                    if isDuplicateSpot(id: decode.id, call: call, freq: freqKhz, record: recordDuplicates) {
+                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Doublette auf \(String(format: "%.1f", freqKhz)) kHz)") }
+                        return false
+                    }
                 }
             }
-            if !passed { return false }
         }
         
-        // 8.5. New 4 Character Maidenhead Grid Only Filter
-        if isNew4CharGridOnlyFilterEnabled {
-            guard let g = decode.grid, g.count >= 4 else { return false }
-            let grid4 = String(g.prefix(4)).uppercased()
-            if lotwManager.hasWorkedGrid(grid4) {
-                return false
-            }
+        if shouldLog {
+            logFilterDecision("[Filter ✅ PASS] \(call) (\(country)) passiert alle Filter")
         }
-        
-        // 8.6. New 6 Character Maidenhead Grid Only Filter
-        if isNew6CharGridOnlyFilterEnabled {
-            guard let g = decode.grid, g.count >= 6 else { return false }
-            let grid6 = String(g.prefix(6)).uppercased()
-            if lotwManager.hasWorkedGrid6(grid6) {
-                return false
-            }
-        }
-        
-        // 8.7. Worked Before Time Filter
-        if isWorkedBeforeFilterEnabled {
-            if lotwManager.hasWorkedRecently(callsign: call, band: decode.band, duration: workedBeforeDuration, unit: workedBeforeUnit) {
-                return false
-            }
-        }
-        
-        // 9. Duplicate Filter
-        if isDuplicateFilterEnabled {
-            let freqMhz = Double(decode.dialFrequency) / 1_000_000.0 + Double(decode.deltaFrequency) / 1_000_000.0
-            let freqKhz = freqMhz * 1000.0
-            if isDuplicateSpot(id: decode.id, call: call, freq: freqKhz, record: recordDuplicates) {
-                return false
-            }
-        }
-        
         return true
     }
 
@@ -1626,6 +1794,76 @@ class DecodeViewModel: ObservableObject {
 
     func removeAllowedDXCallsign(_ callsign: String) {
         allowedDXCallsigns.removeAll { $0 == callsign }
+        saveFilters()
+    }
+
+    public static func grid4Coordinates(_ grid: String) -> (col: Int, row: Int)? {
+        let clean = grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard clean.count >= 4 else { return nil }
+        let chars = Array(clean)
+        guard let f1 = chars[0].asciiValue, f1 >= 65 && f1 <= 82, // A..R
+              let f2 = chars[1].asciiValue, f2 >= 65 && f2 <= 82, // A..R
+              let s1 = chars[2].wholeNumberValue, s1 >= 0 && s1 <= 9,
+              let s2 = chars[3].wholeNumberValue, s2 >= 0 && s2 <= 9 else {
+            return nil
+        }
+        let col = Int(f1 - 65) * 10 + s1
+        let row = Int(f2 - 65) * 10 + s2
+        return (col, row)
+    }
+
+    public func gridMatches(_ grid: String?, in patterns: [String]) -> Bool {
+        guard let grid = grid, !grid.isEmpty else { return false }
+        guard let targetCoords = DecodeViewModel.grid4Coordinates(grid) else { return false }
+        let target4 = String(grid.trimmingCharacters(in: .whitespacesAndNewlines).prefix(4)).uppercased()
+        
+        for rawPattern in patterns {
+            let subPatterns = rawPattern.components(separatedBy: CharacterSet(charactersIn: ",; ")).filter { !$0.isEmpty }
+            for pattern in subPatterns {
+                let p = pattern.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+                if p.contains("-") {
+                    let parts = p.components(separatedBy: "-")
+                    if parts.count == 2,
+                       let c1 = DecodeViewModel.grid4Coordinates(parts[0]),
+                       let c2 = DecodeViewModel.grid4Coordinates(parts[1]) {
+                        let minCol = min(c1.col, c2.col)
+                        let maxCol = max(c1.col, c2.col)
+                        let minRow = min(c1.row, c2.row)
+                        let maxRow = max(c1.row, c2.row)
+                        let inCol = targetCoords.col >= minCol && targetCoords.col <= maxCol
+                        let inRow = targetCoords.row >= minRow && targetCoords.row <= maxRow
+                        if inCol && inRow {
+                            return true
+                        }
+                    }
+                } else if p.count >= 4 {
+                    let prefix4 = String(p.prefix(4))
+                    if target4 == prefix4 {
+                        return true
+                    }
+                } else if !p.isEmpty && target4.hasPrefix(p) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    func addAllowedGrid(_ input: String) {
+        let items = input.components(separatedBy: CharacterSet(charactersIn: ",; "))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
+            .filter { !$0.isEmpty }
+        for item in items {
+            if !allowedGrids.contains(item) {
+                allowedGrids.append(item)
+            }
+        }
+        saveFilters()
+        clearBlockedDecodes()
+    }
+
+    func removeAllowedGrid(_ item: String) {
+        allowedGrids.removeAll { $0 == item }
         saveFilters()
     }
 

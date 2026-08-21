@@ -24,9 +24,9 @@ struct LogsConsoleView: View {
     }
     
     private func logColor(for log: String) -> Color {
-        if log.contains("Fehler") || log.contains("⚠️") {
+        if log.contains("Fehler") || log.contains("⚠️") || log.contains("❌") {
             return .red
-        } else if log.contains("🚀") {
+        } else if log.contains("🚀") || log.contains("✅") {
             return .green
         } else if log.contains("Auswertung") {
             return .secondary
@@ -59,7 +59,15 @@ struct LogsConsoleView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                if consoleTab == 1 {
+                if consoleTab == 0 {
+                    Toggle(L("logs.filter.tracing"), isOn: Binding(
+                        get: { viewModel.isFilterDebugLoggingEnabled },
+                        set: { viewModel.isFilterDebugLoggingEnabled = $0; viewModel.saveFilters() }
+                    ))
+                    .toggleStyle(.checkbox)
+                    .controlSize(.small)
+                    .help(L("logs.filter.tracing.help"))
+                } else if consoleTab == 1 {
                     HStack(spacing: 8) {
                         Toggle(L("logs.filter.decodes"), isOn: $wsjtxShowDecodes)
                             .toggleStyle(.checkbox)

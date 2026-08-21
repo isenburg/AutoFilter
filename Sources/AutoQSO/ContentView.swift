@@ -1,9 +1,12 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     @ObservedObject var viewModel: DecodeViewModel
     @ObservedObject private var langManager = LanguageManager.shared
     private var isDe: Bool { langManager.isGerman }
+    
+    @State private var draggedFilterSection: DXFilterSectionId? = nil
     
     @AppStorage("lotwUsername") private var lotwUsername = ""
     @AppStorage("lotwPassword") private var lotwPassword = ""
@@ -76,6 +79,7 @@ struct ContentView: View {
     @AppStorage("isWorkedBeforeFilterExpanded") private var isWorkedBeforeFilterExpanded = true
     @AppStorage("isDuplicateFilterExpanded") private var isDuplicateFilterExpanded = true
     @AppStorage("isAllowedDXCallsignsExpanded") private var isAllowedDXCallsignsExpanded = true
+    @AppStorage("isAllowedGridsExpanded") private var isAllowedGridsExpanded = true
     @AppStorage("isMostWantedOnlyExpanded") private var isMostWantedOnlyExpanded = true
     @AppStorage("isAllowedSpotterCountriesExpanded") private var isAllowedSpotterCountriesExpanded = true
     @AppStorage("isAllowedSpotterCallsignsExpanded") private var isAllowedSpotterCallsignsExpanded = true
@@ -83,6 +87,7 @@ struct ContentView: View {
     // Form Inputs
     @State private var newCountry = ""
     @State private var newAllowedDXCountry = ""
+    @State private var newAllowedGrid = ""
     @State private var newCQZone = ""
     @State private var newITUZone = ""
     @State private var newAllowedDXCallsign = ""
@@ -1579,6 +1584,53 @@ struct ContentView: View {
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
+
+            if rightSidebarTab == 0 {
+                VStack(spacing: 4) {
+                    Divider()
+                    HStack(spacing: 8) {
+                        Button {
+                            viewModel.setFilterOrderMode(.defaultOrder)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "globe")
+                                    .font(.system(size: 9))
+                                Text(L("filter.order.default"))
+                                    .font(.system(size: 10, weight: viewModel.activeFilterOrderMode == .defaultOrder ? .bold : .medium))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(viewModel.activeFilterOrderMode == .defaultOrder ? Color.blue : Color.secondary.opacity(0.18))
+                        .foregroundColor(viewModel.activeFilterOrderMode == .defaultOrder ? .white : .primary)
+                        .controlSize(.small)
+                        .help(L("filter.order.tooltip.default"))
+                        
+                        Button {
+                            viewModel.setFilterOrderMode(.custom)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "slider.horizontal.3")
+                                    .font(.system(size: 9))
+                                Text(L("filter.order.custom"))
+                                    .font(.system(size: 10, weight: viewModel.activeFilterOrderMode == .custom ? .bold : .medium))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(viewModel.activeFilterOrderMode == .custom ? Color.blue : Color.secondary.opacity(0.18))
+                        .foregroundColor(viewModel.activeFilterOrderMode == .custom ? .white : .primary)
+                        .controlSize(.small)
+                        .help(L("filter.order.tooltip.custom"))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.top, 2)
+                    .padding(.bottom, 6)
+                }
+                .background(Color(NSColor.controlBackgroundColor))
+            }
         }
     }
 
@@ -1627,439 +1679,541 @@ struct ContentView: View {
 
     @ViewBuilder
     private var countryFilterContent: some View {
-        // 1. Kontinent-Filter
-        Section(isExpanded: $isContinentFilterExpanded) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L("filter.continents.desc"))
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
-                    .italic()
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
-
-            ForEach(continentCodes, id: \.code) { item in
-                Toggle(isOn: Binding(
-                    get: { !viewModel.disabledContinents.contains(item.code) },
-                    set: { _ in viewModel.toggleContinent(item.code) }
-                )) {
-                    Text("\(item.nameKey) (\(item.code))").font(.system(size: 11))
-                }
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-            }
-
-            HStack {
-                Button(L("filter.continents.allOn")) { viewModel.setAllContinents(enabled: true) }
-                    .buttonStyle(.bordered).controlSize(.small)
-                Button(L("filter.continents.allOff")) { viewModel.setAllContinents(enabled: false) }
-                    .buttonStyle(.bordered).controlSize(.small)
-            }
-            .padding(.top, 2)
-        } header: {
-            sidebarHeader(L("filter.section.continents"), isExpanded: $isContinentFilterExpanded, activeCount: viewModel.disabledContinents.count)
+        ForEach(Array(viewModel.activeFilterOrder.enumerated()), id: \.element) { index, sectionId in
+            filterSectionView(for: sectionId, index: index)
         }
+    }
 
-        // 2. Gesperrte Länder (Blacklist)
-        Section(isExpanded: $isBlockedCountriesExpanded) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Blacklist-Modus").font(.caption).bold()
-                Text(L("filter.blacklist.desc"))
-                    .font(.system(size: 9))
+    private func sidebarHeader(_ title: String, isExpanded: Binding<Bool>, activeCount: Int = 0, sectionId: DXFilterSectionId? = nil) -> some View {
+        HStack(alignment: .center, spacing: 6) {
+            if let sec = sectionId {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.secondary)
-                    .italic()
-                    .lineLimit(nil)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(width: 22, height: 22)
+                    .contentShape(Rectangle())
+                    .onDrag {
+                        self.draggedFilterSection = sec
+                        return NSItemProvider(object: sec.rawValue as NSString)
+                    }
+                    .help(L("filter.order.dragHint"))
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(6).background(Color.red.opacity(0.05)).cornerRadius(6)
+
+            Text(title)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.primary)
+                .textCase(.uppercase)
+                .lineLimit(nil)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !isExpanded.wrappedValue && activeCount > 0 {
+                HStack(spacing: 3) {
+                    Image(systemName: "funnel.fill")
+                        .font(.system(size: 8))
+                    Text("\(activeCount)")
+                        .font(.system(size: 8, weight: .bold))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 1)
+                .background(Color.blue)
+                .cornerRadius(4)
+            }
             
-            ForEach(viewModel.blockedCountries, id: \.self) { country in
-                HStack {
-                    Text(country).font(.system(size: 11))
-                    Spacer()
-                    Button { viewModel.removeBlockedCountry(country) } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain)
-                }
-            }
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L("filter.blockCountry.label")).font(.caption2).foregroundColor(.secondary)
-                CountryInputField(text: $newCountry, suggestions: viewModel.countrySuggestions(for: newCountry)) {
-                    viewModel.addBlockedCountry(newCountry)
-                    newCountry = ""
-                }
-            }.padding(.vertical, 4)
-        } header: {
-            sidebarHeader(L("filter.section.blockedCountries"), isExpanded: $isBlockedCountriesExpanded, activeCount: viewModel.blockedCountries.count)
+            Spacer()
         }
-
-        // 3. Erlaubte DX-Länder (Whitelist)
-        Section(isExpanded: $isAllowedDXCountriesExpanded) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Whitelist-Modus").font(.caption).bold()
-                Text(L("filter.whitelist.desc"))
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
-                    .italic()
-                    .lineLimit(nil)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
-
-            ForEach(viewModel.allowedCountries, id: \.self) { country in
-                HStack {
-                    Text(country).font(.system(size: 11))
-                    Spacer()
-                    Button { viewModel.removeAllowedCountry(country) } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L("filter.allowCountry.label")).font(.caption2).foregroundColor(.secondary)
-                CountryInputField(text: $newAllowedDXCountry, suggestions: viewModel.countrySuggestions(for: newAllowedDXCountry)) {
-                    viewModel.addAllowedCountry(newAllowedDXCountry)
-                    newAllowedDXCountry = ""
-                }
-            }.padding(.vertical, 4)
-        } header: {
-            sidebarHeader(L("filter.section.allowedCountries"), isExpanded: $isAllowedDXCountriesExpanded, activeCount: viewModel.allowedCountries.count)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            isExpanded.wrappedValue.toggle()
         }
+        .onDrop(of: [UTType.plainText, UTType.text], delegate: FilterSectionDropDelegate(targetSection: sectionId ?? .continents, viewModel: viewModel, draggedSection: $draggedFilterSection))
+    }
 
-        // 4. Gesperrte CQ-Zonen
-        Section(isExpanded: $isBlockedCQZonesExpanded) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L("filter.cqZone.desc"))
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
-                    .italic()
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(6).background(Color.red.opacity(0.05)).cornerRadius(6)
-
-            ForEach(viewModel.blockedCQZones, id: \.self) { zone in
-                HStack {
-                    Text("CQ-Zone \(zone)").font(.system(size: 11))
-                    Spacer()
-                    Button { viewModel.removeBlockedCQZone(zone) } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain)
+    @ViewBuilder
+    private func filterSectionView(for sectionId: DXFilterSectionId, index: Int) -> some View {
+        switch sectionId {
+        case .continents:
+            Section(isExpanded: $isContinentFilterExpanded) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L("filter.continents.desc"))
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                        .italic()
                 }
-            }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L("filter.cqZone.label")).font(.caption2).foregroundColor(.secondary)
-                HStack {
-                    TextField("z.B. 14", text: $newCQZone)
-                        .textFieldStyle(UnifiedTextFieldStyle())
-                        .controlSize(.small)
-                    Button(action: {
-                        if let z = Int(newCQZone.trimmingCharacters(in: .whitespaces)), z >= 1 && z <= 40 {
-                            viewModel.addBlockedCQZone(z)
-                            newCQZone = ""
-                        }
-                    }) {
-                        Image(systemName: "plus.circle.fill")
+                ForEach(continentCodes, id: \.code) { item in
+                    Toggle(isOn: Binding(
+                        get: { !viewModel.disabledContinents.contains(item.code) },
+                        set: { _ in viewModel.toggleContinent(item.code) }
+                    )) {
+                        Text("\(item.nameKey) (\(item.code))").font(.system(size: 11))
                     }
-                    .buttonStyle(.plain)
-                    .foregroundColor(.blue)
-                    .disabled(Int(newCQZone.trimmingCharacters(in: .whitespaces)) == nil)
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
                 }
-            }.padding(.vertical, 4)
-        } header: {
-            sidebarHeader(L("filter.section.blockedCQZones"), isExpanded: $isBlockedCQZonesExpanded, activeCount: viewModel.blockedCQZones.count)
-        }
 
-        // 5. Gesperrte ITU-Zonen
-        Section(isExpanded: $isBlockedITUZonesExpanded) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L("filter.ituZone.desc"))
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
-                    .italic()
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(6).background(Color.red.opacity(0.05)).cornerRadius(6)
-
-            ForEach(viewModel.blockedITUZones, id: \.self) { zone in
                 HStack {
-                    Text("ITU-Zone \(zone)").font(.system(size: 11))
-                    Spacer()
-                    Button { viewModel.removeBlockedITUZone(zone) } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain)
+                    Button(L("filter.continents.allOn")) { viewModel.setAllContinents(enabled: true) }
+                        .buttonStyle(.bordered).controlSize(.small)
+                    Button(L("filter.continents.allOff")) { viewModel.setAllContinents(enabled: false) }
+                        .buttonStyle(.bordered).controlSize(.small)
                 }
+                .padding(.top, 2)
+            } header: {
+                sidebarHeader("\(index + 1). \(L("filter.section.continents"))", isExpanded: $isContinentFilterExpanded, activeCount: viewModel.disabledContinents.count, sectionId: sectionId)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L("filter.ituZone.label")).font(.caption2).foregroundColor(.secondary)
-                HStack {
-                    TextField("z.B. 28", text: $newITUZone)
-                        .textFieldStyle(UnifiedTextFieldStyle())
-                        .controlSize(.small)
-                    Button(action: {
-                        if let z = Int(newITUZone.trimmingCharacters(in: .whitespaces)), z >= 1 && z <= 90 {
-                            viewModel.addBlockedITUZone(z)
-                            newITUZone = ""
-                        }
-                    }) {
-                        Image(systemName: "plus.circle.fill")
+        case .blockedCountries:
+            Section(isExpanded: $isBlockedCountriesExpanded) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Blacklist-Modus").font(.caption).bold()
+                    Text(L("filter.blacklist.desc"))
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                        .italic()
+                        .lineLimit(nil)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(6).background(Color.red.opacity(0.05)).cornerRadius(6)
+                
+                ForEach(viewModel.blockedCountries, id: \.self) { country in
+                    HStack {
+                        Text(country).font(.system(size: 11))
+                        Spacer()
+                        Button { viewModel.removeBlockedCountry(country) } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
-                    .foregroundColor(.blue)
-                    .disabled(Int(newITUZone.trimmingCharacters(in: .whitespaces)) == nil)
                 }
-            }.padding(.vertical, 4)
-        } header: {
-            sidebarHeader(L("filter.section.blockedITUZones"), isExpanded: $isBlockedITUZonesExpanded, activeCount: viewModel.blockedITUZones.count)
-        }
-
-        // 6. Erlaubte DX-Rufzeichen
-        Section(isExpanded: $isAllowedDXCallsignsExpanded) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Whitelist-Modus").font(.caption).bold()
-                Text(L("filter.callsigns.desc"))
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
-                    .italic()
-                    .lineLimit(nil)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
-
-            ForEach(viewModel.allowedDXCallsigns, id: \.self) { callsign in
-                HStack {
-                    Text(callsign).font(.system(size: 11, design: .monospaced)).bold()
-                    Spacer()
-                    Button { viewModel.removeAllowedDXCallsign(callsign) } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain)
-                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L("filter.blockCountry.label")).font(.caption2).foregroundColor(.secondary)
+                    CountryInputField(text: $newCountry, suggestions: viewModel.countrySuggestions(for: newCountry)) {
+                        viewModel.addBlockedCountry(newCountry)
+                        newCountry = ""
+                    }
+                }.padding(.vertical, 4)
+            } header: {
+                sidebarHeader("\(index + 1). \(L("filter.section.blockedCountries"))", isExpanded: $isBlockedCountriesExpanded, activeCount: viewModel.blockedCountries.count, sectionId: sectionId)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L("filter.callsigns.label")).font(.caption2).foregroundColor(.secondary)
-                HStack(spacing: 4) {
-                    TextField("z.B. DP0, K1, DL1ABC", text: $newAllowedDXCallsign)
-                        .textFieldStyle(UnifiedTextFieldStyle())
-                        .onSubmit {
+        case .allowedCountries:
+            Section(isExpanded: $isAllowedDXCountriesExpanded) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("VIP").font(.caption).bold().foregroundColor(.blue)
+                    Text(L("filter.whitelist.desc"))
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                        .italic()
+                        .lineLimit(nil)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+
+                ForEach(viewModel.allowedCountries, id: \.self) { country in
+                    HStack {
+                        Text(country).font(.system(size: 11))
+                        Spacer()
+                        Button { viewModel.removeAllowedCountry(country) } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L("filter.allowCountry.label")).font(.caption2).foregroundColor(.secondary)
+                    CountryInputField(text: $newAllowedDXCountry, suggestions: viewModel.countrySuggestions(for: newAllowedDXCountry)) {
+                        viewModel.addAllowedCountry(newAllowedDXCountry)
+                        newAllowedDXCountry = ""
+                    }
+                }.padding(.vertical, 4)
+            } header: {
+                sidebarHeader("\(index + 1). \(L("filter.section.allowedCountries"))", isExpanded: $isAllowedDXCountriesExpanded, activeCount: viewModel.allowedCountries.count, sectionId: sectionId)
+            }
+
+        case .blockedCQZones:
+            Section(isExpanded: $isBlockedCQZonesExpanded) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L("filter.cqZone.desc"))
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                        .italic()
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(6).background(Color.red.opacity(0.05)).cornerRadius(6)
+
+                ForEach(viewModel.blockedCQZones, id: \.self) { zone in
+                    HStack {
+                        Text("CQ-Zone \(zone)").font(.system(size: 11))
+                        Spacer()
+                        Button { viewModel.removeBlockedCQZone(zone) } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L("filter.cqZone.label")).font(.caption2).foregroundColor(.secondary)
+                    HStack {
+                        TextField("z.B. 14", text: $newCQZone)
+                            .textFieldStyle(UnifiedTextFieldStyle())
+                            .controlSize(.small)
+                        Button(action: {
+                            if let z = Int(newCQZone.trimmingCharacters(in: .whitespaces)), z >= 1 && z <= 40 {
+                                viewModel.addBlockedCQZone(z)
+                                newCQZone = ""
+                            }
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundColor(.blue)
+                        .disabled(Int(newCQZone.trimmingCharacters(in: .whitespaces)) == nil)
+                    }
+                }.padding(.vertical, 4)
+            } header: {
+                sidebarHeader("\(index + 1). \(L("filter.section.blockedCQZones"))", isExpanded: $isBlockedCQZonesExpanded, activeCount: viewModel.blockedCQZones.count, sectionId: sectionId)
+            }
+
+        case .blockedITUZones:
+            Section(isExpanded: $isBlockedITUZonesExpanded) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L("filter.ituZone.desc"))
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                        .italic()
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(6).background(Color.red.opacity(0.05)).cornerRadius(6)
+
+                ForEach(viewModel.blockedITUZones, id: \.self) { zone in
+                    HStack {
+                        Text("ITU-Zone \(zone)").font(.system(size: 11))
+                        Spacer()
+                        Button { viewModel.removeBlockedITUZone(zone) } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L("filter.ituZone.label")).font(.caption2).foregroundColor(.secondary)
+                    HStack {
+                        TextField("z.B. 28", text: $newITUZone)
+                            .textFieldStyle(UnifiedTextFieldStyle())
+                            .controlSize(.small)
+                        Button(action: {
+                            if let z = Int(newITUZone.trimmingCharacters(in: .whitespaces)), z >= 1 && z <= 90 {
+                                viewModel.addBlockedITUZone(z)
+                                newITUZone = ""
+                            }
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundColor(.blue)
+                        .disabled(Int(newITUZone.trimmingCharacters(in: .whitespaces)) == nil)
+                    }
+                }.padding(.vertical, 4)
+            } header: {
+                sidebarHeader("\(index + 1). \(L("filter.section.blockedITUZones"))", isExpanded: $isBlockedITUZonesExpanded, activeCount: viewModel.blockedITUZones.count, sectionId: sectionId)
+            }
+
+        case .allowedCallsigns:
+            Section(isExpanded: $isAllowedDXCallsignsExpanded) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("VIP").font(.caption).bold().foregroundColor(.blue)
+                    Text(L("filter.callsigns.desc"))
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                        .italic()
+                        .lineLimit(nil)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+
+                ForEach(viewModel.allowedDXCallsigns, id: \.self) { callsign in
+                    HStack {
+                        Text(callsign).font(.system(size: 11, design: .monospaced)).bold()
+                        Spacer()
+                        Button { viewModel.removeAllowedDXCallsign(callsign) } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L("filter.callsigns.label")).font(.caption2).foregroundColor(.secondary)
+                    HStack(spacing: 4) {
+                        TextField("z.B. DP0, K1, DL1ABC", text: $newAllowedDXCallsign)
+                            .textFieldStyle(UnifiedTextFieldStyle())
+                            .onSubmit {
+                                viewModel.addAllowedDXCallsign(newAllowedDXCallsign)
+                                newAllowedDXCallsign = ""
+                            }
+                        Button {
                             viewModel.addAllowedDXCallsign(newAllowedDXCallsign)
                             newAllowedDXCallsign = ""
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundColor(newAllowedDXCallsign.trimmingCharacters(in: .whitespaces).isEmpty ? .secondary : .blue)
                         }
-                    Button {
-                        viewModel.addAllowedDXCallsign(newAllowedDXCallsign)
-                        newAllowedDXCallsign = ""
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundColor(newAllowedDXCallsign.trimmingCharacters(in: .whitespaces).isEmpty ? .secondary : .blue)
+                        .buttonStyle(.plain)
+                        .disabled(newAllowedDXCallsign.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(newAllowedDXCallsign.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }.padding(.vertical, 4)
-        } header: {
-            sidebarHeader(L("filter.section.allowedCallsigns"), isExpanded: $isAllowedDXCallsignsExpanded, activeCount: viewModel.allowedDXCallsigns.count)
-        }
-
-        // 7. Most Wanted Only
-        Section(isExpanded: $isMostWantedOnlyExpanded) {
-            VStack(alignment: .leading, spacing: 6) {
-                Toggle(isOn: Binding(
-                    get: { viewModel.isOnlyMostWantedFilterEnabled },
-                    set: { viewModel.isOnlyMostWantedFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
-                )) {
-                    Text(L("filter.mostWantedOnly.toggle")).font(.system(size: 11)).bold()
-                }
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-
-                HStack(spacing: 6) {
-                    Text(L("filter.mostWantedOnly.threshold")).font(.system(size: 10))
-                    
-                    Picker("", selection: Binding(
-                        get: { viewModel.maxMostWantedRank },
-                        set: { viewModel.maxMostWantedRank = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
-                    )) {
-                        Text("Top 10").tag(10)
-                        Text("Top 20").tag(20)
-                        Text("Top 50").tag(50)
-                        Text("Top 100").tag(100)
-                    }
-                    .pickerStyle(.menu)
-                    .controlSize(.mini)
-                }
-
-                Text(L("filter.mostWantedOnly.desc"))
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
-                    .italic()
-                    .lineLimit(nil)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
+                }.padding(.vertical, 4)
+            } header: {
+                sidebarHeader("\(index + 1). \(L("filter.section.allowedCallsigns"))", isExpanded: $isAllowedDXCallsignsExpanded, activeCount: viewModel.allowedDXCallsigns.count, sectionId: sectionId)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
-        } header: {
-            sidebarHeader(L("filter.section.mostWantedOnly"), isExpanded: $isMostWantedOnlyExpanded, activeCount: viewModel.isOnlyMostWantedFilterEnabled ? 1 : 0)
-        }
 
-        // 8. Gearbeitete Stationen
-        Section(isExpanded: $isWorkedBeforeFilterExpanded) {
-            VStack(alignment: .leading, spacing: 6) {
-                Toggle(isOn: Binding(
-                    get: { viewModel.isWorkedBeforeFilterEnabled },
-                    set: { viewModel.isWorkedBeforeFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
-                )) {
-                    Text(L("filter.workedBefore.toggle")).font(.system(size: 11)).bold()
+        case .allowedGrids:
+            Section(isExpanded: $isAllowedGridsExpanded) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("VIP").font(.caption).bold().foregroundColor(.blue)
+                    Text(L("filter.allowedGrids.desc"))
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                        .italic()
+                        .lineLimit(nil)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .toggleStyle(.switch)
-                .controlSize(.mini)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
 
-                HStack(spacing: 6) {
-                    Text(L("filter.workedBefore.timespan")).font(.system(size: 10))
-                    
-                    NumericTextField("1", value: Binding(
-                        get: { viewModel.workedBeforeDuration },
-                        set: { viewModel.workedBeforeDuration = max(0, min(999, $0)); viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
-                    ), range: 0...999)
-                    .textFieldStyle(UnifiedTextFieldStyle())
-                    .frame(width: 42)
-                    .controlSize(.mini)
-                    
-                    Picker("", selection: Binding(
-                        get: { viewModel.workedBeforeUnit },
-                        set: { viewModel.workedBeforeUnit = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
-                    )) {
-                        ForEach(WorkedBeforeUnit.allCases) { unit in
-                            Text(viewModel.workedBeforeDuration == 1 ? unit.singularTitle : unit.title).tag(unit)
+                ForEach(viewModel.allowedGrids, id: \.self) { grid in
+                    HStack {
+                        Text(grid).font(.system(size: 11, design: .monospaced)).bold()
+                        Spacer()
+                        Button { viewModel.removeAllowedGrid(grid) } label: { Image(systemName: "minus.circle") }.buttonStyle(.plain)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L("filter.allowedGrids.label")).font(.caption2).foregroundColor(.secondary)
+                    HStack(spacing: 4) {
+                        TextField("z.B. DN61-DN74 oder KN64, KN67", text: $newAllowedGrid)
+                            .textFieldStyle(UnifiedTextFieldStyle())
+                            .onSubmit {
+                                viewModel.addAllowedGrid(newAllowedGrid)
+                                newAllowedGrid = ""
+                            }
+                        Button {
+                            viewModel.addAllowedGrid(newAllowedGrid)
+                            newAllowedGrid = ""
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundColor(newAllowedGrid.trimmingCharacters(in: .whitespaces).isEmpty ? .secondary : .blue)
                         }
+                        .buttonStyle(.plain)
+                        .disabled(newAllowedGrid.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
-                    .pickerStyle(.menu)
-                    .controlSize(.mini)
-                }
-
-                Text(L("filter.workedBefore.desc"))
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
-                    .italic()
-                    .lineLimit(nil)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
+                }.padding(.vertical, 4)
+            } header: {
+                sidebarHeader("\(index + 1). \(L("filter.section.allowedGrids"))", isExpanded: $isAllowedGridsExpanded, activeCount: viewModel.allowedGrids.count, sectionId: sectionId)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
-        } header: {
-            sidebarHeader(L("filter.section.workedBefore"), isExpanded: $isWorkedBeforeFilterExpanded, activeCount: viewModel.isWorkedBeforeFilterEnabled ? 1 : 0)
-        }
 
-        // 8. Maidenhead Grid-Filter
-        Section(isExpanded: $isNewGridFilterExpanded) {
-            VStack(alignment: .leading, spacing: 6) {
-                Toggle(isOn: Binding(
-                    get: { viewModel.isNew4CharGridOnlyFilterEnabled },
-                    set: { viewModel.isNew4CharGridOnlyFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
-                )) {
-                    Text(L("filter.grid.4char")).font(.system(size: 11)).bold()
-                }
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-
-                Toggle(isOn: Binding(
-                    get: { viewModel.isNew6CharGridOnlyFilterEnabled },
-                    set: { viewModel.isNew6CharGridOnlyFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
-                )) {
-                    Text(L("filter.grid.6char")).font(.system(size: 11)).bold()
-                }
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-
-                Text(L("filter.grid.desc"))
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
-                    .italic()
-                    .lineLimit(nil)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
-        } header: {
-            sidebarHeader(L("filter.section.gridFilter"), isExpanded: $isNewGridFilterExpanded, activeCount: (viewModel.isNew4CharGridOnlyFilterEnabled ? 1 : 0) + (viewModel.isNew6CharGridOnlyFilterEnabled ? 1 : 0))
-        }
-
-        // 9. WSJT-X CQ Filter
-        Section(isExpanded: $isWsjtSpecialFilterExpanded) {
-            VStack(alignment: .leading, spacing: 6) {
-                Toggle(isOn: Binding(
-                    get: { viewModel.isWsjtSpecialFilterEnabled },
-                    set: { viewModel.isWsjtSpecialFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
-                )) {
-                    Text(L("filter.wsjtCQ.toggle")).font(.system(size: 11)).bold()
-                }
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-
-                Text(L("filter.wsjtCQ.desc"))
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
-                    .italic()
-                    .lineLimit(nil)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
-        } header: {
-            sidebarHeader(L("filter.section.wsjtCQ"), isExpanded: $isWsjtSpecialFilterExpanded, activeCount: viewModel.isWsjtSpecialFilterEnabled ? 1 : 0)
-        }
-
-        // 10. Doubletten-Filter
-        Section(isExpanded: $isDuplicateFilterExpanded) {
-            VStack(alignment: .leading, spacing: 6) {
-                Toggle(isOn: Binding(
-                    get: { viewModel.isDuplicateFilterEnabled },
-                    set: { viewModel.isDuplicateFilterEnabled = $0; viewModel.saveFilters() }
-                )) {
-                    Text(L("filter.duplicates.toggle")).font(.system(size: 11)).bold()
-                }
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-
-                HStack {
-                    Text(L("filter.duplicates.tolerance")).font(.system(size: 10))
-                    Picker("", selection: Binding(get: { viewModel.duplicateSpotFrequencyTolerance }, set: { viewModel.duplicateSpotFrequencyTolerance = $0; viewModel.saveFilters() })) {
-                        Text("0.5 kHz").tag(0.5)
-                        Text("1.0 kHz").tag(1.0)
-                        Text("1.5 kHz").tag(1.5)
-                        Text("2.0 kHz").tag(2.0)
-                        Text("3.0 kHz").tag(3.0)
+        case .mostWantedOnly:
+            Section(isExpanded: $isMostWantedOnlyExpanded) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle(isOn: Binding(
+                        get: { viewModel.isOnlyMostWantedFilterEnabled },
+                        set: { viewModel.isOnlyMostWantedFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                    )) {
+                        Text(L("filter.mostWantedOnly.toggle")).font(.system(size: 11)).bold()
                     }
-                    .pickerStyle(.menu)
+                    .toggleStyle(.switch)
                     .controlSize(.mini)
-                }
 
-                HStack {
-                    Text(L("filter.duplicates.window")).font(.system(size: 10))
-                    Picker("", selection: Binding(get: { viewModel.duplicateSpotWindowMinutes }, set: { viewModel.duplicateSpotWindowMinutes = $0; viewModel.saveFilters() })) {
-                        Text("1 Min").tag(1)
-                        Text("3 Min").tag(3)
-                        Text("5 Min").tag(5)
-                        Text("10 Min").tag(10)
-                        Text("15 Min").tag(15)
+                    HStack(spacing: 6) {
+                        Text(L("filter.mostWantedOnly.threshold")).font(.system(size: 10))
+                        
+                        Picker("", selection: Binding(
+                            get: { viewModel.maxMostWantedRank },
+                            set: { viewModel.maxMostWantedRank = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                        )) {
+                            Text("Top 10").tag(10)
+                            Text("Top 20").tag(20)
+                            Text("Top 50").tag(50)
+                            Text("Top 100").tag(100)
+                        }
+                        .pickerStyle(.menu)
+                        .controlSize(.mini)
                     }
-                    .pickerStyle(.menu)
-                    .controlSize(.mini)
-                }
 
-                Text(L("filter.duplicates.desc"))
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
-                    .italic()
-                    .lineLimit(nil)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
+                    Text(L("filter.mostWantedOnly.desc"))
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                        .italic()
+                        .lineLimit(nil)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+            } header: {
+                sidebarHeader("\(index + 1). \(L("filter.section.mostWantedOnly"))", isExpanded: $isMostWantedOnlyExpanded, activeCount: viewModel.isOnlyMostWantedFilterEnabled ? 1 : 0, sectionId: sectionId)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
-        } header: {
-            sidebarHeader(L("filter.section.duplicates"), isExpanded: $isDuplicateFilterExpanded, activeCount: viewModel.isDuplicateFilterEnabled ? 1 : 0)
+
+        case .workedBefore:
+            Section(isExpanded: $isWorkedBeforeFilterExpanded) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle(isOn: Binding(
+                        get: { viewModel.isWorkedBeforeFilterEnabled },
+                        set: { viewModel.isWorkedBeforeFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                    )) {
+                        Text(L("filter.workedBefore.toggle")).font(.system(size: 11)).bold()
+                    }
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+
+                    HStack(spacing: 6) {
+                        Text(L("filter.workedBefore.timespan")).font(.system(size: 10))
+                        
+                        NumericTextField("1", value: Binding(
+                            get: { viewModel.workedBeforeDuration },
+                            set: { viewModel.workedBeforeDuration = max(0, min(999, $0)); viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                        ), range: 0...999)
+                        .textFieldStyle(UnifiedTextFieldStyle())
+                        .frame(width: 42)
+                        .controlSize(.mini)
+                        
+                        Picker("", selection: Binding(
+                            get: { viewModel.workedBeforeUnit },
+                            set: { viewModel.workedBeforeUnit = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                        )) {
+                            ForEach(WorkedBeforeUnit.allCases) { unit in
+                                Text(viewModel.workedBeforeDuration == 1 ? unit.singularTitle : unit.title).tag(unit)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .controlSize(.mini)
+                    }
+
+                    Text(L("filter.workedBefore.desc"))
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                        .italic()
+                        .lineLimit(nil)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+            } header: {
+                sidebarHeader("\(index + 1). \(L("filter.section.workedBefore"))", isExpanded: $isWorkedBeforeFilterExpanded, activeCount: viewModel.isWorkedBeforeFilterEnabled ? 1 : 0, sectionId: sectionId)
+            }
+
+        case .gridFilter:
+            Section(isExpanded: $isNewGridFilterExpanded) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle(isOn: Binding(
+                        get: { viewModel.isNew4CharGridOnlyFilterEnabled },
+                        set: { viewModel.isNew4CharGridOnlyFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                    )) {
+                        Text(L("filter.grid.4char")).font(.system(size: 11)).bold()
+                    }
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+
+                    Toggle(isOn: Binding(
+                        get: { viewModel.isNew6CharGridOnlyFilterEnabled },
+                        set: { viewModel.isNew6CharGridOnlyFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                    )) {
+                        Text(L("filter.grid.6char")).font(.system(size: 11)).bold()
+                    }
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+
+                    Text(L("filter.grid.desc"))
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                        .italic()
+                        .lineLimit(nil)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+            } header: {
+                sidebarHeader("\(index + 1). \(L("filter.section.gridFilter"))", isExpanded: $isNewGridFilterExpanded, activeCount: (viewModel.isNew4CharGridOnlyFilterEnabled ? 1 : 0) + (viewModel.isNew6CharGridOnlyFilterEnabled ? 1 : 0), sectionId: sectionId)
+            }
+
+        case .wsjtCQ:
+            Section(isExpanded: $isWsjtSpecialFilterExpanded) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle(isOn: Binding(
+                        get: { viewModel.isWsjtSpecialFilterEnabled },
+                        set: { viewModel.isWsjtSpecialFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                    )) {
+                        Text(L("filter.wsjtCQ.toggle")).font(.system(size: 11)).bold()
+                    }
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+
+                    Text(L("filter.wsjtCQ.desc"))
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                        .italic()
+                        .lineLimit(nil)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+            } header: {
+                sidebarHeader("\(index + 1). \(L("filter.section.wsjtCQ"))", isExpanded: $isWsjtSpecialFilterExpanded, activeCount: viewModel.isWsjtSpecialFilterEnabled ? 1 : 0, sectionId: sectionId)
+            }
+
+        case .duplicates:
+            Section(isExpanded: $isDuplicateFilterExpanded) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle(isOn: Binding(
+                        get: { viewModel.isDuplicateFilterEnabled },
+                        set: { viewModel.isDuplicateFilterEnabled = $0; viewModel.saveFilters() }
+                    )) {
+                        Text(L("filter.duplicates.toggle")).font(.system(size: 11)).bold()
+                    }
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+
+                    HStack {
+                        Text(L("filter.duplicates.tolerance")).font(.system(size: 10))
+                        Picker("", selection: Binding(get: { viewModel.duplicateSpotFrequencyTolerance }, set: { viewModel.duplicateSpotFrequencyTolerance = $0; viewModel.saveFilters() })) {
+                            Text("0.5 kHz").tag(0.5)
+                            Text("1.0 kHz").tag(1.0)
+                            Text("1.5 kHz").tag(1.5)
+                            Text("2.0 kHz").tag(2.0)
+                            Text("3.0 kHz").tag(3.0)
+                        }
+                        .pickerStyle(.menu)
+                        .controlSize(.mini)
+                    }
+
+                    HStack {
+                        Text(L("filter.duplicates.window")).font(.system(size: 10))
+                        Picker("", selection: Binding(get: { viewModel.duplicateSpotWindowMinutes }, set: { viewModel.duplicateSpotWindowMinutes = $0; viewModel.saveFilters() })) {
+                            Text("1 Min").tag(1)
+                            Text("3 Min").tag(3)
+                            Text("5 Min").tag(5)
+                            Text("10 Min").tag(10)
+                            Text("15 Min").tag(15)
+                        }
+                        .pickerStyle(.menu)
+                        .controlSize(.mini)
+                    }
+
+                    Text(L("filter.duplicates.desc"))
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                        .italic()
+                        .lineLimit(nil)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+            } header: {
+                sidebarHeader("\(index + 1). \(L("filter.section.duplicates"))", isExpanded: $isDuplicateFilterExpanded, activeCount: viewModel.isDuplicateFilterEnabled ? 1 : 0, sectionId: sectionId)
+            }
         }
     }
 
@@ -2142,38 +2296,6 @@ struct ContentView: View {
             }.padding(.vertical, 4)
         } header: {
             sidebarHeader("Erlaubte Spotter-Rufzeichen", isExpanded: $isAllowedSpotterCallsignsExpanded, activeCount: viewModel.allowedSpotterCallsigns.count)
-        }
-    }
-
-    private func sidebarHeader(_ title: String, isExpanded: Binding<Bool>, activeCount: Int = 0) -> some View {
-        HStack(alignment: .center, spacing: 4) {
-            Text(title)
-                .font(.system(size: 10, weight: .bold))
-                .foregroundColor(.primary)
-                .textCase(.uppercase)
-                .lineLimit(nil)
-                .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if !isExpanded.wrappedValue && activeCount > 0 {
-                HStack(spacing: 3) {
-                    Image(systemName: "funnel.fill")
-                        .font(.system(size: 8))
-                    Text("\(activeCount)")
-                        .font(.system(size: 8, weight: .bold))
-                }
-                .foregroundColor(.white)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 1)
-                .background(Color.blue)
-                .cornerRadius(4)
-            }
-            
-            Spacer()
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            isExpanded.wrappedValue.toggle()
         }
     }
 
@@ -2846,6 +2968,28 @@ struct WindowAccessor: NSViewRepresentable {
         if let window = nsView.window {
             onChange(window)
         }
+    }
+}
+
+struct FilterSectionDropDelegate: DropDelegate {
+    let targetSection: DXFilterSectionId
+    let viewModel: DecodeViewModel
+    @Binding var draggedSection: DXFilterSectionId?
+    
+    func dropEntered(info: DropInfo) {
+        guard let dragged = draggedSection, dragged != targetSection else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            viewModel.moveFilterSection(dragged: dragged, to: targetSection)
+        }
+    }
+    
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        return DropProposal(operation: .move)
+    }
+    
+    func performDrop(info: DropInfo) -> Bool {
+        draggedSection = nil
+        return true
     }
 }
 

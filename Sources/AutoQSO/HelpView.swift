@@ -7,6 +7,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
     case toolbar = "Toolbar & Bedienung"
     case wsjtx = "WSJT-X Setup"
     case triggers = "Auto QSO Triggers"
+    case filterLogic = "Filter-Logik & Pipeline"
     case cluster = "DX Cluster"
     case telnet = "Telnet Server"
     case propagationMap = "Ausbreitungskarte & Grid-Map"
@@ -29,6 +30,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
         case .toolbar: return isDe ? "Toolbar & Bedienung" : "Toolbar & Controls"
         case .wsjtx: return "WSJT-X Setup"
         case .triggers: return "Auto QSO Triggers"
+        case .filterLogic: return isDe ? "Filter-Logik & Pipeline" : "Filter Logic & Pipeline"
         case .cluster: return "DX Cluster"
         case .telnet: return "Telnet Server"
         case .propagationMap: return isDe ? "Ausbreitungskarte & Grid-Map" : "Propagation & Grid Map"
@@ -50,6 +52,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
         case .toolbar: return "command"
         case .wsjtx: return "antenna.radiowaves.left.and.right"
         case .triggers: return "bolt.horizontal"
+        case .filterLogic: return "slider.horizontal.3"
         case .cluster: return "list.bullet.rectangle.portrait"
         case .telnet: return "terminal"
         case .propagationMap: return "map"
@@ -170,6 +173,7 @@ struct HelpView: View {
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 6) {
                     bullet(isDe ? "DX-Filter (Hauptfunktion): Intelligente Auswertung, Klassifizierung & Weiterleitung von DX-Spots & Decodes" : "DX Filter (Main Feature): Intelligent evaluation, classification & forwarding of DX spots & decodes")
+                    bullet(isDe ? "Sortierbare First-Match Filter-Pipeline: Frei reorderbare Filtersektionen mit sofortiger Whitelist-Ausnahme-Logik (VIP-Pass) & Presets" : "Sortable First-Match Filter Pipeline: Fully reorderable filter sections with instant whitelist exception logic (VIP pass) & presets")
                     bullet(isDe ? "Auto QSO für WSJT-X: Automatisierte Sende-Engine für FT8 & FT4" : "Auto QSO for WSJT-X: Automated transmit engine for FT8 & FT4")
                     bullet(isDe ? "Prüfung gegen SQLite-Logbuch (bereits auf Band gearbeitet)" : "Verification against SQLite logbook (already worked on band)")
                     bullet(isDe ? "Detektieren von CQ, 73, RR73 und RRR Decodes" : "Detection of CQ, 73, RR73, and RRR decodes")
@@ -469,6 +473,126 @@ struct HelpView: View {
                     numberedItem("4.", isDe ? "**Intelligenter Sende-Schutz**: Bricht WSJT-X nach nur einem Sende-Zyklus ab, greift keine Quarantäne; nach längerer Nicht-Antwort wird die Station für die eingestellte Cooldown-Dauer gesperrt." : "**Smart Retry Protection**: If WSJT-X halts after a single cycle, no cooldown is applied; extended non-responses enter the configured cooldown.")
                     numberedItem("5.", isDe ? "**Sofort-Abbruch ohne Cooldown (HaltTx)**: Antwortet die angerufene Zielstation einer anderen Station, stoppt AutoQSO das Senden sofort per `HaltTx`, verhängt **keine** Cooldown-Sperre und steht direkt für den nächsten Trigger bereit." : "**Instant Abort without Cooldown (HaltTx)**: If the called target station answers another party, AutoQSO immediately halts transmission via `HaltTx`, applies **no** cooldown quarantine, and is instantly ready for the next trigger.")
                 }
+                
+                // 4. Sortierbare Filter-Pipeline & First-Match-Prinzip
+                Text(isDe ? "4. Sortierbare Filter-Pipeline & First-Match-Prinzip:" : "4. Sortable Filter Pipeline & First-Match Principle:")
+                    .font(.headline)
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet(isDe ? "**First-Match Boolean-Evaluation**: Was weiter oben steht, entscheidet zuerst. Steht eine Whitelist (*Erlaubte DX-Rufzeichen*, *Erlaubte Länder*) über einer Blacklist (*Gesperrte Länder*), greift die Whitelist als **Ausnahme / Sofort-Pass** (`return true`)." : "**First-Match Boolean Evaluation**: Higher sections evaluate first. When a whitelist (*Allowed DX Calls*, *Allowed Countries*) is placed above a blacklist (*Blocked Countries*), it acts as an **Instant-Pass / Exception Override** (`return true`).")
+                    bullet(isDe ? "Ausführliche Erläuterungen, Diagramme und Praxisbeispiele findest du im separaten Hilfebereich **Filter-Logik & Pipeline**." : "Detailed explanations, diagrams, and practical examples can be found in the dedicated **Filter Logic & Pipeline** section.")
+                }
+                .padding()
+                .background(Color.blue.opacity(0.08))
+                .cornerRadius(8)
+            }
+            
+        case .filterLogic:
+            VStack(alignment: .leading, spacing: 14) {
+                Text(isDe ? "DX Filter-Logik & Pipeline-Auswertung" : "DX Filter Logic & Pipeline Evaluation")
+                    .font(.title2)
+                    .bold()
+                Text(isDe ? 
+                    "AutoQSO verfügt über eine frei sortierbare First-Match Filter-Pipeline. Alle 11 Filtersektionen in der rechten Seitenleiste werden streng sequentiell **von oben nach unten** ausgewertet. Die erste Regel, die auf ein empfangenes Signal zutrifft, entscheidet sofort." : 
+                    "AutoQSO features a fully reorderable First-Match filter pipeline. All 11 filter sections in the right sidebar evaluate sequentially **from top to bottom**. The first rule that matches an incoming decode makes an immediate final decision.")
+                    .font(.body)
+                
+                // Diagramm / Flow-Karte
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(isDe ? "⚡ Das First-Match-Prinzip im Überblick:" : "⚡ First-Match Principle at a Glance:")
+                        .font(.headline)
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .top, spacing: 10) {
+                            Text("1.")
+                                .bold()
+                                .foregroundColor(.green)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(isDe ? "**VIP-Whitelist: Treffer → SOFORT-PASS (return true)**" : "**VIP Whitelist: Match → INSTANT PASS (return true)**")
+                                    .font(.system(size: 11, weight: .bold))
+                                Text(isDe ? "Trifft ein VIP-Filter (*Erlaubte Maidenhead-Grids*, *Erlaubte DX-Rufzeichen*, *Erlaubte Länder*) zu, passiert die Station sofort (**VIP-Pass**). Alle darunter liegenden Sperren werden übersprungen." : "If a VIP filter (*Allowed Maidenhead Grids*, *Allowed DX Calls*, *Allowed Countries*) matches, the station passes immediately (**VIP Pass**). All subsequent blacklists below are bypassed.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Divider()
+                        
+                        HStack(alignment: .top, spacing: 10) {
+                            Text("2.")
+                                .bold()
+                                .foregroundColor(.blue)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(isDe ? "**VIP-Whitelist: Nicht-Treffer → WEITERLEITUNG an nächste Filter**" : "**VIP Whitelist: Non-Match → PASS-THROUGH to next filters**")
+                                    .font(.system(size: 11, weight: .bold))
+                                Text(isDe ? "Trifft eine Station **nicht** auf die VIP-Whitelist zu, wird sie **nicht** verworfen, sondern läuft neutral zur nächsten Filter-Sektion nach unten weiter. Erst wenn dort eine Sperre greift, wird sie blockiert." : "Stations that do **not** match a VIP Whitelist are **not** dropped; they cleanly fall through to the next filter section below, where subsequent rules evaluate them.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Divider()
+                        
+                        HStack(alignment: .top, spacing: 10) {
+                            Text("3.")
+                                .bold()
+                                .foregroundColor(.red)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(isDe ? "**Blacklist-Treffer → SOFORT-DROP (return false)**" : "**Blacklist Match → INSTANT DROP (return false)**")
+                                    .font(.system(size: 11, weight: .bold))
+                                Text(isDe ? "Trifft eine Sperre (*Gesperrte Länder*, *Gesperrte Kontinente*, *Zonen*, *Worked Before*, *Grid*, *Doubletten*, *Most Wanted*) zu, wird das Signal sofort blockiert und verworfen." : "If a blacklist (*Blocked Countries*, *Continents*, *Zones*, *Worked Before*, *Grid*, *Duplicates*, *Most Wanted*) matches, the signal is dropped immediately.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Divider()
+                        
+                        HStack(alignment: .top, spacing: 10) {
+                            Text("4.")
+                                .bold()
+                                .foregroundColor(.secondary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(isDe ? "**Ende der Pipeline → PASS**" : "**End of Pipeline → PASS**")
+                                    .font(.system(size: 11, weight: .bold))
+                                Text(isDe ? "Passiert ein Signal alle aktiven Filter ohne Blacklist-Treffer, wird es am Ende der Pipeline akzeptiert." : "If a decode traverses all active sections without hitting any blacklist, it is accepted at the end of the pipeline.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .background(Color.secondary.opacity(0.08))
+                    .cornerRadius(8)
+                }
+                
+                // Praxis-Beispiele
+                Text(isDe ? "Praxis-Beispiele:" : "Practical Use Cases:")
+                    .font(.headline)
+                VStack(alignment: .leading, spacing: 10) {
+                    bullet(isDe ? 
+                        "**Szenario 1: USA generell blockieren, aber Stationen aus Wyoming (Maidenhead-Grids) erlauben**:\n• *Problem*: Du möchtest keine Routine-QSOs mit den USA, suchst aber noch das seltene Wyoming für dein WAS-Diplom.\n• *Lösung*: Schiebe die Sektion **Erlaubte Maidenhead-Grids** an Pos. 1 (ganz nach oben) und trage `DN61-DN74` (den geografischen Planquadrat-Bereich von Wyoming) ein. Setze **Gesperrte Länder** mit `United States` an Pos. 2.\n• *Ergebnis*: Signale aus Wyoming senden ihr Locator-Grid (z. B. `DN71`), treffen auf Pos. 1 und **passieren sofort** (VIP-Bypass). Alle anderen US-Signale laufen weiter zu Pos. 2 und werden dort **geblockt**.\n• *Eingabeformate*: Unterstützt Einzel-Grids (`DN71`), Bereiche (`DN61-DN74`, `KN64-KN71`) und Kombinationen (`DN61-DN74, EN10`)." : 
+                        "**Scenario 1: Block USA in general, but allow Wyoming stations via Maidenhead Grids**:\n• *Goal*: Avoid common USA QSOs while still hunting rare Wyoming for your WAS award.\n• *Solution*: Move **Allowed Maidenhead Grids** to Pos. 1 (very top) and enter `DN61-DN74` (the grid range covering Wyoming). Place **Blocked Countries** with `United States` at Pos. 2.\n• *Result*: Wyoming stations transmit their grid (e.g. `DN71`), match Pos. 1, and **pass immediately** (VIP bypass). All other US stations fall through to Pos. 2 and are **blocked**.\n• *Supported Formats*: Single grids (`DN71`), ranges (`DN61-DN74`, `KN64-KN71`), and combinations (`DN61-DN74, EN10`).")
+                    
+                    bullet(isDe ? 
+                        "**Szenario 2: Nur Most Wanted jagen, aber Clubstationen / Freunde immer anrufen**:\n• *Lösung*: Sektion **Erlaubte DX-Rufzeichen** auf Pos. 1 (z. B. mit `DL0ABC, DP0GVN`) und **Most Wanted Only** auf Pos. 2.\n• *Ergebnis*: Befreundete Rufzeichen passieren direkt auf Pos. 1, während alle anderen Stationen strikt durch den Most-Wanted-Filter gefiltert werden." : 
+                        "**Scenario 2: Hunt Most Wanted only, but always allow club/friend callsigns**:\n• *Solution*: Place **Allowed DX Callsigns** on Pos. 1 (with `DL0ABC, DP0GVN`) and **Most Wanted Only** on Pos. 2.\n• *Result*: Friend callsigns pass immediately at Pos. 1, while other stations are strictly evaluated by Most Wanted rankings.")
+                }
+                .padding()
+                .background(Color.blue.opacity(0.08))
+                .cornerRadius(8)
+                
+                // Bedienung & Sortierung
+                Text(isDe ? "Bedienung & Sortierung:" : "Controls & Reordering:")
+                    .font(.headline)
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet(isDe ? "**Drag & Drop (`☰`)**: Klicke und ziehe das horizontale Griff-Symbol (`line.3.horizontal`) vor jedem Filter-Header, um Sektionen in beliebiger Reihenfolge anzuordnen." : "**Drag & Drop (`☰`)**: Click and drag the horizontal handle (`line.3.horizontal`) in any filter header to reorder sections freely.")
+                    bullet(isDe ? "**Standard (Default)**: Stellt mit einem Klick die VIP-First Standard-Reihenfolge (VIP-Grids → VIP-Rufzeichen → VIP-Länder → Kontinente → Länder → Zonen → Most Wanted → Gearbeitet → Spezialfilter → Doubletten) wieder her." : "**Default Preset**: 1-click restore of the VIP-First standard order (VIP Grids → VIP Calls → VIP Countries → Continents → Countries → Zones → Most Wanted → Worked → Special Filters → Duplicates).")
+                    bullet(isDe ? "**Benutzerdefiniert (Custom)**: Schaltet jederzeit auf deine gespeicherte individuelle Sortierung um." : "**Custom Preset**: Switches back to your personalized custom order at any time.")
+                    bullet(isDe ? "**Filter-Tracing im System-Log**: Aktiviere im Tab *System-Logs* der Konsole die Checkbox **Filter-Tracing**, um den genauen Entscheidungsweg (✅ PASS / ❌ DROP mit Regel- und Positionsnummer) live für jedes empfangene Signal mitzuverfolgen." : "**Filter Tracing in System Log**: Enable **Filter Tracing** in the *System Logs* console tab to monitor real-time decisions (✅ PASS / ❌ DROP with section position and matching rule details) for every decode.")
+                }
+                .padding()
+                .background(Color.secondary.opacity(0.06))
+                .cornerRadius(8)
             }
             
         case .cluster:
@@ -771,10 +895,10 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                // Version 4.0.1
+                // Version 4.1.0
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 4.0.1")
+                        Text("Version 4.1.0")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -789,19 +913,14 @@ struct HelpView: View {
                             .cornerRadius(4)
                     }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(isDe ? "✨ Fehlerbehebungen & Verbesserungen" : "✨ Bug Fixes & Improvements")
+                        Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
+                        bullet(isDe ? "VIP: Erlaubte Maidenhead-Grids Filter: Neuer Filter für Einzel-Grids (`DN71`), Bounding-Box Bereiche (`DN61-DN74`, `KN64-KN71`) und Listen (`DN61-DN74, EN10`) mit sofortigem VIP-Pass bei Treffer und neutraler Weiterleitung an nachfolgende Filter bei Nicht-Treffer." : "VIP: Allowed Maidenhead Grids Filter: Dedicated filter for single grids (`DN71`), bounding-box ranges (`DN61-DN74`, `KN64-KN71`), and lists (`DN61-DN74, EN10`) with instant VIP pass on match and clean passthrough to next filters on non-match.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Sortierbare Filter-Pipeline & First-Match Boolean-Logik: Alle 12 Filter-Sektionen der rechten Seitenleiste sind per Drag & Drop (`☰`) in beliebiger Reihenfolge anordenbar. Die Auswertung erfolgt sequentiell von oben nach unten (First-Match)." : "Sortable Filter Pipeline & First-Match Boolean Logic: All 12 filter sections in the right sidebar can be freely reordered via drag & drop (`☰`). Evaluation proceeds sequentially from top to bottom (First-Match).", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "VIP-First Standard-Reihenfolge & Umschalt-Presets (Default vs. Custom): Das Default-Preset platziert VIP-Ausnahmen (Grids, Rufzeichen, Länder) an Position 1–3 über Makro-Ländersperren, sodass Ausnahmen sofort greifen. Umschalter wechselt nahtlos zwischen Default und Custom." : "VIP-First Standard Order & Presets (Default vs. Custom): The Default preset places VIP exceptions (Grids, Calls, Countries) on positions 1–3 above general country blocks for instant exception overrides. Presets toggle seamlessly.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Echtzeit Filter-Tracing im System-Log: Checkbox „Filter-Tracing“ im Reiter System-Logs protokolliert jede Filter-Entscheidung live mit Farbcodierung (✅ Grün = PASS, ❌ Rot = DROP), Sektions-Position und Begründung." : "Real-Time Filter Tracing in System Log: “Filter Tracing” checkbox in the System Logs tab logs live filter decisions with color-coded status (✅ PASS, ❌ DROP), section index, and matching rule details.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Automatischer QSO-Abbruch ohne Cooldown (HaltTx): Antwortet eine angerufene Station einer anderen Gegenstation, stoppt AutoQSO die Sendung via HaltTx sofort, verzichtet auf eine Cooldown-Sperre und wartet direkt auf den nächsten Trigger." : "Automatic QSO Abort without Cooldown (HaltTx): If a called target station is answered by another station, AutoQSO halts transmission immediately via HaltTx, skips cooldown quarantine, and stands ready for the next trigger.", font: .subheadline, color: .secondary)
-                        bullet(isDe ? "Visuelle Hilfegrafiken & optimiertes Fensterlayout: Das Hilfefenster wurde auf 860 × 620 px vergrößert und um anschauliche UI-Grafiken für Toolbar, Auto-Sende-Schalter, Tabellen-Farblegende und Live-Statusbanner erweitert." : "Visual Help Illustrations & Optimized Layout: Help window expanded to 860 × 620 px with native UI illustration cards for Toolbar, Auto Transmit button states, table row color legends, and live QSO status banner.", font: .subheadline, color: .secondary)
-                        bullet(isDe ? "Dynamische Toolbar-Statusanzeige „Auto ON / CQ Only“: Ist die Option „Nur Stationen anrufen, die CQ rufen“ aktiv, zeigt der grüne Hauptschalter dies kompakt zweizeilig als „Auto ON / CQ Only“ an." : "Dynamic “Auto ON / CQ Only” Toolbar Badge: When CQ Only is active in settings, the green auto transmit button displays “Auto ON / CQ Only” on two compact lines without enlarging the button.", font: .subheadline, color: .secondary)
-                        bullet(isDe ? "Neuer Filter „Most wanted Only“: Eigenständige Sektion in der rechten Filter-Seitenleiste (unterhalb der erlaubten DX-Rufzeichen) mit Schalter und wählbarer Rang-Schwelle (Top 10 bis 100)." : "New “Most wanted Only” Filter: Dedicated section in the right filter sidebar (below allowed DX callsigns) with active toggle and rank threshold selector (Top 10 to 100).", font: .subheadline, color: .secondary)
-                        bullet(isDe ? "Erweiterte Dokumentation für Auto-QSO-Trigger: Umfassende Erklärungen aller Signal-Trigger, Einstellungsoptionen und der Priorisierungs-Pipeline im Hilfebereich." : "Expanded Auto QSO Triggers Documentation: Comprehensive breakdown of message triggers, operational settings, and candidate scoring order in the Help section.", font: .subheadline, color: .secondary)
-                        bullet(isDe ? "Konfigurierbare UDP-Bridge Zieladresse: Volle Unterstützung für individuelle IP-Adressen (Unicast & Multicast) und Portweiterleitung inklusive dynamischer Modusanzeige (UC/MC)." : "Configurable UDP Bridge Destination: Full support for custom destination IP addresses (Unicast & Multicast) and port forwarding with dynamic UC/MC mode indicator.", font: .subheadline, color: .secondary)
-                        bullet(isDe ? "Option „Nur Stationen anrufen, die CQ rufen“: Neue Einstellung unter Auto Mode Optionen, um ausschließlich aktive CQ-Rufer automatisch anzurufen und QSO-Enden (73 / RR73 / RRR) zu überspringen." : "“Only call stations calling CQ” Option: New setting under Auto Mode Options to strictly call active CQ callers and skip transmissions at the end of other QSOs (73 / RR73 / RRR).", font: .subheadline, color: .secondary)
-                        bullet(isDe ? "Struktureller FT8/FT4 Grid-Parser: Verhindert zuverlässig, dass QSO-Abschluss-Tokens wie RR73 fälschlicherweise als Maidenhead-Planquadrate interpretiert werden." : "Structural FT8/FT4 Grid Parser: Reliably distinguishes Maidenhead locators from QSO termination tokens such as RR73.", font: .subheadline, color: .secondary)
-                        bullet(isDe ? "Großkreis-Pfad bei fehlendem Locator: Bei einem aktiven QSO ohne empfangenen Maidenhead-Locator wird der Großkreis (Great Circle) automatisch zum Zentrum des ermittelten Landes gezeichnet, zentriert und mit Entfernungsberechnung angezeigt." : "Great Circle Path Fallback to Country: When no Maidenhead grid locator is received for an active QSO, the Great Circle path is automatically drawn and centered to the resolved country center with accurate distance calculation.", font: .subheadline, color: .secondary)
-                        bullet(isDe ? "Erweiterte Rufzeichen- & Präfix-Auflösung: Verbesserte Erkennung von Sonder- und Portabel-Rufzeichen mit Slashes (/P, /M, /MM, EA8/DL1ABC)." : "Enhanced Prefix & Callsign Resolution: Improved entity resolution for portable and slash callsigns (/P, /M, /MM, EA8/DL1ABC).", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -812,6 +931,37 @@ struct HelpView: View {
                 
                 Divider()
 
+                // Version 4.0.1
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 4.0.1")
+                            .font(.headline)
+                            .bold()
+                        Text("(Build 459)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "✨ Fehlerbehebungen & Verbesserungen" : "✨ Bug Fixes & Improvements")
+                            .font(.subheadline)
+                            .bold()
+                        bullet(isDe ? "Visuelle Hilfegrafiken & optimiertes Fensterlayout: Das Hilfefenster wurde auf 860 × 620 px vergrößert und um anschauliche UI-Grafiken für Toolbar, Auto-Sende-Schalter, Tabellen-Farblegende und Live-Statusbanner erweitert." : "Visual Help Illustrations & Optimized Layout: Help window expanded to 860 × 620 px with native UI illustration cards for Toolbar, Auto Transmit button states, table row color legends, and live QSO status banner.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Dynamische Toolbar-Statusanzeige „Auto ON / CQ Only“: Ist die Option „Nur Stationen anrufen, die CQ rufen“ aktiv, zeigt der grüne Hauptschalter dies kompakt zweizeilig als „Auto ON / CQ Only“ an." : "Dynamic “Auto ON / CQ Only” Toolbar Badge: When CQ Only is active in settings, the green auto transmit button displays “Auto ON / CQ Only” on two compact lines without enlarging the button.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Neuer Filter „Most wanted Only“: Eigenständige Sektion in der rechten Filter-Seitenleiste mit Schalter und wählbarer Rang-Schwelle (Top 10 bis 100)." : "New “Most wanted Only” Filter: Dedicated section in the right filter sidebar with active toggle and rank threshold selector (Top 10 to 100).", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Erweiterte Dokumentation für Auto-QSO-Trigger: Umfassende Erklärungen aller Signal-Trigger, Einstellungsoptionen und der Priorisierungs-Pipeline im Hilfebereich." : "Expanded Auto QSO Triggers Documentation: Comprehensive breakdown of message triggers, operational settings, and candidate scoring order in the Help section.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Konfigurierbare UDP-Bridge Zieladresse: Volle Unterstützung für individuelle IP-Adressen (Unicast & Multicast) und Portweiterleitung inklusive dynamischer Modusanzeige (UC/MC)." : "Configurable UDP Bridge Destination: Full support for custom destination IP addresses (Unicast & Multicast) and port forwarding with dynamic UC/MC mode indicator.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Option „Nur Stationen anrufen, die CQ rufen“: Neue Einstellung unter Auto Mode Optionen, um ausschließlich aktive CQ-Rufer automatisch anzurufen." : "“Only call stations calling CQ” Option: New setting under Auto Mode Options to strictly call active CQ callers.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Struktureller FT8/FT4 Grid-Parser: Verhindert zuverlässig, dass QSO-Abschluss-Tokens wie RR73 fälschlicherweise als Maidenhead-Planquadrate interpretiert werden." : "Structural FT8/FT4 Grid Parser: Reliably distinguishes Maidenhead locators from QSO termination tokens such as RR73.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Großkreis-Pfad bei fehlendem Locator: Bei einem aktiven QSO ohne empfangenen Maidenhead-Locator wird der Großkreis (Great Circle) automatisch zum Zentrum des ermittelten Landes gezeichnet." : "Great Circle Path Fallback to Country: When no Maidenhead grid locator is received for an active QSO, the Great Circle path is automatically drawn and centered to the resolved country center.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Erweiterte Rufzeichen- & Präfix-Auflösung: Verbesserte Erkennung von Sonder- und Portabel-Rufzeichen mit Slashes (/P, /M, /MM, EA8/DL1ABC)." : "Enhanced Prefix & Callsign Resolution: Improved entity resolution for portable and slash callsigns (/P, /M, /MM, EA8/DL1ABC).", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.secondary.opacity(0.06))
+                .cornerRadius(8)
+                
                 // Version 4.0.0
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {

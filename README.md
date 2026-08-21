@@ -27,6 +27,13 @@
 
 ---
 
+## 💻 System Requirements
+
+- **Operating System**: macOS 14.0 (Sonoma) or newer (including macOS 15 Sequoia).
+- **Processor / Architecture**: Universal Binary (Native support for **Apple Silicon** M1/M2/M3/M4 & **Intel Macs** `x86_64`).
+
+---
+
 ## 📥 Installation & macOS Gatekeeper Fix
 
 Since AutoQSO is distributed with self-signed (ad-hoc) code signing without a paid Apple Developer ID certificate, macOS Gatekeeper may block direct launches. The DMG release includes two installer options:
@@ -60,9 +67,9 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 
 ### 2. AutoQSO Configuration
 1. Launch **AutoQSO**.
-2. Go to **Settings -> Logbuch-Sync** to choose your active logbook source (**RUMlogNG**, **LoTW**, or **QRZ.com**).
-3. Go to **Settings -> Telnet Server** to set your login callsign.
-4. Go to **Settings -> Eigenes QTH** to set your Maidenhead locator (or click 🗺️ for interactive map picker).
+2. Go to **Settings -> Logbook Sync** (or **Einstellungen -> Logbuch-Sync**) to choose your active logbook source (**RUMlogNG**, **LoTW**, or **QRZ.com**).
+3. Go to **Settings -> Telnet Server** (or **Einstellungen -> Telnet Server**) to set your login callsign.
+4. Go to **Settings -> Home QTH** (or **Einstellungen -> Eigenes QTH**) to set your Maidenhead locator (or click 🗺️ for interactive map picker).
 5. Toggle **WSJTX Auto Transmit** in the toolbar to enable automated calling.
 
 ---
@@ -80,6 +87,53 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 ---
 
 ## 📝 Changelog
+
+### Version 4.1.0 (Build 470)
+- **Allowed Maidenhead Grids (Whitelist) Filter**: New dedicated filter section supporting single grids (`DN71`), bounding-box ranges (`DN61-DN74`, `KN64-KN71`), and comma-separated lists (`DN61-DN74, EN10`) with instant First-Match VIP exception pass.
+- **Sortable Filter Pipeline & First-Match Boolean Evaluation**: All 12 filter sections in the right sidebar are fully reorderable via drag & drop (`☰`). Evaluation follows a sequential **First-Match rule from top to bottom**:
+  - **Whitelists as VIP/Exception Overrides (`return true`)**: Placing *Allowed Maidenhead Grids*, *Allowed DX Callsigns*, or *Allowed Countries* higher than *Blocked Countries* allows specific regional exceptions (e.g. general USA blacklist on position 2, but Wyoming grids `DN61-DN74` on position 1 -> Wyoming stations pass immediately without checking the USA blacklist).
+  - **Blacklists (`return false`)**: Any match in blocked countries, disabled continents, blocked zones, worked before, or duplicate filters immediately drops the station.
+- **Filter Order Presets (Default vs. Custom)**: Dedicated footer buttons in the sidebar switch instantly between the standard geographic order (Continents → Countries → Zones → Callsigns → Grids → Filters) and a persistent user custom reordering.
+- **Real-Time Filter Tracing in System Logs**: Toggleable `Filter-Tracing` checkbox in the *System Logs* console displays real-time evaluation paths with color codes (✅ Green = PASS, ❌ Red = DROP), matching rule name, and pipeline position number.
+- **Automatic QSO Abort without Cooldown (HaltTx)**: If an active target station answers a third party, AutoQSO immediately sends a `HaltTx` command to WSJT-X, cancels transmission without cooldown quarantine, and prepares for the next trigger.
+
+### Version 4.0.1 (Build 459)
+- **Visual Help Illustrations & Window Expansion**: Enriched the Help & Info dialog with dedicated UI illustrations for toolbar controls, button states, color-coded decode row legends, and live QSO banners in an enlarged 860 × 620 px layout.
+- **Dynamic "Auto ON / CQ Only" Button Label**: When "Only Call CQ" is active, the green toolbar auto-transmit button cleanly displays "Auto ON / CQ Only" on two compact lines without enlarging the button.
+- **Dedicated "Most wanted Only" Filter Section**: Added a standalone filter section in the right sidebar below Allowed DX Calls with toggle switch and rank threshold picker (Top 10 to 100).
+- **Expanded Auto QSO Triggers Help**: In-depth documentation detailing supported message triggers (CQ & tail-ending 73/RR73), all operational settings, and candidate scoring workflows.
+- **Configurable UDP Bridge Destination IP & Port**: Full support for custom destination IP addresses (Unicast & Multicast) and port forwarding with dynamic UC/MC mode indicator.
+- **"Only Call CQ" Option**: Configurable toggle in *Settings → Auto Mode Options* to strictly call stations transmitting active CQ calls, skipping tail-end transmissions (73 / RR73 / RRR).
+- **Structural FT8/FT4 Grid Parser**: Smart phase-aware parsing distinguishes Maidenhead grid locators from QSO termination tokens (`RR73`, `RRR`, `73`, etc.) to prevent false grid extractions.
+- **Great Circle Path Fallback to Country**: When no Maidenhead grid locator is received for an active QSO, the Great Circle path is automatically calculated, drawn, and centered to the corresponding country center on both 2D map and 3D globe.
+- **Robust Callsign & Prefix Resolution**: Enhanced prefix resolution and country coordinate lookup for complex callsigns with prefixes and portable suffixes (`/P`, `/M`, `/MM`, `EA8/DL1ABC`).
+
+### Version 4.0.0 (Build 437)
+- **Multi-Language Architecture (German 🇩🇪 & English 🇬🇧)**: Complete native localization across all views, tables, sidebars, filters, dialogs, map elements, and system alerts.
+- **Dynamic In-App Language Selector**: Instant switching between *System (Default)*, *Deutsch*, and *English* in *Settings → Language* without requiring an app restart.
+- **Synchronized Units & Geographic Names**: Fully localized time units (Hours/Days/Months/Years / Stunden/Tage/Monate/Jahre) and continent names.
+- **Universal 2 Binary**: Full native execution on both Apple Silicon (M1/M2/M3/M4) and Intel Macs (`x86_64`) on macOS 14+.
+
+### Version 3.6.0 (Build 428)
+- **Universal 2 Binary Support**: Compiles natively as a dual-architecture Universal Binary for both **Apple Silicon** (`arm64`) and **Intel Macs** (`x86_64`) running macOS 14+.
+- **Logically Restructured Filter Sidebar**: Intuitive reordering from macro geography (continents, blocked/allowed countries, zones, callsign prefixes) to QSO history and technical signal filters.
+- **WSJT-X CQ Filter Renaming**: Renamed the former "WSJT-X Spezialfilter" to "WSJT-X CQ Filter" (CQ, RR73, RRR, 73 only) for greater clarity.
+- **Automated Universal Release DMG**: Release pipeline automatically builds, verifies, and packages universal binaries into the distributable DMG.
+
+### Version 3.5.0 (Build 421)
+- **Configurable "Worked Before" Time-Threshold Filter**: New toggle in the filter sidebar enabling previously worked stations to pass through and become eligible for automated calling after a user-defined duration (0–999 hours, days, months, or years).
+- **High-Performance O(1) Timestamp Caching**: In-memory UTC timestamp indexing of all QSOs for sub-millisecond evaluation across tens of thousands of logbook records.
+- **Flexible Numeric Input & Unit Selector**: Dedicated numeric text field with bounds checking (0–999) paired with hours/days/months/years time unit picker.
+- **Unified Filter & Auto-Transmit Integration**: Fully integrated into DX filtering rules, automated transmit candidate selection, and the Most-Wanted dashboard panel.
+
+### Version 3.4.1 (Build 411)
+- **Smart 5-Minute Time-Window Deduplication**: Prevents duplicate QSO entries across WSJT-X, RUMlogNG, QRZ.com, and LoTW caused by slight timestamp differences (`TIME_ON` vs. `TIME_OFF`).
+- **Automatic Logbook Cleanup**: Automatically detects, merges missing attributes (Grid, DXCC), and removes existing duplicate records from SQLite upon startup.
+- **WSJT-X Duplicate Packet Debouncing**: Intelligent filter prevents redundant double-logging when WSJT-X sends simultaneous `loggedAdif` and `qsoLogged` UDP packets.
+- **Direct Map Coordinate Popover Anchoring**: Grid inspector popover now anchors directly to the exact geographic center coordinate of the clicked grid square with a targeted pointer.
+- **Persistent Grid Map Display**: Ensures 2D map, Maidenhead overlay, and inspector remain fully visible and interactive even when 0 active DX grids are present.
+- **Human-Readable Country Resolution**: Resolved matching logbook callsigns to full country names instead of displaying raw numeric DXCC entity IDs.
+- **Streamlined Toolbar**: Removed the inline cooldown textfield from the main toolbar in favor of centralized configuration in Settings -> WSJT-X.
 
 ### Version 3.4.0 (Build 410)
 - **RUMlogNG AppleScript Integration**: 1-click logbook synchronization from running RUMlogNG app via native AppleScript (`ReadAdif`) with full (since 1900) and incremental sync modes.
