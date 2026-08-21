@@ -18,10 +18,10 @@ Da AutoQSO ad-hoc signiert ist (ohne kostenpflichtiges Apple-Entwickler-Zertifik
 **Option 1: Nativer 1-Klick GUI Installer (Empfohlen)**
 1. Öffne die heruntergeladene **`AutoQSO-vX.X.X.dmg`** Datei.
 2. Starte per Doppelklick die App **`AutoQSO Installer.app`** (falls Gatekeeper warnt: *Rechtsklick -> Öffnen*).
-3. Wähle deinen Zielordner (`/Applications`, `~/Applications` oder Finder-Dialog). Der Installer kopiert AutoQSO, entfernt das Quarantäne-Attribut (`xattr -cr`) automatisch und startet die App ohne Fehlermeldung.
+3. Wähle deinen Zielordner (`/Applications`, `~/Applications` oder Finder-Dialog). Der Installer kopiert AutoQSO, fordert bei geschützten Zielordnern (z. B. `/Applications/AFU`) bei Bedarf Administrator-Rechte an, entfernt das Quarantäne-Attribut (`xattr -cr`) automatisch und startet die App ohne Fehlermeldung.
 
 **Option 2: Terminal-Installationsskript**
-- Starte per Doppelklick das Skript **`Install AutoQSO.command`** und folge den Anweisungen im Terminal.
+- Starte per Doppelklick das Skript **`Install AutoQSO.command`** und folge den Anweisungen im Terminal (unterstützt ebenfalls Administrator-Rechte via `sudo`/`osascript`).
 
 ---
 

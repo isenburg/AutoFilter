@@ -478,6 +478,7 @@ struct InstallerContentView: View {
         DispatchQueue.global(qos: .userInitiated).async {
             let fm = FileManager.default
 
+            // Step 1: Try standard non-privileged execution first
             do {
                 // Ensure target directory exists
                 try fm.createDirectory(at: destinationDir, withIntermediateDirectories: true, attributes: nil)
@@ -487,7 +488,7 @@ struct InstallerContentView: View {
                     try fm.removeItem(at: destAppURL)
                 }
 
-                // Step 1: Copy
+                // Copy
                 try fm.copyItem(at: source, to: destAppURL)
 
                 DispatchQueue.main.async {
@@ -515,9 +516,38 @@ struct InstallerContentView: View {
                 DispatchQueue.main.async {
                     self.installState = .success(destinationPath: destAppURL.path)
                 }
+                return
             } catch {
+                // Standard file operation failed (e.g. Permission Denied for /Applications/...)
+                // Fall back to elevated execution via AppleScript
                 DispatchQueue.main.async {
-                    self.installState = .failed(message: "Fehler während der Installation: \(error.localizedDescription)")
+                    self.installState = .installing(step: 1, message: "Administrator-Rechte für '\(destinationDir.path)' erforderlich...")
+                }
+
+                let sourceEscaped = source.path.replacingOccurrences(of: "'", with: "'\\''")
+                let destDirEscaped = destinationDir.path.replacingOccurrences(of: "'", with: "'\\''")
+                let destAppEscaped = destAppURL.path.replacingOccurrences(of: "'", with: "'\\''")
+
+                let shellCommand = "mkdir -p '\(destDirEscaped)' && rm -rf '\(destAppEscaped)' && cp -R '\(sourceEscaped)' '\(destDirEscaped)/' && /usr/bin/xattr -cr '\(destAppEscaped)' && /usr/bin/codesign --force --deep --sign - '\(destAppEscaped)'"
+                let escapedForAppleScript = shellCommand
+                    .replacingOccurrences(of: "\\", with: "\\\\")
+                    .replacingOccurrences(of: "\"", with: "\\\"")
+                let appleScriptSource = "do shell script \"\(escapedForAppleScript)\" with administrator privileges"
+
+                var errorDict: NSDictionary? = nil
+                if let appleScript = NSAppleScript(source: appleScriptSource) {
+                    _ = appleScript.executeAndReturnError(&errorDict)
+                } else {
+                    errorDict = [NSAppleScript.errorMessage: "AppleScript konnte nicht initialisiert werden."]
+                }
+
+                DispatchQueue.main.async {
+                    if let error = errorDict {
+                        let errMsg = error[NSAppleScript.errorMessage] as? String ?? "Installation fehlgeschlagen (Rechte verweigert)."
+                        self.installState = .failed(message: errMsg)
+                    } else {
+                        self.installState = .success(destinationPath: destAppURL.path)
+                    }
                 }
             }
         }
