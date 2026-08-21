@@ -88,7 +88,13 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 
 ## 📝 Changelog
 
-### Version 4.1.0 (Build 473)
+### Version 4.1.1 (Build 492)
+- **Configuration & Settings in SQLite Database**: All application settings, filter rules, UDP/Telnet/Cluster configurations, color themes, and UI options are now persistently stored in the SQLite database (`autoqso_log.sqlite`) alongside QSO logs with real-time bidirectional synchronization.
+- **Seamless iCloud & Multi-Device Synchronization**: Switching storage locations or syncing across multiple Macs via iCloud Drive automatically hydrates and synchronizes all configurations directly from the database.
+- **Restored Inner Window Dividers on Compact Mode Exit**: Returning from Compact Mode cleanly preserves and restores the saved split divider heights (`logConsoleHeight`, `mostWantedPanelHeight`) and sidebar widths.
+- **Elevated Installer Permissions**: Both `AutoQSO Installer.app` and `Install AutoQSO.command` automatically request administrator privileges when installing to or overwriting existing versions in protected directories (e.g. `/Applications/AFU`).
+
+### Version 4.1.0 (Build 477)
 - **VIP: Allowed Maidenhead Grids Filter**: New dedicated filter section supporting single grids (`DN71`), bounding-box ranges (`DN61-DN74`, `KN64-KN71`), and comma-separated lists (`DN61-DN74, EN10`) with instant First-Match VIP exception pass.
 - **Sortable Filter Pipeline & First-Match Boolean Evaluation**: All 12 filter sections in the right sidebar are fully reorderable via smooth drag & drop (`☰`). Evaluation follows a sequential **First-Match rule from top to bottom**:
   - **VIP Whitelists (Instant Pass & Passthrough)**: Matching signals in *VIP: Allowed Maidenhead Grids*, *VIP: Allowed DX Callsigns*, or *VIP: Allowed DX Countries* receive an instant VIP pass (`PASS / return true`), bypassing subsequent blacklists. Non-matches cleanly fall through to lower filter sections.
@@ -96,7 +102,7 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 - **VIP-First Standard Default Order & Presets (Default vs. Custom)**: Default pipeline order places VIP exceptions on positions 1–3 directly above general country blocks for instant exception overrides. Presets toggle seamlessly between Default and Custom.
 - **Debounced Cycle Evaluation & Diagnostic Throttling**: Auto-QSO candidate search is debounced by 350 ms to process whole decode bursts at cycle end once, with throttled summary diagnostics.
 - **Removed Obsolete Conflict Warnings**: Cleaned up legacy conflict checks in favor of deterministic multi-tier First-Match VIP exception evaluation.
-- **Real-Time Filter Tracing in System Logs**: Toggleable `Filter-Tracing` checkbox in the *System Logs* console displays real-time evaluation paths with color codes (✅ Green = PASS, ❌ Red = DROP), matching rule name, and pipeline position number.
+- **Strict CTY.DAT DXCC Entity Adherence**: Country filtering strictly distinguishes autonomous DXCC entities (e.g. Puerto Rico `KP4`, Alaska `KL7`, Hawaii `KH6`, Guam `KH2`, Virgin Islands `KP2`) from mainland United States (`K`), preventing accidental collateral blocks.
 - **Automatic QSO Abort without Cooldown (HaltTx)**: If an active target station answers a third party, AutoQSO immediately sends a `HaltTx` command to WSJT-X, cancels transmission without cooldown quarantine, and prepares for the next trigger.
 
 ### Version 4.0.1 (Build 459)
