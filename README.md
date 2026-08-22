@@ -88,7 +88,7 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 
 ## 📝 Changelog
 
-### Version 4.1.1 (Build 492)
+### Version 4.1.1 (Build 494)
 - **Configuration & Settings in SQLite Database**: All application settings, filter rules, UDP/Telnet/Cluster configurations, color themes, and UI options are now persistently stored in the SQLite database (`autoqso_log.sqlite`) alongside QSO logs with real-time bidirectional synchronization.
 - **Seamless iCloud & Multi-Device Synchronization**: Switching storage locations or syncing across multiple Macs via iCloud Drive automatically hydrates and synchronizes all configurations directly from the database.
 - **Restored Inner Window Dividers on Compact Mode Exit**: Returning from Compact Mode cleanly preserves and restores the saved split divider heights (`logConsoleHeight`, `mostWantedPanelHeight`) and sidebar widths.

@@ -182,10 +182,18 @@ struct PropagationMapView: View {
             )
             .id("propagation-globe-map-instance")
         } else {
+            let topCount = min(displayClusters.count, 20)
+            let detailClusters = displayClusters.prefix(topCount)
+            let backgroundClusters = displayClusters.dropFirst(topCount)
+
             Map(position: $cameraPosition) {
-                let topCount = min(displayClusters.count, 20)
-                let detailClusters = displayClusters.prefix(topCount)
-                let backgroundClusters = displayClusters.dropFirst(topCount)
+                ForEach(backgroundClusters) { cluster in
+                    Marker(cluster.country, coordinate: CLLocationCoordinate2D(
+                        latitude: cluster.latitude,
+                        longitude: cluster.longitude
+                    ))
+                    .tint(colorForBandName(cluster.bands.first?.name ?? ""))
+                }
 
                 ForEach(detailClusters) { cluster in
                     Annotation("", coordinate: CLLocationCoordinate2D(
@@ -193,16 +201,8 @@ struct PropagationMapView: View {
                         longitude: cluster.longitude
                     )) {
                         CountryMarkerView(cluster: cluster, fontSize: fontSizeTable)
-                            .drawingGroup()
+                            .mapAnnotationZPriority(10)
                     }
-                }
-
-                ForEach(backgroundClusters) { cluster in
-                    Marker(cluster.country, coordinate: CLLocationCoordinate2D(
-                        latitude: cluster.latitude,
-                        longitude: cluster.longitude
-                    ))
-                    .tint(colorForBandName(cluster.bands.first?.name ?? ""))
                 }
 
                 if let path = viewModel.activeQSOPath {
@@ -217,6 +217,7 @@ struct PropagationMapView: View {
                             .padding(5)
                             .background(Color.green, in: Circle())
                             .shadow(color: .black.opacity(0.4), radius: 3)
+                            .mapAnnotationZPriority(900)
                     }
 
                     Annotation("", coordinate: path.targetCoordinate) {
@@ -229,9 +230,10 @@ struct PropagationMapView: View {
                         }
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)
-                        .background(Color.orange.opacity(0.9), in: Capsule())
+                        .background(Color.orange.opacity(0.95), in: Capsule())
                         .overlay(Capsule().stroke(Color.yellow, lineWidth: 1.5))
                         .shadow(color: .orange.opacity(0.6), radius: 6)
+                        .mapAnnotationZPriority(1000)
                     }
                 }
             }

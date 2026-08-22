@@ -350,16 +350,28 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                 annotationView?.markerTintColor = .systemGreen
                 annotationView?.titleVisibility = .visible
                 annotationView?.subtitleVisibility = .adaptive
+                annotationView?.zPriority = .max
+                annotationView?.displayPriority = .required
+                annotationView?.wantsLayer = true
+                annotationView?.layer?.zPosition = 900
             } else if spot.bandName == "ACTIVE_QSO" {
                 annotationView?.glyphText = "⚡"
                 annotationView?.markerTintColor = .systemOrange
                 annotationView?.titleVisibility = .visible
                 annotationView?.subtitleVisibility = .adaptive
+                annotationView?.zPriority = .max
+                annotationView?.displayPriority = .required
+                annotationView?.wantsLayer = true
+                annotationView?.layer?.zPosition = 1000
             } else {
                 annotationView?.glyphText = ""
                 annotationView?.markerTintColor = nsColorForBand(spot.bandName)
                 annotationView?.titleVisibility = .visible
                 annotationView?.subtitleVisibility = .adaptive
+                annotationView?.zPriority = .min
+                annotationView?.displayPriority = .defaultLow
+                annotationView?.wantsLayer = true
+                annotationView?.layer?.zPosition = 0
             }
             return annotationView
         }

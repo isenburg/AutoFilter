@@ -236,7 +236,7 @@ struct NewGridMapView: View {
                         longitude: cluster.upperRightLongitude
                     )) {
                         GridMarkerView(cluster: cluster)
-                            .drawingGroup()
+                            .mapAnnotationZPriority(10)
                             .onTapGesture {
                                 inspectCluster(cluster)
                             }
@@ -252,6 +252,7 @@ struct NewGridMapView: View {
                                 Circle()
                                     .stroke(Color.yellow, lineWidth: 2)
                             )
+                            .mapAnnotationZPriority(500)
                             .popover(isPresented: Binding(
                                 get: { inspectedGrid != nil },
                                 set: { if !$0 { inspectedGrid = nil } }

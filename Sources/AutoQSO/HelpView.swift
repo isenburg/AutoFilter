@@ -66,12 +66,71 @@ enum HelpSection: String, CaseIterable, Identifiable {
         case .copyright: return "c.circle"
         }
     }
+    
+    /// Umfassende Such-Keywords für die Hilfethemen (DE & EN)
+    var searchKeywords: [String] {
+        switch self {
+        case .overview:
+            return ["übersicht", "overview", "system", "dx-filter", "auto qso", "wsjt-x", "wsjtx", "ft8", "ft4", "sqlite", "most wanted", "entfernung", "distance", "telnet", "farbschema", "theme", "hauptfunktionen", "features", "filter-pipeline", "whitelist", "vip-pass"]
+        case .quickstart:
+            return ["quickstart", "schnellstart", "mindesteinstellungen", "minimum setup", "schritte", "steps", "rufzeichen", "callsign", "qth", "locator", "wsjt-x udp", "logbuch", "logbook sync", "cluster", "c1", "c2", "c3", "setup", "anleitung", "guide"]
+        case .toolbar:
+            return ["toolbar", "bedienung", "controls", "buttons", "verbindungs-sidebar", "auto transmit", "auto on", "auto off", "cq only", "freeze", "pause", "suche", "search", "suchfeld", "logbuch", "sortierung", "sort order", "tabelle löschen", "clear", "ausbreitungskarte", "kompaktmodus", "einstellungen", "settings", "filter-sidebar", "klick", "click", "doppelklick", "shortcuts", "tastatur", "maus"]
+        case .wsjtx:
+            return ["wsjt-x", "wsjtx", "setup", "konfiguration", "reporting", "udp server", "224.0.0.1", "2237", "multicast", "unicast", "127.0.0.1", "accept udp requests", "prompt me to log", "bandwechsel", "ft8", "ft4", "rig", "audio", "ports", "ip-adresse", "bridge"]
+        case .triggers:
+            return ["triggers", "auto qso triggers", "auslöser", "cq anruf", "73", "rr73", "rrr", "auto-antwort", "tx cycle", "sendezyklus", "timeout", "cooldown", "priorität", "priority", "most wanted trigger", "sende-engine", "transmit", "automatisierung"]
+        case .filterLogic:
+            return ["filter-logik", "filter logic", "pipeline", "first-match", "whitelist", "blacklist", "vip pass", "ausnahmen", "exceptions", "presets", "reorder", "sortierbar", "bandfilter", "modusfilter", "kontinente", "continents", "dxcc", "spotter", "cq-zone", "itu-zone", "snr", "signal-to-noise", "entfernungsfilter", "azimut", "bearing", "peilung", "lotw-user", "worked before", "gearbeitet"]
+        case .cluster:
+            return ["cluster", "dx cluster", "upstream", "c1", "c2", "c3", "telnet", "reversebeacon", "rbn", "ve7cc", "k3lr", "spots", "dx spots", "reconnect", "status", "clustermanager", "sh/dx", "dx cluster server", "login"]
+        case .telnet:
+            return ["telnet", "telnet server", "port 8000", "externe logger", "external loggers", "n1mm", "log4om", "rumlogng", "macloggerdx", "qdatastream", "decodes weiterleiten", "broadcast", "spotting", "terminal", "login", "guest"]
+        case .propagationMap:
+            return ["ausbreitungskarte", "propagation map", "grid-map", "karte", "3d globus", "globe", "maidenhead", "gitter", "subsquare", "heatmap", "bänder", "bands", "farben", "cluster", "160m", "80m", "60m", "40m", "30m", "20m", "17m", "15m", "12m", "10m", "6m", "aktives qso", "great circle", "großkreis", "day night terminator", "sonnenstand"]
+        case .compactMode:
+            return ["kompaktmodus", "compact mode", "mini-fenster", "minimal", "toolbar", "float on top", "schwebend", "platzsparend", "status", "reduzieren", "ansicht", "layout"]
+        case .logbook:
+            return ["logbuch", "logbook", "sync", "lotw", "logbook of the world", "rumlog", "rumlogng", "qrz", "qrz.com", "adif", "import", "sqlite", "gearbeitet", "worked before", "band-statistik", "dupe check", "abgleich", "qso history"]
+        case .storage:
+            return ["storage", "speicherort", "icloud", "icloud drive", "dateipfade", "paths", "autoqso.sqlite", "backup", "datenbank", "sync über geräte", "permissions", "berechtigungen", "app sandbox", "custom folder"]
+        case .appearance:
+            return ["appearance", "ansicht", "farbschema", "theme", "dark mode", "light mode", "dunkelmodus", "hell", "system", "schriftgröße", "font size", "kontrast", "tabellenzeilen", "custom colors", "farben", "look and feel"]
+        case .support:
+            return ["support", "hilfe", "kontakt", "contact", "github", "issues", "bug report", "fehler melden", "feature request", "faq", "community", "mail", "entwickler"]
+        case .disclaimer:
+            return ["rechtlicher hinweis", "legal disclaimer", "amateurfunk", "iaru", "lizenzbestimmungen", "ham radio regulations", "unbeaufsichtigter sendebetrieb", "unattended operation", "eigenverantwortung", "remote", "cept"]
+        case .changelog:
+            return ["changelog", "versionen", "versions", "release notes", "build", "neuigkeiten", "updates", "historie", "whats new", "improvements", "fixes"]
+        case .copyright:
+            return ["copyright", "lizenz", "license", "mit", "open source", "autor", "author", "entwickler", "developer", "credits", "third-party", "danksagung", "afis", "afx"]
+        }
+    }
+
+    func matches(query: String) -> Bool {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if q.isEmpty { return true }
+        if rawValue.lowercased().contains(q) { return true }
+        if title.lowercased().contains(q) { return true }
+        return searchKeywords.contains { $0.lowercased().contains(q) }
+    }
 }
 
 struct HelpView: View {
     @ObservedObject private var langManager = LanguageManager.shared
     @Environment(\.openWindow) private var openWindow
     @State private var selectedSection: HelpSection = .overview
+    @State private var searchText = ""
+    
+    private var isDe: Bool { langManager.isGerman }
+    
+    private var filteredSections: [HelpSection] {
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return HelpSection.allCases
+        }
+        return HelpSection.allCases.filter { $0.matches(query: trimmed) }
+    }
     
     private func openSettings(to section: SettingsSection? = nil) {
         if let section = section {
@@ -86,18 +145,65 @@ struct HelpView: View {
     var body: some View {
         HStack(spacing: 0) {
             // Non-collapsible Left Sidebar
-            VStack(alignment: .leading, spacing: 6) {
-                List(HelpSection.allCases, selection: $selectedSection) { section in
-                    HStack(spacing: 8) {
-                        Image(systemName: section.icon)
-                            .foregroundColor(selectedSection == section ? .accentColor : .secondary)
-                            .frame(width: 18)
-                        Text(section.title)
-                            .font(.body)
+            VStack(alignment: .leading, spacing: 4) {
+                // Search Input Field
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
+                        .font(.system(size: 11))
+                    TextField(isDe ? "Hilfe durchsuchen..." : "Search help topics...", text: $searchText)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 11))
+                    if !searchText.isEmpty {
+                        Button(action: { searchText = "" }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                                .font(.system(size: 11))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .tag(section)
                 }
-                .listStyle(.sidebar)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Color(NSColor.textBackgroundColor))
+                .cornerRadius(6)
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.2), lineWidth: 1))
+                .padding(.horizontal, 8)
+                .padding(.top, 8)
+                .padding(.bottom, 2)
+                
+                if filteredSections.isEmpty {
+                    VStack(spacing: 8) {
+                        Spacer()
+                        Image(systemName: "magnifyingglass")
+                            .font(.title2)
+                            .foregroundColor(.secondary)
+                        Text(isDe ? "Keine Treffer" : "No matches")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Button(isDe ? "Suche leeren" : "Clear") {
+                            searchText = ""
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                } else {
+                    List(filteredSections, selection: $selectedSection) { section in
+                        HStack(spacing: 8) {
+                            Image(systemName: section.icon)
+                                .foregroundColor(selectedSection == section ? .accentColor : .secondary)
+                                .frame(width: 18)
+                            Text(section.title)
+                                .font(.body)
+                            Spacer()
+                        }
+                        .tag(section)
+                    }
+                    .listStyle(.sidebar)
+                }
                 
                 Spacer(minLength: 0)
                 
@@ -114,21 +220,74 @@ struct HelpView: View {
                 }
                 .padding(12)
             }
-            .frame(width: 235)
+            .frame(width: 245)
             .background(Color(NSColor.controlBackgroundColor))
             
             Divider()
             
             // Detail Content View
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    detailView(for: selectedSection)
+                if filteredSections.isEmpty {
+                    VStack(spacing: 12) {
+                        Spacer(minLength: 40)
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .font(.system(size: 42))
+                            .foregroundColor(.secondary)
+                        Text(isDe ? "Keine passenden Hilfethemen für „\(searchText)“" : "No matching help topics for “\(searchText)”")
+                            .font(.title3)
+                            .bold()
+                        Text(isDe ? "Versuche Begriffe wie Quickstart, WSJT-X, Filter, Cluster, Logbuch, Karte, Triggers oder Shortcuts." : "Try topics like Quickstart, WSJT-X, Filters, Cluster, Logbook, Map, Triggers, or Shortcuts.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                        Button(isDe ? "Suche zurücksetzen" : "Reset Search") {
+                            searchText = ""
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .padding(.top, 6)
+                        Spacer(minLength: 40)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(30)
+                } else {
+                    VStack(alignment: .leading, spacing: 18) {
+                        if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            HStack(spacing: 6) {
+                                Image(systemName: "sparkle.magnifyingglass")
+                                    .foregroundColor(.accentColor)
+                                Text(isDe ? "Themen gefiltert nach „\(searchText)“ (\(filteredSections.count) Treffer)" : "Topics filtered by “\(searchText)” (\(filteredSections.count) matches)")
+                                    .font(.caption)
+                                    .bold()
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Button(action: { searchText = "" }) {
+                                    Text(isDe ? "Alle anzeigen" : "Show all")
+                                        .font(.caption2)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.mini)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Color.accentColor.opacity(0.08))
+                            .cornerRadius(6)
+                        }
+                        detailView(for: selectedSection)
+                    }
+                    .padding(22)
                 }
-                .padding(22)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 860, height: 620)
+        .frame(width: 890, height: 620)
+        .onChange(of: searchText) { _, _ in
+            let matching = filteredSections
+            if !matching.isEmpty && !matching.contains(selectedSection) {
+                if let first = matching.first {
+                    selectedSection = first
+                }
+            }
+        }
     }
 
     @ViewBuilder

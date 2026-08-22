@@ -49,6 +49,40 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .language: return "globe"
         }
     }
+    
+    /// Such-Schlagworte für die Sektionen (deutsch & englisch)
+    var searchKeywords: [String] {
+        switch self {
+        case .udp:
+            return ["udp", "server", "ip", "port", "2237", "224.0.0.1", "127.0.0.1", "multicast", "unicast", "bridge", "weiterleitung", "forwarding", "wsjt-x", "wsjtx", "reconnect", "verbindung", "connection", "restart"]
+        case .cluster:
+            return ["cluster", "dx cluster", "upstream", "host", "port", "telnet", "reversebeacon", "ve7cc", "k3lr", "reconnect", "manage", "verwalten", "filter", "server", "dxc", "c1", "c2", "c3"]
+        case .telnet:
+            return ["telnet", "server", "port", "8000", "callsign", "rufzeichen", "login", "guest", "broadcast", "wsjt-x decodes", "ausgeben", "weiterleiten", "forwarding", "spots"]
+        case .sync:
+            return ["sync", "synchronisation", "logbuch", "logbook", "rumlog", "rumlogng", "applescript", "lotw", "logbook of the world", "username", "benutzername", "password", "passwort", "qrz", "qrz.com", "api key", "adif", "import", ".adi", ".adif", "worked", "gearbeitet", "dupe", "delete logbook", "löschen", "cooldown"]
+        case .qth:
+            return ["qth", "eigenes qth", "maidenhead", "locator", "grid", "jo31", "finder", "map", "karte", "drop-pin", "pin", "latitude", "longitude", "breitengrad", "längengrad", "resolution", "subsquare", "field", "square", "entfernung", "bearing", "peilung", "standort", "location"]
+        case .mostWanted:
+            return ["most wanted", "priorität", "priority", "clublog", "dxcc", "top 100", "rank", "rang", "highlight", "hervorheben", "nur most wanted", "only most wanted", "flame", "feuer", "filter", "wpx", "rarität", "rare"]
+        case .storage:
+            return ["storage", "speicherort", "icloud", "icloud drive", "database", "datenbank", "sqlite", "autoqso.sqlite", "pfad", "custom path", "default", "documents", "dokumente", "backup", "ordner", "folder", "location"]
+        case .options:
+            return ["options", "auto mode", "optionen", "auto transmit", "cq", "nur cq", "cq only", "cooldown", "retry", "pause", "timer", "antwort", "reply", "trigger", "auto qso", "sende-engine", "ft8", "ft4", "wiederholen"]
+        case .appearance:
+            return ["appearance", "ansicht", "theme", "farbschema", "dark mode", "light mode", "dunkel", "hell", "system", "font", "schriftgröße", "table", "tabelle", "log", "grid overlay", "pill", "neueste oben", "newest on top", "color", "farbe", "layout"]
+        case .language:
+            return ["language", "sprache", "deutsch", "english", "german", "lokalisierung", "localization", "ui", "translation", "übersetzung"]
+        }
+    }
+
+    func matches(query: String) -> Bool {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if q.isEmpty { return true }
+        if rawValue.lowercased().contains(q) { return true }
+        if title.lowercased().contains(q) { return true }
+        return searchKeywords.contains { $0.lowercased().contains(q) }
+    }
 }
 
 // MARK: - Hauptansicht für Einstellungen
@@ -60,9 +94,18 @@ struct SettingsView: View {
     // Lokaler Zustand der UI & gespeicherte Ziel-Sektion
     @AppStorage("settingsSelectedSection") private var selectedSectionRaw: String = SettingsSection.udp.rawValue
     @State private var selectedSection: SettingsSection = .udp
+    @State private var searchText = ""
     @State private var showResetAlert = false
     @State private var showDeleteLogbookAlert = false
     @State private var showQTHPickerSheet = false
+    
+    private var filteredSections: [SettingsSection] {
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return SettingsSection.allCases
+        }
+        return SettingsSection.allCases.filter { $0.matches(query: trimmed) }
+    }
     
     // MARK: - Persistent gespeicherte Einstellungen (@AppStorage)
     
@@ -127,27 +170,76 @@ struct SettingsView: View {
         return false
     }
     
+    private var isDe: Bool { langManager.isGerman }
+    
     // MARK: - Layout Body
     
     var body: some View {
         HStack(spacing: 0) {
             // Linke Navigations-Sidebar (feste Breite)
-            VStack(alignment: .leading, spacing: 6) {
-                List(SettingsSection.allCases, selection: $selectedSection) { section in
-                    HStack(spacing: 8) {
-                        Image(systemName: section.icon)
-                            .foregroundColor(selectedSection == section ? .accentColor : .secondary)
-                            .frame(width: 18)
-                        Text(section.title)
-                            .font(.body)
+            VStack(alignment: .leading, spacing: 4) {
+                // Search Input Field
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.secondary)
+                        .font(.system(size: 11))
+                    TextField(isDe ? "Einstellungen suchen..." : "Search settings...", text: $searchText)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 11))
+                    if !searchText.isEmpty {
+                        Button(action: { searchText = "" }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                                .font(.system(size: 11))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .tag(section)
                 }
-                .listStyle(.sidebar)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Color(NSColor.textBackgroundColor))
+                .cornerRadius(6)
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.2), lineWidth: 1))
+                .padding(.horizontal, 8)
+                .padding(.top, 8)
+                .padding(.bottom, 2)
+                
+                if filteredSections.isEmpty {
+                    VStack(spacing: 8) {
+                        Spacer()
+                        Image(systemName: "magnifyingglass")
+                            .font(.title2)
+                            .foregroundColor(.secondary)
+                        Text(isDe ? "Keine Treffer" : "No matches")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Button(isDe ? "Suche leeren" : "Clear") {
+                            searchText = ""
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                } else {
+                    List(filteredSections, selection: $selectedSection) { section in
+                        HStack(spacing: 8) {
+                            Image(systemName: section.icon)
+                                .foregroundColor(selectedSection == section ? .accentColor : .secondary)
+                                .frame(width: 18)
+                            Text(section.title)
+                                .font(.body)
+                            Spacer()
+                        }
+                        .tag(section)
+                    }
+                    .listStyle(.sidebar)
+                }
                 
                 Spacer(minLength: 0)
             }
-            .frame(width: 210)
+            .frame(width: 220)
             .fixedSize(horizontal: true, vertical: false) // Verhindert ungewolltes Dehnen der Sidebar
             .background(Color(NSColor.controlBackgroundColor))
             
@@ -155,14 +247,59 @@ struct SettingsView: View {
             
             // Rechter Detail-Inhaltsbereich
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    detailView(for: selectedSection)
+                if filteredSections.isEmpty {
+                    VStack(spacing: 12) {
+                        Spacer(minLength: 40)
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .font(.system(size: 42))
+                            .foregroundColor(.secondary)
+                        Text(isDe ? "Keine passenden Einstellungen für „\(searchText)“" : "No matching settings for “\(searchText)”")
+                            .font(.title3)
+                            .bold()
+                        Text(isDe ? "Versuche Suchbegriffe wie UDP, Cluster, Logbuch, QTH, Farbschema, Most Wanted oder iCloud." : "Try search terms like UDP, Cluster, Logbook, QTH, Appearance, Most Wanted, or iCloud.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                        Button(isDe ? "Suche zurücksetzen" : "Reset Search") {
+                            searchText = ""
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .padding(.top, 6)
+                        Spacer(minLength: 40)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(30)
+                } else {
+                    VStack(alignment: .leading, spacing: 16) {
+                        if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            HStack(spacing: 6) {
+                                Image(systemName: "sparkle.magnifyingglass")
+                                    .foregroundColor(.accentColor)
+                                Text(isDe ? "Gefiltert nach „\(searchText)“ (\(filteredSections.count) Treffer)" : "Filtered by “\(searchText)” (\(filteredSections.count) matches)")
+                                    .font(.caption)
+                                    .bold()
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Button(action: { searchText = "" }) {
+                                    Text(isDe ? "Alle anzeigen" : "Show all")
+                                        .font(.caption2)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.mini)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Color.accentColor.opacity(0.08))
+                            .cornerRadius(6)
+                        }
+                        detailView(for: selectedSection)
+                    }
+                    .padding(20)
                 }
-                .padding(20)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(minWidth: 740, minHeight: 380)
+        .frame(minWidth: 740, minHeight: 400)
         .sheet(isPresented: $showQTHPickerSheet) {
             InteractiveQTHPickerView(myGridLocator: $myGridLocator)
         }
@@ -173,6 +310,14 @@ struct SettingsView: View {
         }
         .onChange(of: selectedSection) { _, newSection in
             selectedSectionRaw = newSection.rawValue
+        }
+        .onChange(of: searchText) { _, _ in
+            let matching = filteredSections
+            if !matching.isEmpty && !matching.contains(selectedSection) {
+                if let first = matching.first {
+                    selectedSection = first
+                }
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenSettingsSection"))) { note in
             if let targetRaw = note.object as? String, let targetSection = SettingsSection(rawValue: targetRaw) {
