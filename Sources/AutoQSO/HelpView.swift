@@ -1057,10 +1057,10 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                // Version 4.1.1
+                // Version 4.2.0
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 4.1.1")
+                        Text("Version 4.2.0")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -1078,6 +1078,33 @@ struct HelpView: View {
                         Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
+                        bullet(isDe ? "Durchsuchbare Einstellungen & Hilfebereich: Integrierte Echtzeit-Suche in den Einstellungs- und Hilfe-Fenstern mit zweisprachiger Volltext-Indexierung (DE/EN), dynamischer Live-Filterung der Seitenleiste und automatischer Kategorie-Auswahl." : "Searchable Settings & Help: Real-time search across Settings and Help dialogs with deep bilingual keyword indexing (DE/EN), live sidebar filtering, and dynamic section auto-selection.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Priorisiertes Vordergrund-Layering auf Karten: Die gerufene Station (⚡) und aktive QSO-Großkreispfade werden auf der 2D-Ausbreitungskarte und dem 3D-Globus garantiert immer über den allgemeinen Länder-Aktivitätsbadges und Grid-Markern dargestellt." : "Foreground Called Station Layering: Called station markers (⚡) and active QSO great-circle paths are guaranteed to render in the foreground above background country activity badges and grid markers.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Optimiertes Map-Rendering: Entfernung von Metal-Texturlayer-Kollisionen (.drawingGroup) für absolut flüssiges Pan/Zoom und verlässliche CoreAnimation-Z-Index-Hierarchie." : "Optimized Map Layering: Removed Metal drawingGroup layer promotion overrides for smooth panning/zooming and rock-solid z-index layering.", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+                
+                Divider()
+
+                // Version 4.1.1
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 4.1.1")
+                            .font(.headline)
+                            .bold()
+                        Text("(Build 494)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
+                            .font(.subheadline)
+                            .bold()
                         bullet(isDe ? "Konfiguration & Einstellungen in SQLite-Datenbank: Sämtliche App-Einstellungen, Filter-Regeln, UDP/Telnet/Cluster-Konfigurationen, Farbschemata und UI-Optionen werden nun persistent in der SQLite-Datenbank (`autoqso_log.sqlite`) gespeichert und in Echtzeit synchronisiert." : "Configuration & Settings in SQLite Database: All application settings, filter rules, UDP/Telnet/Cluster configurations, color themes, and UI options are now persistently stored in the SQLite database (`autoqso_log.sqlite`) with real-time synchronization.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Nahtlose iCloud & Multi-Geräte Synchronisation: Beim Wechsel des Speicherorts oder Synchronisieren via iCloud Drive werden alle Konfigurationen automatisch aus der Datenbank geladen und übernommen." : "Seamless iCloud & Multi-Device Sync: When changing the storage location or syncing via iCloud Drive, all configurations are automatically loaded and applied from the database.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Präzise Trennlinien-Wiederherstellung (Kompaktmodus): Beim Verlassen des Kompaktmodus werden alle Trennlinien (Log-Konsole, Most-Wanted-Panel) und Seitenleistenbreiten exakt auf die zuvor eingestellten Maße zurückgesetzt." : "Precise Split Divider Restoration (Compact Mode): Exiting compact mode cleanly restores all inner window dividers (Log Console, Most Wanted Panel) and sidebar widths to their saved dimensions.", font: .subheadline, color: .secondary)
@@ -1087,7 +1114,7 @@ struct HelpView: View {
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.green.opacity(0.08))
+                .background(Color.gray.opacity(0.06))
                 .cornerRadius(8)
                 
                 Divider()

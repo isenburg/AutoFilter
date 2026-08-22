@@ -118,6 +118,7 @@ AutoQSO enthält einen eigenen Telnet-Cluster-Server, an den sich externe Log- o
 ## 7. Logbuch-Sync, SQLite-Datenbank & Einstellungen
 
 AutoQSO speichert nicht nur alle QSOs, sondern auch **sämtliche Konfigurationen, Filter-Regeln und Einstellungen direkt in der SQLite-Datenbank (`autoqso_log.sqlite`)**:
+- **Durchsuchbare Einstellungen & Hilfe**: Sowohl das Einstellungsfenster als auch der Hilfebereich verfügen über ein integriertes Echtzeit-Suchfeld in der Seitenleiste. Bei der Eingabe werden passende Sektionen nach deutschen und englischen Begriffen (z. B. UDP, Multicast, Bridge, Port, Cluster, Telnet, RUMlog, LoTW, QRZ, ADIF, QTH, Maidenhead, Most Wanted, iCloud, Farbschema, etc.) live gefiltert.
 - **Persistent in SQLite**: Alle Filter-Reihenfolgen, Whitelists/Blacklists, UDP/Telnet/Cluster-Parameter, Farbanpassungen und UI-Zustände werden in einer dedizierten `settings`-Tabelle gespeichert.
 - **Echtzeit-Synchronisation**: Änderungen über `@AppStorage` oder die Einstellungen werden in Echtzeit in die SQLite-Datenbank gespiegelt.
 - **iCloud & Multi-Geräte Sync**: Beim Umschalten auf iCloud Drive (`iCloud Drive/AutoQSO`) oder einen benutzerdefinierten Ordner werden alle Einstellungen nahtlos aus der Datenbank geladen und auf jedem Mac übernommen.
@@ -155,6 +156,7 @@ Zur Diagnose und Rohdaten-Überwachung verfügt die App über drei umschaltbare 
 
 Über den Button **Karte ↗** in der Menüleiste/Toolbar kann die **Ausbreitungskarte** in einem eigenständigen Fenster geöffnet werden:
 - **Karte**: Zeigt eine interaktive Landkarte mit Annotations-Badges der aktiven Länder. Auf den Badges sind die Bänder und die Anzahl der Spots (z.B. `20M:5`) verzeichnet.
+- **Vordergrund-Layering für gerufene Stationen**: Die gerufene Station (⚡) wird auf 2D-Karte und 3D-Globus mit höchster Z-Priorität immer über den allgemeinen Länder- und Grid-Aktivitätsmarkern dargestellt.
 - **Aktiver QSO-Pfad & Live-Banner**: Bei einem aktiven WSJT-X QSO wird sowohl auf der 2D-Flachkarte als auch auf dem 3D-Globus eine leuchtend gelbe Großkreis-Verbindungslinie zwischen deinem QTH (🏠) und der Zielstation gezeichnet. Ein Live-Statusbanner oben mittig zeigt Rufton, Ziel-Locator und Entfernung in km an.
 - **Kartenstile & 3D-Globus**: Auswahl zwischen Standard, Satellit, Hybrid und nativer 3D-Globusansicht (Kugeldarstellung).
 - **3D Maidenhead Grid & Schattierung**: Im 3D-Globus-Modus werden Maidenhead-Gitterlinien sowie gearbeitete 4-Stellen-Planquadrate direkt auf die Erdkugel projiziert.
@@ -175,7 +177,7 @@ Zur Diagnose und Rohdaten-Überwachung verfügt die App über drei umschaltbare 
 ## 12. Mehrsprachigkeit & Spracheinstellungen
 
 AutoQSO unterstützt Deutsch 🇩🇪 und Englisch 🇬🇧:
-- Unter **Einstellungen (⚙️) -> Ansicht & Sprache** lässt sich die Anzeigesprache jederzeit umschalten:
+- Unter **Einstellungen (⚙️) -> Sprache** lässt sich die Anzeigesprache jederzeit umschalten:
   - 🌐 **System (Standard / Default)**: Passt sich automatisch der macOS-Systemsprache an.
   - 🇩🇪 **Deutsch**: Deutsche Benutzeroberfläche.
   - 🇬🇧 **English**: Englische Benutzeroberfläche.

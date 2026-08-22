@@ -22,6 +22,7 @@
 - **3D Globe & 2D Propagation Maps**: Native 3D Globe projection rendering Maidenhead grid lines, worked 4-character squares, spot pins, and active QSO great-circle paths.
 - **Active QSO Path Visualization & Centering**: Displays an accurate 3D spherical great-circle arc (Slerp) connecting Home QTH (🏠) and the target station (⚡), automatically centered and framed on the map with a 1-click re-centering status banner.
 - **Interactive QTH Picker**: Dedicated Maidenhead settings topic (up to 8-character precision) with interactive map picking and Google-style drop pins.
+- **Searchable Settings & Documentation**: Integrated real-time search across all settings categories and documentation topics with deep bilingual keyword indexing (German & English) and dynamic sidebar filtering.
 - **RUMlogNG, LoTW & QRZ.com Logbook Sync**: Local SQLite storage supporting 1-click sync from RUMlogNG (via native AppleScript `ReadAdif`), LoTW, and QRZ.com from 1900-01-01 onwards with selectable provider mode and automatic post-QSO syncing.
 - **Compact & Detachable Modes**: Toolbar toggle for compact view with full icon access, and detachable log diagnostic consoles.
 
@@ -87,6 +88,11 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 ---
 
 ## 📝 Changelog
+
+### Version 4.2.0 (Build 496)
+- **Searchable Settings & Help**: Real-time instant search across Settings and Help windows with deep bilingual keyword indexing (German & English), dynamic sidebar filtering, and dynamic section auto-selection.
+- **Foreground Called Station Annotation Layering**: Called station marker (`⚡ Call (Grid)`) and active QSO great-circle paths are guaranteed to always render in the foreground (`zPosition = 1000`, `zPriority = .max`) over background country activity badges and grid markers on both 2D propagation maps and 3D globe.
+- **Optimized Map Layering & Rendering**: Removed Metal drawingGroup layer promotion overrides for smooth panning/zooming and reliable CoreAnimation layer hierarchy.
 
 ### Version 4.1.1 (Build 494)
 - **Configuration & Settings in SQLite Database**: All application settings, filter rules, UDP/Telnet/Cluster configurations, color themes, and UI options are now persistently stored in the SQLite database (`autoqso_log.sqlite`) alongside QSO logs with real-time bidirectional synchronization.
