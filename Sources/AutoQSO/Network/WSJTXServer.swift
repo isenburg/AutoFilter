@@ -261,13 +261,10 @@ class WSJTXServer: ObservableObject {
                 self.onHaltTx?()
             }
         case .clear:
-            // Typ 3: WSJT-X signalisiert Beginn eines neuen Decode-Fensters → Liste leeren
+            // Typ 3: WSJT-X signalisiert Beginn eines neuen Decode-Fensters
             let _ = reader.readUInt8() // window type (optional, ignorieren)
-            print("WSJT-X Clear empfangen → Decode-Liste wird geleert")
             self.logRaw(.incoming, "Clear: client=\(clientId)")
-            DispatchQueue.main.async {
-                self.decodes.removeAll()
-            }
+            // Liste wird nicht mehr zyklisch gelöscht – ältere Einträge fallen unten heraus (FIFO 250)
             
         case .decode:
             // isNew=true  → frischer Decode aus aktuellem 15s-Fenster
@@ -311,8 +308,8 @@ class WSJTXServer: ObservableObject {
                 
                 self.decodes.insert(decode, at: 0)
                 self.onDecodeReceived?(decode, data)
-                if self.decodes.count > 500 {
-                    self.decodes.removeSubrange(500...)
+                if self.decodes.count > 250 {
+                    self.decodes.removeSubrange(250...)
                 }
             }
         case .loggedAdif:

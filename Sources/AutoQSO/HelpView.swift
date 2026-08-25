@@ -1060,10 +1060,10 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                // Version 4.3.0
+                // Version 4.3.1
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 4.3.0")
+                        Text("Version 4.3.1")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -1081,6 +1081,32 @@ struct HelpView: View {
                         Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
+                        bullet(isDe ? "Kontinuierlicher Rollpuffer (FIFO 250 Einträge): Die Tabelle gefilterter Stationen wird bei neuen WSJT-X Sendezyklen (Clear) nicht mehr zyklisch geleert. Frische Dekodierungen schieben ältere Einträge nach unten, ab Position 250 fallen ältere Stationen automatisch heraus." : "Continuous Rolling Decode Buffer (FIFO 250 entries): The decode table is no longer wiped every cycle on WSJT-X Clear signals. New decodes smoothly push older entries down, and entries beyond 250 records drop off the bottom.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Manuelles Leeren: Ein vollständiges Zurücksetzen der Tabelle ist weiterhin jederzeit über das Mülleimer-Symbol (🗑️) in der Toolbar möglich." : "Manual Table Clear: Full table clearing remains available at any time via the toolbar trash button (🗑️).", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+                
+                Divider()
+
+                // Version 4.3.0
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 4.3.0")
+                            .font(.headline)
+                            .bold()
+                        Text("(Build 500)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
+                            .font(.subheadline)
+                            .bold()
                         bullet(isDe ? "Automatische Beantwortung eingehender Anrufe: Erkennt direkte Anrufe auf das eigene Rufzeichen (<MYCALL> <THEIRCALL> <GRID/RPRT>) und beantwortet diese mit höchster Priorität, sofern die Station die konfigurierten DX- und Gearbeitet-Filter passiert." : "Auto-Answer Inbound Callers: Detects direct incoming calls to your callsign (<MYCALL> <THEIRCALL> <GRID/RPRT>) and answers them with top priority if they pass your active DX and worked filters.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Automatischer Cooldown-Bypass für aktive Anrufer: Befindet sich eine Station in der Sperrzeit (Cooldown), ruft uns nun jedoch aktiv an, wird die Sperrzeit sofort aufgehoben und das QSO gestartet." : "Automatic Cooldown Bypass for Returning Callers: If a station in cooldown quarantine actively calls you, the cooldown is immediately lifted and the QSO is initiated.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Konfigurierbare Betriebsoption: Ein-/Ausschaltbar unter Einstellungen → Auto QSO Optionen mit zweisprachiger Unterstützung (DE/EN)." : "Configurable Operation Option: Toggle under Settings → Auto QSO Options with full bilingual support (DE/EN).", font: .subheadline, color: .secondary)
@@ -1089,7 +1115,7 @@ struct HelpView: View {
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.green.opacity(0.08))
+                .background(Color.gray.opacity(0.06))
                 .cornerRadius(8)
                 
                 Divider()

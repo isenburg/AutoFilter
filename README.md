@@ -89,6 +89,10 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 
 ## 📝 Changelog
 
+### Version 4.3.1
+- **Continuous Rolling Decode Buffer (FIFO 250)**: The decode table is no longer wiped every 15s / 7.5s cycle on WSJT-X `Clear` packets. Incoming stations continuously roll into the table at the top, and older entries beyond 250 records smoothly drop off the bottom.
+- **Manual Clear Available**: Manual clearing remains available via the toolbar trash button (🗑️) or table reset action.
+
 ### Version 4.3.0
 - **Auto-Answer Inbound Callers**: Detects direct incoming calls to your own callsign (`<MYCALL> <THEIRCALL> <GRID/RPRT>`) and automatically triggers a reply if the station passes all active DX and worked-before filters.
 - **Automatic Cooldown Bypass for Active Callers**: If a station in cooldown quarantine returns and actively calls your station, the quarantine is immediately cleared and the caller is answered with top priority.
