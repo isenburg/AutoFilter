@@ -61,6 +61,7 @@ Der Hauptschalter in der oberen Menüleiste steuert die automatische Sende-Engin
 - **Freeze / Pause (Snapshot-Modus)**: Der Pause-Button friert die Dekodiertabelle und Protokolle mit einem statischen Snapshot ein. Auto-Scroll wird deaktiviert und Hintergrunddaten werden weiter empfangen. Du kannst völlig frei durch historische Daten scrollen, ohne dass neu ankommende Dekodierungen die Ansicht zurückspringen lassen. Ein erneuter Klick hebt die Pause auf.
 - **Echtzeit-Suchfeld**: Über das integrierte Suchfeld in der Toolbar (sowie in den Logs) filterst du die Tabelle oder Protokolle in Echtzeit nach Rufzeichen, Land, Spotter, Grid-Locator oder Nachrichten-Text – sowohl im Live- als auch im Freeze-Modus.
 - **Min. Sperre / Cooldown**: In den **Einstellungen (⚙️) -> WSJT-X** kann die Cooldown-Dauer (Standard: 10 Minuten) konfiguriert werden, um Rufzeichen nach einem automatischen Anruf temporär vor weiteren Sendeversuchen zu blockieren.
+- **Eingehende Anrufer automatisch beantworten**: In den **Einstellungen (⚙️) -> Auto QSO Optionen** kann festgelegt werden, dass direkte Anrufe auf das eigene Rufzeichen automatisch beantwortet werden, sofern sie die aktiven DX- und Gearbeitet-Filter erfüllen. Bei einem direkten Anruf wird eine eventuell bestehende Sperrzeit (Cooldown) für diese Station sofort aufgehoben.
 
 ---
 

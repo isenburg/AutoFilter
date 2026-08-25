@@ -18,7 +18,7 @@
 ## ⚡ Key Features
 
 - **DX-Filter (Core Feature)**: Intelligent real-time spot evaluation, customizable color coding, continent/region filtering, and spot forwarding via built-in Telnet cluster server.
-- **Automated FT8/FT4 QSO Engine**: Responds automatically to `CQ`, `73`, `RR73`, and `RRR` decodes with dupe prevention and automatic cooldown management.
+- **Automated FT8/FT4 QSO Engine**: Responds automatically to `CQ`, `73`, `RR73`, and `RRR` decodes or direct inbound callers (with automatic cooldown bypass), customizable DX filters, and dupe prevention.
 - **3D Globe & 2D Propagation Maps**: Native 3D Globe projection rendering Maidenhead grid lines, worked 4-character squares, spot pins, and active QSO great-circle paths.
 - **Active QSO Path Visualization & Centering**: Displays an accurate 3D spherical great-circle arc (Slerp) connecting Home QTH (🏠) and the target station (⚡), automatically centered and framed on the map with a 1-click re-centering status banner.
 - **Interactive QTH Picker**: Dedicated Maidenhead settings topic (up to 8-character precision) with interactive map picking and Google-style drop pins.
@@ -89,7 +89,7 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 
 ## 📝 Changelog
 
-### Version 4.2.0 (Build 496)
+### Version 4.2.0 (Build 498)
 - **Searchable Settings & Help**: Real-time instant search across Settings and Help windows with deep bilingual keyword indexing (German & English), dynamic sidebar filtering, and dynamic section auto-selection.
 - **Foreground Called Station Annotation Layering**: Called station marker (`⚡ Call (Grid)`) and active QSO great-circle paths are guaranteed to always render in the foreground (`zPosition = 1000`, `zPriority = .max`) over background country activity badges and grid markers on both 2D propagation maps and 3D globe.
 - **Optimized Map Layering & Rendering**: Removed Metal drawingGroup layer promotion overrides for smooth panning/zooming and reliable CoreAnimation layer hierarchy.

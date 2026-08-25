@@ -250,6 +250,8 @@ public struct LocalizationDictionary {
         "settings.wsjtx.autoClear": "Tabelle bei Bandwechsel automatisch leeren",
         "settings.options.onlyCQ": "Nur Stationen anrufen, die CQ rufen",
         "settings.options.onlyCQ.desc": "Verhindert das automatische Anrufen bei QSO-Enden (73 / RR73 / RRR) anderer Stationen und ruft ausschließlich echte CQ-Rufe an. Hinweis: Beim Anrufen am QSO-Ende fehlt der Grid-Locator und muss bei Bedarf manuell ergänzt werden.",
+        "settings.options.answerCallers": "Eingehende Anrufer automatisch beantworten (Anrufe auf eigenes Rufzeichen)",
+        "settings.options.answerCallers.desc": "Beantwortet Anrufe von Stationen, die direkt unser Rufzeichen anrufen, sofern sie die aktiven DX- und Gearbeitet-Filter erfüllen. Hebt eine bestehende Sperrzeit (Cooldown) automatisch auf.",
         
         // Einstellungen - DX Cluster
         "settings.cluster.listHeader": "Verfügbare DX-Cluster",
@@ -573,6 +575,8 @@ public struct LocalizationDictionary {
         "settings.wsjtx.autoClear": "Clear table automatically on band change",
         "settings.options.onlyCQ": "Only call stations calling CQ",
         "settings.options.onlyCQ.desc": "Prevents calling stations at the end of their QSOs (73 / RR73 / RRR) and strictly calls active CQ callers. Note: Calling stations at their end of a QSO will omit the Grid-Locator, which has to be added manually if desired.",
+        "settings.options.answerCallers": "Auto-answer inbound callers (Stations calling your callsign)",
+        "settings.options.answerCallers.desc": "Automatically answers incoming calls directed to your callsign if they pass active DX and worked filters. Automatically lifts cooldown if a previously unanswered station returns and calls you.",
         
         // Settings - DX Cluster
         "settings.cluster.listHeader": "Available DX Clusters",

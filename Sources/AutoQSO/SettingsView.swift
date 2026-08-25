@@ -1091,6 +1091,20 @@ struct SettingsView: View {
                 
                 Divider()
                 
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(L("settings.options.answerCallers"), isOn: Binding(
+                        get: { viewModel.isAutoModeAnswerCallersEnabled },
+                        set: { viewModel.isAutoModeAnswerCallersEnabled = $0; viewModel.saveFilters() }
+                    ))
+                    .font(.headline)
+                    
+                    Text(L("settings.options.answerCallers.desc"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                
+                Divider()
+                
                 Toggle(isDe ? "Nur ungearbeitete 4-Stellen Grids durchlassen (z.B. JO31)" : "Only allow unworked 4-char Grids (e.g. JO31)", isOn: Binding(
                     get: { viewModel.isNew4CharGridOnlyFilterEnabled },
                     set: { viewModel.isNew4CharGridOnlyFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }

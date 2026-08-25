@@ -188,6 +188,7 @@ class DecodeViewModel: ObservableObject {
     @Published var isFiltersEnabled: Bool = true
     @Published var isWsjtSpecialFilterEnabled: Bool = false
     @Published var isAutoModeOnlyCQEnabled: Bool = false
+    @Published var isAutoModeAnswerCallersEnabled: Bool = true
     @Published var isOnlyMostWantedFilterEnabled: Bool = false
     @Published var maxMostWantedRank: Int = 100
     @Published var isNew4CharGridOnlyFilterEnabled: Bool = false
@@ -574,6 +575,17 @@ class DecodeViewModel: ObservableObject {
         )
     }
     
+
+    func isInboundCallToMe(_ decode: WSJTXDecode, ownCall: String) -> Bool {
+        guard !ownCall.isEmpty else { return false }
+        let clean = decode.message.replacingOccurrences(of: "<", with: " ").replacingOccurrences(of: ">", with: " ").uppercased()
+        let tokens = clean.components(separatedBy: .whitespacesAndNewlines).map { $0.trimmingCharacters(in: CharacterSet.alphanumerics.inverted) }.filter { !$0.isEmpty }
+        guard tokens.count >= 2 else { return false }
+        let targetCall = decode.callsign.uppercased()
+        guard !targetCall.isEmpty && targetCall != ownCall else { return false }
+        return tokens[0] == ownCall
+    }
+
     func evaluateAutoQSO() {
         guard isAutoModeEnabled else { return }
         
@@ -686,8 +698,9 @@ class DecodeViewModel: ObservableObject {
             
             let isCQ = upperMsg.contains("CQ ") || upperMsg.hasPrefix("CQ")
             let is73 = msgTokens.contains("73") || msgTokens.contains("RR73") || msgTokens.contains("RRR")
+            let isInbound = isAutoModeAnswerCallersEnabled && isInboundCallToMe(decode, ownCall: ownCall)
             
-            let isEligible = isAutoModeOnlyCQEnabled ? isCQ : (isCQ || is73)
+            let isEligible = isAutoModeOnlyCQEnabled ? (isCQ || isInbound) : (isCQ || is73 || isInbound)
             
             if isEligible {
                 totalCQsOr73s += 1
@@ -717,12 +730,18 @@ class DecodeViewModel: ObservableObject {
                 if !isWorkedBlocked {
                     // Check if callsign is currently in failure/aborted cooldown
                     if let blacklistedAt = blacklistedCalls[call] {
-                        let elapsedMinutes = Date().timeIntervalSince(blacklistedAt) / 60.0
-                        if elapsedMinutes < Double(retryCooldownMinutes) {
-                            skippedCounts["In Sperrzeit (\(Int(Double(retryCooldownMinutes) - elapsedMinutes) + 1) Min.)"] = (skippedCounts["In Sperrzeit (\(Int(Double(retryCooldownMinutes) - elapsedMinutes) + 1) Min.)"] ?? 0) + 1
-                            continue // Still in retry cooldown
+                        if isInbound {
+                            // Station is actively calling us! Lift quarantine cooldown immediately.
+                            blacklistedCalls.removeValue(forKey: call)
+                            addLog("ℹ️ Eingehender Anruf von \(call): Sperrzeit aufgehoben, da Station uns aktiv anruft.")
                         } else {
-                            blacklistedCalls.removeValue(forKey: call) // Cooldown expired
+                            let elapsedMinutes = Date().timeIntervalSince(blacklistedAt) / 60.0
+                            if elapsedMinutes < Double(retryCooldownMinutes) {
+                                skippedCounts["In Sperrzeit (\(Int(Double(retryCooldownMinutes) - elapsedMinutes) + 1) Min.)"] = (skippedCounts["In Sperrzeit (\(Int(Double(retryCooldownMinutes) - elapsedMinutes) + 1) Min.)"] ?? 0) + 1
+                                continue // Still in retry cooldown
+                            } else {
+                                blacklistedCalls.removeValue(forKey: call) // Cooldown expired
+                            }
                         }
                     }
                     candidates.append(decode)
@@ -742,8 +761,14 @@ class DecodeViewModel: ObservableObject {
             return
         }
         
-        // Sort candidates: Most Wanted Rank (1..100) first, then Furthest Distance (km) second, then SNR third
+        // Sort candidates: Inbound callers first, then Most Wanted Rank (1..100), then Furthest Distance (km), then SNR
         candidates.sort { d1, d2 in
+            let inb1 = self.isInboundCallToMe(d1, ownCall: ownCall)
+            let inb2 = self.isInboundCallToMe(d2, ownCall: ownCall)
+            if inb1 != inb2 {
+                return inb1 && !inb2 // Direct inbound caller takes top priority
+            }
+            
             let call1 = d1.callsign
             let call2 = d2.callsign
             
@@ -1315,6 +1340,7 @@ class DecodeViewModel: ObservableObject {
         
         isWsjtSpecialFilterEnabled = defaults.bool(forKey: "isWsjtSpecialFilterEnabled")
         isAutoModeOnlyCQEnabled = defaults.bool(forKey: "isAutoModeOnlyCQEnabled")
+        isAutoModeAnswerCallersEnabled = defaults.object(forKey: "isAutoModeAnswerCallersEnabled") as? Bool ?? true
         isOnlyMostWantedFilterEnabled = defaults.bool(forKey: "onlyMostWanted")
         maxMostWantedRank = defaults.integer(forKey: "maxMostWantedRank") > 0 ? defaults.integer(forKey: "maxMostWantedRank") : 100
         isNew4CharGridOnlyFilterEnabled = defaults.bool(forKey: "isNew4CharGridOnlyFilterEnabled")
@@ -1372,6 +1398,7 @@ class DecodeViewModel: ObservableObject {
         
         defaults.set(isWsjtSpecialFilterEnabled, forKey: "isWsjtSpecialFilterEnabled")
         defaults.set(isAutoModeOnlyCQEnabled, forKey: "isAutoModeOnlyCQEnabled")
+        defaults.set(isAutoModeAnswerCallersEnabled, forKey: "isAutoModeAnswerCallersEnabled")
         defaults.set(isOnlyMostWantedFilterEnabled, forKey: "onlyMostWanted")
         defaults.set(maxMostWantedRank, forKey: "maxMostWantedRank")
         defaults.set(isNew4CharGridOnlyFilterEnabled, forKey: "isNew4CharGridOnlyFilterEnabled")
@@ -1595,6 +1622,8 @@ class DecodeViewModel: ObservableObject {
             return false
         }
         
+        let isInbound = isAutoModeAnswerCallersEnabled && isInboundCallToMe(decode, ownCall: ownCall)
+        
         if !decode.isClusterSpot {
             let upperMsg = decode.message.uppercased()
             let msgTokens = upperMsg.components(separatedBy: .whitespacesAndNewlines).map { $0.trimmingCharacters(in: CharacterSet.alphanumerics.inverted) }
@@ -1602,7 +1631,7 @@ class DecodeViewModel: ObservableObject {
             let isCQ = upperMsg.contains("CQ ") || upperMsg.hasPrefix("CQ")
             let is73 = msgTokens.contains("73") || msgTokens.contains("RR73") || msgTokens.contains("RRR")
             
-            let isEligible = isAutoModeOnlyCQEnabled ? isCQ : (isCQ || is73)
+            let isEligible = isAutoModeOnlyCQEnabled ? (isCQ || isInbound) : (isCQ || is73 || isInbound)
             guard isEligible else { return false }
         }
         
@@ -1623,11 +1652,13 @@ class DecodeViewModel: ObservableObject {
             return false
         }
         
-        // 4. In cooldown blacklist
+        // 4. In cooldown blacklist (bypassed if station calls us directly)
         if let blacklistedAt = blacklistedCalls[call] {
-            let elapsedMinutes = Date().timeIntervalSince(blacklistedAt) / 60.0
-            if elapsedMinutes < Double(retryCooldownMinutes) {
-                return false
+            if !isInbound {
+                let elapsedMinutes = Date().timeIntervalSince(blacklistedAt) / 60.0
+                if elapsedMinutes < Double(retryCooldownMinutes) {
+                    return false
+                }
             }
         }
         
