@@ -89,6 +89,11 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 
 ## 📝 Changelog
 
+### Version 4.3.0
+- **Auto-Answer Inbound Callers**: Detects direct incoming calls to your own callsign (`<MYCALL> <THEIRCALL> <GRID/RPRT>`) and automatically triggers a reply if the station passes all active DX and worked-before filters.
+- **Automatic Cooldown Bypass for Active Callers**: If a station in cooldown quarantine returns and actively calls your station, the quarantine is immediately cleared and the caller is answered with top priority.
+- **Configurable Auto QSO Option**: Dedicated toggle in *Settings → Auto QSO Options* with full bilingual localization (German & English).
+
 ### Version 4.2.0 (Build 498)
 - **Searchable Settings & Help**: Real-time instant search across Settings and Help windows with deep bilingual keyword indexing (German & English), dynamic sidebar filtering, and dynamic section auto-selection.
 - **Foreground Called Station Annotation Layering**: Called station marker (`⚡ Call (Grid)`) and active QSO great-circle paths are guaranteed to always render in the foreground (`zPosition = 1000`, `zPriority = .max`) over background country activity badges and grid markers on both 2D propagation maps and 3D globe.
