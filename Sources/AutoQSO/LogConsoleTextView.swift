@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-struct LogLine {
+struct LogLine: Equatable {
     let text: String
     let color: Color
 }
@@ -15,6 +15,8 @@ struct LogConsoleTextView: NSViewRepresentable {
     
     class Coordinator: NSObject {
         var previousIsPaused: Bool = false
+        var lastLines: [LogLine]? = nil
+        var cachedAttributedString: NSAttributedString? = nil
     }
     
     func makeCoordinator() -> Coordinator {
@@ -45,7 +47,16 @@ struct LogConsoleTextView: NSViewRepresentable {
         textView.backgroundColor = NSColor(backgroundColor)
         
         let storage = textView.textStorage
-        let attributed = attributedText()
+        let linesChanged = (context.coordinator.lastLines != lines)
+        
+        let attributed: NSAttributedString
+        if linesChanged || context.coordinator.cachedAttributedString == nil {
+            attributed = attributedText()
+            context.coordinator.cachedAttributedString = attributed
+            context.coordinator.lastLines = lines
+        } else {
+            attributed = context.coordinator.cachedAttributedString!
+        }
         
         let stringChanged = (storage?.string != attributed.string)
         let unpaused = (context.coordinator.previousIsPaused && !isPaused)

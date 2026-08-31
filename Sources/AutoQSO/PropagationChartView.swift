@@ -4,11 +4,17 @@ import Charts
 struct PropagationChartView: View {
     @ObservedObject var viewModel: DecodeViewModel
     @State private var isStacked = false
+    @State private var isInteracting = false
+    @State private var frozenChartData: [PropagationChartItem] = []
 
     private let allContinents = ["EU", "NA", "AS", "SA", "AF", "OC", "AN", "OTHER"]
 
     init(viewModel: DecodeViewModel) {
         self.viewModel = viewModel
+    }
+
+    private var chartData: [PropagationChartItem] {
+        isInteracting ? frozenChartData : viewModel.propagationChartData
     }
 
     var body: some View {
@@ -50,7 +56,7 @@ struct PropagationChartView: View {
             .padding([.horizontal, .top], 12)
 
             Chart {
-                ForEach(viewModel.propagationChartData) { item in
+                ForEach(chartData) { item in
                     if isStacked {
                         BarMark(
                             x: .value("Kontinent", item.continent),
@@ -91,5 +97,27 @@ struct PropagationChartView: View {
         .frame(maxWidth: isStacked ? 380 : 520, maxHeight: 250)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willMoveNotification)) { _ in
+            if !isInteracting {
+                frozenChartData = viewModel.propagationChartData
+                isInteracting = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didMoveNotification)) { _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                isInteracting = false
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willStartLiveResizeNotification)) { _ in
+            if !isInteracting {
+                frozenChartData = viewModel.propagationChartData
+                isInteracting = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEndLiveResizeNotification)) { _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                isInteracting = false
+            }
+        }
     }
 }

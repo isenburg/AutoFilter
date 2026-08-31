@@ -144,9 +144,21 @@ class WSJTXServer: ObservableObject {
         }
     }
     
+    private var pendingRawLogs: [(WSJTXRawLogType, String)] = []
+    private var isRawLogFlushScheduled = false
+    
     private func logRaw(_ type: WSJTXRawLogType, _ message: String) {
-        DispatchQueue.main.async {
-            self.onRawLogReceived?(type, message)
+        pendingRawLogs.append((type, message))
+        guard !isRawLogFlushScheduled else { return }
+        isRawLogFlushScheduled = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self = self else { return }
+            self.isRawLogFlushScheduled = false
+            let logs = self.pendingRawLogs
+            self.pendingRawLogs.removeAll(keepingCapacity: true)
+            for (t, m) in logs {
+                self.onRawLogReceived?(t, m)
+            }
         }
     }
     
@@ -207,29 +219,21 @@ class WSJTXServer: ObservableObject {
     private var currentDialFrequency: UInt64 = 0
     
     private func parse(_ data: Data) {
-        print("UDP Paket empfangen: \(data.count) Bytes")
         var reader = QDataStreamReader(data: data)
         
-        guard let magic = reader.readUInt32() else { print("Fehler: Konnte Magic nicht lesen"); return }
-        guard magic == 0xADBCCBDA else {
-            print("Fehler: Magic Number stimmt nicht überein (Gelesen: \(String(format: "%08X", magic)))")
-            return
-        }
+        guard let magic = reader.readUInt32() else { return }
+        guard magic == 0xADBCCBDA else { return }
         
-        guard let schema = reader.readUInt32() else { print("Fehler: Konnte Schema nicht lesen"); return }
-        print("Schema Version: \(schema)")
+        guard let _ = reader.readUInt32() else { return }
         
-        guard let msgTypeVal = reader.readUInt32() else { print("Fehler: Konnte MessageType nicht lesen"); return }
-        guard let msgType = WSJTXMessageType(rawValue: msgTypeVal) else {
-            print("Ignoriere unbekannten MessageType: \(msgTypeVal)")
-            return
-        }
+        guard let msgTypeVal = reader.readUInt32() else { return }
+        guard let msgType = WSJTXMessageType(rawValue: msgTypeVal) else { return }
         
-        print("Message Type erkannt: \(msgType)")
-        
-        guard let clientId = reader.readString() else { print("Fehler: Konnte Client ID nicht lesen"); return }
-        DispatchQueue.main.async {
-            self.wsjtxClientId = clientId
+        guard let clientId = reader.readString() else { return }
+        if self.wsjtxClientId != clientId {
+            DispatchQueue.main.async {
+                self.wsjtxClientId = clientId
+            }
         }
         
         switch msgType {
@@ -248,14 +252,13 @@ class WSJTXServer: ObservableObject {
             self.logRaw(.incoming, "Status: client=\(clientId) freq=\(String(format: "%.6f", freqMhz))MHz mode=\(mode) txEnabled=\(txEnabled) transmitting=\(transmitting) dxCall=\(dxCall)")
             
             DispatchQueue.main.async {
-                self.isTxEnabled = txEnabled
-                self.isTransmitting = transmitting
-                if !dxCall.isEmpty {
+                if self.isTxEnabled != txEnabled { self.isTxEnabled = txEnabled }
+                if self.isTransmitting != transmitting { self.isTransmitting = transmitting }
+                if !dxCall.isEmpty && self.activeDxCall != dxCall {
                     self.activeDxCall = dxCall
                 }
             }
         case .haltTx:
-            print("WSJT-X Halt TX empfangen")
             self.logRaw(.incoming, "Halt TX: client=\(clientId)")
             DispatchQueue.main.async {
                 self.onHaltTx?()
@@ -296,7 +299,6 @@ class WSJTXServer: ObservableObject {
             let freqMhz = Double(decode.totalFrequencyHz) / 1_000_000.0
             self.logRaw(.decode, "Decode: client=\(clientId) msg=\"\(message)\" snr=\(snr) dt=\(dt) freq=\(String(format: "%.6f", freqMhz))MHz mode=\(mode) isNew=\(isNew)")
             
-            print("Decode (isNew=\(isNew)): \(message)")
             DispatchQueue.main.async {
                 // Doubletten verhindern: gleiche Nachricht + Zeit + Frequenz
                 let isDuplicate = self.decodes.contains { existing in
@@ -316,7 +318,6 @@ class WSJTXServer: ObservableObject {
             if let adifText = reader.readString() {
                 let entries = ADIFParser.parseQSOs(from: adifText)
                 self.logRaw(.incoming, "Logged ADIF: client=\(clientId), entries=\(entries.count)")
-                print("WSJT-X Logged ADIF empfangen (\(entries.count) QSOs)")
                 for entry in entries {
                     self.recentlyLoggedCalls[entry.callsign.uppercased()] = Date()
                 }
@@ -334,7 +335,6 @@ class WSJTXServer: ObservableObject {
                 let callUpper = dxCall.uppercased()
                 if let lastTime = self.recentlyLoggedCalls[callUpper], Date().timeIntervalSince(lastTime) < 15.0 {
                     self.logRaw(.incoming, "Ignored duplicate qsoLogged for \(dxCall) (already processed via loggedAdif)")
-                    print("WSJT-X duplicate qsoLogged für \(dxCall) ignoriert (bereits via loggedAdif erfasst)")
                     return
                 }
                 self.recentlyLoggedCalls[callUpper] = Date()
@@ -357,7 +357,6 @@ class WSJTXServer: ObservableObject {
                     timeOn: timeStr,
                     dxcc: ""
                 )
-                print("WSJT-X QSO Logged: \(dxCall) auf \(actualBand)")
                 self.logRaw(.incoming, "QSO Logged: client=\(clientId) call=\(dxCall) band=\(actualBand) mode=\(mode)")
                 DispatchQueue.main.async {
                     self.onQSOLogged?([entry])
@@ -365,8 +364,6 @@ class WSJTXServer: ObservableObject {
             }
         case .reply, .enableTx:
             self.logRaw(.incoming, "Ignored Packet \(msgType) from client \(clientId)")
-            // Nachführung/Verwerfung: Empfangene EnableTx / Reply-Pakete auf dem UDP-Port ignorieren
-            print("WSJT-X EnableTx / Reply Paket auf UDP-Port empfangen → wird ignoriert/verworfen")
             return
         case .heartbeat:
             self.logRaw(.incoming, "Heartbeat: client=\(clientId)")

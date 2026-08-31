@@ -1,2 +1,2 @@
-public let APP_VERSION = "4.3.1"
-public let APP_BUILD_NUMBER = 501
+public let APP_VERSION = "4.3.2"
+public let APP_BUILD_NUMBER = 508

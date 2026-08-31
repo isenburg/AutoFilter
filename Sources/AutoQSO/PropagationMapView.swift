@@ -133,7 +133,7 @@ struct PropagationMapView: View {
             }
         }
         .onAppear {
-            refreshTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { _ in 
+            refreshTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in 
                 now = Date() 
             }
             displayClusters = viewModel.propagationClusters

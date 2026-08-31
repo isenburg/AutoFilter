@@ -153,11 +153,15 @@ public enum FilterOrderMode: String, Codable {
 }
 
 class DecodeViewModel: ObservableObject {
-    @Published var server = WSJTXServer()
-    @Published var lotwManager = LoTWManager()
-    @Published var qrzManager = QRZManager()
-    @Published var rumlogManager = RUMlogManager()
+    var server = WSJTXServer()
+    var lotwManager = LoTWManager()
+    var qrzManager = QRZManager()
+    var rumlogManager = RUMlogManager()
     @Published var selectedCallsign: String = ""
+    private var recalculationTimer: Timer?
+    private var needsRecalculation = false
+    private var isRecalculating = false
+    private let recalcQueue = DispatchQueue(label: "com.autoqso.recalc", qos: .userInitiated)
     @Published var isAutoModeEnabled: Bool = false {
         didSet {
             if !isAutoModeEnabled {
@@ -248,15 +252,49 @@ class DecodeViewModel: ObservableObject {
     
     let matcher = PrefixMatcher.shared
     
+    private var pendingLogHistory: [String] = []
+    private var pendingWsjtxLogs: [WSJTXRawLogEntry] = []
+    private var pendingClusterLogs: [ClusterRawLogEntry] = []
+    private var isLogFlushScheduled = false
+    
+    private func scheduleLogFlush() {
+        guard !isLogFlushScheduled else { return }
+        isLogFlushScheduled = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard let self = self else { return }
+            self.isLogFlushScheduled = false
+            
+            if !self.pendingLogHistory.isEmpty {
+                self.logHistory.append(contentsOf: self.pendingLogHistory)
+                if self.logHistory.count > 150 {
+                    self.logHistory.removeFirst(self.logHistory.count - 150)
+                }
+                self.pendingLogHistory.removeAll()
+            }
+            if !self.pendingWsjtxLogs.isEmpty {
+                self.wsjtxRawLogs.append(contentsOf: self.pendingWsjtxLogs)
+                if self.wsjtxRawLogs.count > 300 {
+                    self.wsjtxRawLogs.removeFirst(self.wsjtxRawLogs.count - 300)
+                }
+                self.pendingWsjtxLogs.removeAll()
+            }
+            if !self.pendingClusterLogs.isEmpty {
+                self.clusterRawLogs.append(contentsOf: self.pendingClusterLogs)
+                if self.clusterRawLogs.count > 300 {
+                    self.clusterRawLogs.removeFirst(self.clusterRawLogs.count - 300)
+                }
+                self.pendingClusterLogs.removeAll()
+            }
+        }
+    }
+    
     func addLog(_ message: String) {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss"
         let ts = formatter.string(from: Date())
         DispatchQueue.main.async {
-            self.logHistory.append("[\(ts)] \(message)")
-            if self.logHistory.count > 150 {
-                self.logHistory.removeFirst()
-            }
+            self.pendingLogHistory.append("[\(ts)] \(message)")
+            self.scheduleLogFlush()
         }
     }
     
@@ -361,9 +399,7 @@ class DecodeViewModel: ObservableObject {
         let savedAddress = UserDefaults.standard.string(forKey: "udpAddress") ?? "224.0.0.1"
         server.start(port: actualPort, address: savedAddress)
         
-        Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
-            self?.updatePropagationClusters()
-        }
+        setupRecalculationTimer()
         
         server.onDecodeReceived = { [weak self] decode, rawData in
             guard let self = self else { return }
@@ -420,14 +456,12 @@ class DecodeViewModel: ObservableObject {
         server.onRawLogReceived = { [weak self] type, message in
             guard let self = self else { return }
             let entry = WSJTXRawLogEntry(timestamp: Date(), type: type, message: message)
-            self.wsjtxRawLogs.append(entry)
-            if self.wsjtxRawLogs.count > 300 {
-                self.wsjtxRawLogs.removeFirst()
-            }
+            self.pendingWsjtxLogs.append(entry)
+            self.scheduleLogFlush()
         }
         
         server.objectWillChange
-            .debounce(for: .milliseconds(350), scheduler: RunLoop.main)
+            .throttle(for: .seconds(3), scheduler: RunLoop.main, latest: true)
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
                 self?.evaluateAutoQSO()
@@ -435,26 +469,23 @@ class DecodeViewModel: ObservableObject {
             .store(in: &cancellables)
             
         lotwManager.objectWillChange
+            .debounce(for: .seconds(1), scheduler: RunLoop.main)
             .sink { [weak self] _ in
-                DispatchQueue.main.async {
-                    self?.objectWillChange.send()
-                }
+                self?.objectWillChange.send()
             }
             .store(in: &cancellables)
             
         qrzManager.objectWillChange
+            .debounce(for: .seconds(1), scheduler: RunLoop.main)
             .sink { [weak self] _ in
-                DispatchQueue.main.async {
-                    self?.objectWillChange.send()
-                }
+                self?.objectWillChange.send()
             }
             .store(in: &cancellables)
             
         rumlogManager.objectWillChange
+            .debounce(for: .seconds(1), scheduler: RunLoop.main)
             .sink { [weak self] _ in
-                DispatchQueue.main.async {
-                    self?.objectWillChange.send()
-                }
+                self?.objectWillChange.send()
             }
             .store(in: &cancellables)
             
@@ -530,8 +561,12 @@ class DecodeViewModel: ObservableObject {
         var targetCoord: CLLocationCoordinate2D? = nil
         var targetCountry: String? = nil
         
-        let allDecodes = server.decodes + clusterSpots
-        if let matching = allDecodes.first(where: { $0.callsign.uppercased() == targetCall && $0.grid != nil && !($0.grid!.isEmpty) }),
+        var matching: WSJTXDecode? = server.decodes.first(where: { $0.callsign.uppercased() == targetCall && $0.grid != nil && !($0.grid!.isEmpty) })
+        if matching == nil {
+            matching = clusterSpots.first(where: { $0.callsign.uppercased() == targetCall && $0.grid != nil && !($0.grid!.isEmpty) })
+        }
+        
+        if let matching = matching,
            let g = matching.grid, g.count >= 4,
            let ll = Maidenhead.locatorToLatLon(g) {
             targetGrid = String(g.prefix(6)).uppercased()
@@ -914,10 +949,8 @@ class DecodeViewModel: ObservableObject {
         let ts = formatter.string(from: Date())
         
         DispatchQueue.main.async {
-            self.clusterRawLogs.append(ClusterRawLogEntry(timestamp: Date(), message: "[\(ts)] [\(label)] \(line)"))
-            if self.clusterRawLogs.count > 300 {
-                self.clusterRawLogs.removeFirst()
-            }
+            self.pendingClusterLogs.append(ClusterRawLogEntry(timestamp: Date(), message: "[\(ts)] [\(label)] \(line)"))
+            self.scheduleLogFlush()
         }
     }
 
@@ -1959,29 +1992,66 @@ class DecodeViewModel: ObservableObject {
     }
     
     func updatePropagationClusters() {
-        scheduleRecalculations()
+        needsRecalculation = true
+    }
+    
+    private func setupRecalculationTimer() {
+        recalculationTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            self.pruneOldData()
+            
+            if self.needsRecalculation && !self.isRecalculating {
+                self.needsRecalculation = false
+                self.isRecalculating = true
+                
+                let currentDecodes = self.server.decodes
+                let currentSpots = self.clusterSpots
+                
+                self.recalcQueue.async {
+                    self.performRecalculationsBackground(currentDecodes: currentDecodes, currentSpots: currentSpots)
+                }
+            }
+        }
+    }
+    
+    private func pruneOldData() {
+        let window = UserDefaults.standard.integer(forKey: "mapTimeWindow") == 0 ? 30 : UserDefaults.standard.integer(forKey: "mapTimeWindow")
+        let cutoff = Date().addingTimeInterval(-Double(window + 5) * 60)
+        
+        let initialSpotCount = clusterSpots.count
+        clusterSpots.removeAll { $0.receivedAt < cutoff }
+        if clusterSpots.count != initialSpotCount {
+            needsRecalculation = true
+        }
+
+        // We can't prune server.decodes directly here safely as it's modified by WSJTXServer,
+        // but we assume WSJTXServer keeps a max of 250 elements anyway.
     }
     
     private func scheduleRecalculations() {
-        pendingRecalculationWorkItem?.cancel()
-        let workItem = DispatchWorkItem { [weak self] in
-            guard let self = self else { return }
-            self.performRecalculations()
+        needsRecalculation = true
+    }
+    
+    private func performRecalculationsBackground(currentDecodes: [WSJTXDecode], currentSpots: [WSJTXDecode]) {
+        DispatchQueue.main.sync {
+            self.clearEvaluationCache()
         }
-        pendingRecalculationWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: workItem)
+        
+        let newPropData = recalculatePropagationClusters(currentDecodes: currentDecodes, currentSpots: currentSpots)
+        let newMostWanted = recalculateMostWantedDecodes(currentDecodes: currentDecodes, currentSpots: currentSpots)
+        let newGridClusters = recalculateNewGridClusters(currentDecodes: currentDecodes, currentSpots: currentSpots)
+        
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.propagationClusters = newPropData.clusters
+            self.propagationChartData = newPropData.chartItems
+            self.mostWantedDecodes = newMostWanted
+            self.newGridClusters = newGridClusters
+            self.isRecalculating = false
+        }
     }
     
-    private func performRecalculations() {
-        clearEvaluationCache()
-        recalculatePropagationClusters()
-        recalculateMostWantedDecodes()
-        recalculateNewGridClusters()
-    }
-    
-    private func recalculatePropagationClusters() {
-        let currentDecodes = self.server.decodes
-        let currentSpots = self.clusterSpots
+    private func recalculatePropagationClusters(currentDecodes: [WSJTXDecode], currentSpots: [WSJTXDecode]) -> (clusters: [CountryCluster], chartItems: [PropagationChartItem]) {
         
         let window = UserDefaults.standard.integer(forKey: "mapTimeWindow") == 0 ? 30 : UserDefaults.standard.integer(forKey: "mapTimeWindow")
         let countWorkedBefore = UserDefaults.standard.bool(forKey: "mapCountWorkedBefore")
@@ -2033,7 +2103,7 @@ class DecodeViewModel: ObservableObject {
             )
         }
         
-        self.propagationClusters = clusters.sorted { $0.country < $1.country }
+        let sortedClusters = clusters.sorted { $0.country < $1.country }
 
         // Build propagation chart data by continent & band for accepted items ONLY
         let allContinentsList = ["EU", "NA", "AS", "SA", "AF", "OC", "AN"]
@@ -2055,13 +2125,13 @@ class DecodeViewModel: ObservableObject {
                 }
             }
         }
-        self.propagationChartData = chartItems
+        return (sortedClusters, chartItems)
     }
     
-    private func recalculateMostWantedDecodes() {
+    private func recalculateMostWantedDecodes(currentDecodes: [WSJTXDecode], currentSpots: [WSJTXDecode]) -> [WSJTXDecode] {
         var seen = Set<String>()
         var result: [WSJTXDecode] = []
-        let combined = self.server.decodes + self.clusterSpots
+        let combined = currentDecodes + currentSpots
         let filtered = combined
             .filter { decode in
                 let call = decode.callsign
@@ -2082,17 +2152,14 @@ class DecodeViewModel: ObservableObject {
                 result.append(decode)
             }
         }
-        self.mostWantedDecodes = result.sorted { a, b in
+        return result.sorted { a, b in
             let rankA = a.mostWantedRank ?? 999
             let rankB = b.mostWantedRank ?? 999
             return rankA < rankB
         }
     }
 
-    private func recalculateNewGridClusters() {
-        let currentDecodes = self.server.decodes
-        let currentSpots = self.clusterSpots
-        
+    private func recalculateNewGridClusters(currentDecodes: [WSJTXDecode], currentSpots: [WSJTXDecode]) -> [NewGridCluster] {
         let window = UserDefaults.standard.integer(forKey: "mapTimeWindow") == 0 ? 30 : UserDefaults.standard.integer(forKey: "mapTimeWindow")
         let now = Date()
         let cutoff = now.addingTimeInterval(-Double(window) * 60)
@@ -2173,7 +2240,7 @@ class DecodeViewModel: ObservableObject {
             )
         }
         
-        self.newGridClusters = clusters.sorted { $0.grid < $1.grid }
+        return clusters.sorted { $0.grid < $1.grid }
     }
 
     func colorForBand(_ band: String) -> Color {

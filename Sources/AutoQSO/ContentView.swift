@@ -128,7 +128,7 @@ struct ContentView: View {
         var filtered: [WSJTXDecode]
         
         if showOnlyAcceptedSpots {
-            filtered = baseList.filter { viewModel.shouldAccept(decode: $0, recordDuplicates: false) }
+            filtered = baseList.filter { viewModel.evaluateDecodeFast($0).shouldAccept }
         } else {
             filtered = baseList
         }

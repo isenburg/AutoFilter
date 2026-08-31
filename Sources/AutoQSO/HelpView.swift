@@ -1060,10 +1060,10 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                // Version 4.3.1
+                // Version 4.3.2
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 4.3.1")
+                        Text("Version 4.3.2")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -1073,9 +1073,38 @@ struct HelpView: View {
                             .font(.system(size: 10, weight: .bold))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Color.green)
-                            .foregroundColor(.white)
-                            .cornerRadius(4)
+                            .background(Color.green.opacity(0.2))
+                            .foregroundStyle(.green)
+                            .clipShape(Capsule())
+                    }
+                    
+                    if isDe {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("• **Performance-Optimierung**: Optimierte UI-Performance und entkoppelte Log-Updates, um Ruckler bei vielen Spots zu vermeiden.")
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("• **Performance Improvements**: Optimized UI rendering and debounced log ingestion to prevent sluggishness during high-volume periods.")
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color(NSColor.gridColor), lineWidth: 1)
+                )
+                
+                // Version 4.3.1
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 4.3.1")
+                            .font(.headline)
+                            .bold()
+                        Text(isDe ? "(Vorherige)" : "(Previous)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")

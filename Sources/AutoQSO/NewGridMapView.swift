@@ -4,8 +4,6 @@ import Network
 
 struct NewGridMapView: View {
     @ObservedObject var viewModel: DecodeViewModel
-    @State private var now = Date()
-    @State private var refreshTimer: Timer?
     @State private var sortMode = 0 // 0: Grid (A-Z), 1: Spots, 2: Kontinent
     @State private var showList = true
     @State private var searchText = ""
@@ -74,15 +72,8 @@ struct NewGridMapView: View {
             }
         }
         .onAppear {
-            refreshTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { _ in
-                now = Date()
-            }
             displayGridClusters = viewModel.newGridClusters
             viewModel.updatePropagationClusters()
-        }
-        .onDisappear {
-            refreshTimer?.invalidate()
-            refreshTimer = nil
         }
         .onChange(of: viewModel.newGridClusters) { _, newClusters in
             displayGridClusters = newClusters

@@ -89,6 +89,9 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 
 ## 📝 Changelog
 
+### Version 4.3.2
+- **Performance Improvements**: Optimized UI rendering and debounced log ingestion to prevent sluggishness during high-volume periods (e.g., heavy DX cluster traffic or WSJT-X decoding). The interface now remains buttery smooth even when flooded with new spots and logs.
+
 ### Version 4.3.1
 - **Continuous Rolling Decode Buffer (FIFO 250)**: The decode table is no longer wiped every 15s / 7.5s cycle on WSJT-X `Clear` packets. Incoming stations continuously roll into the table at the top, and older entries beyond 250 records smoothly drop off the bottom.
 - **Manual Clear Available**: Manual clearing remains available via the toolbar trash button (🗑️) or table reset action.
