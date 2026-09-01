@@ -144,6 +144,48 @@ class WSJTXServer: ObservableObject {
         }
     }
     
+    private var pendingDecodes: [(WSJTXDecode, Data)] = []
+    private var isDecodeFlushScheduled = false
+    
+    private func enqueueDecode(_ decode: WSJTXDecode, rawData: Data) {
+        pendingDecodes.append((decode, rawData))
+        guard !isDecodeFlushScheduled else { return }
+        isDecodeFlushScheduled = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            guard let self = self else { return }
+            self.isDecodeFlushScheduled = false
+            let batch = self.pendingDecodes
+            self.pendingDecodes.removeAll(keepingCapacity: true)
+            
+            guard !batch.isEmpty else { return }
+            
+            var newDecodes = self.decodes
+            var acceptedBatch: [(WSJTXDecode, Data)] = []
+            
+            for (dec, data) in batch {
+                let isDuplicate = newDecodes.contains { existing in
+                    existing.message == dec.message &&
+                    existing.time == dec.time &&
+                    existing.deltaFrequency == dec.deltaFrequency
+                }
+                if !isDuplicate {
+                    newDecodes.insert(dec, at: 0)
+                    acceptedBatch.append((dec, data))
+                }
+            }
+            
+            if newDecodes.count > 250 {
+                newDecodes.removeSubrange(250...)
+            }
+            
+            self.decodes = newDecodes
+            
+            for (dec, data) in acceptedBatch {
+                self.onDecodeReceived?(dec, data)
+            }
+        }
+    }
+    
     private var pendingRawLogs: [(WSJTXRawLogType, String)] = []
     private var isRawLogFlushScheduled = false
     
@@ -299,21 +341,7 @@ class WSJTXServer: ObservableObject {
             let freqMhz = Double(decode.totalFrequencyHz) / 1_000_000.0
             self.logRaw(.decode, "Decode: client=\(clientId) msg=\"\(message)\" snr=\(snr) dt=\(dt) freq=\(String(format: "%.6f", freqMhz))MHz mode=\(mode) isNew=\(isNew)")
             
-            DispatchQueue.main.async {
-                // Doubletten verhindern: gleiche Nachricht + Zeit + Frequenz
-                let isDuplicate = self.decodes.contains { existing in
-                    existing.message == decode.message &&
-                    existing.time == decode.time &&
-                    existing.deltaFrequency == decode.deltaFrequency
-                }
-                guard !isDuplicate else { return }
-                
-                self.decodes.insert(decode, at: 0)
-                self.onDecodeReceived?(decode, data)
-                if self.decodes.count > 250 {
-                    self.decodes.removeSubrange(250...)
-                }
-            }
+            self.enqueueDecode(decode, rawData: data)
         case .loggedAdif:
             if let adifText = reader.readString() {
                 let entries = ADIFParser.parseQSOs(from: adifText)

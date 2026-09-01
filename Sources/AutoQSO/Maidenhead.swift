@@ -368,14 +368,16 @@ public struct GridOverlaySettingsBar: View {
 }
 
 public struct Maidenhead {
+    private static let nonGrids: Set<String> = [
+        "RR73", "RRR", "73", "RO", "CQ", "DX", "NA", "SA", "EU", "AS", "AF", "OC",
+        "TEST", "POTA", "SOTA", "IOTA", "QRP", "QRO", "WW", "FD", "CONTEST"
+    ]
+    
+    private static let endOfQSOTokens: Set<String> = ["RR73", "RRR", "73", "RO", "TU", "SK", "GL", "TNX"]
+
     public static func isValidGrid(_ grid: String) -> Bool {
         let clean = grid.trimmingCharacters(in: CharacterSet.alphanumerics.inverted).uppercased()
         guard clean.count == 4 || clean.count == 6 || clean.count == 8 else { return false }
-        
-        let nonGrids: Set<String> = [
-            "RR73", "RRR", "73", "RO", "CQ", "DX", "NA", "SA", "EU", "AS", "AF", "OC",
-            "TEST", "POTA", "SOTA", "IOTA", "QRP", "QRO", "WW", "FD", "CONTEST"
-        ]
         if nonGrids.contains(clean) { return false }
         
         let bytes = Array(clean.utf8)
@@ -400,12 +402,20 @@ public struct Maidenhead {
     }
 
     public static func grid4BoundingBox(_ grid4: String) -> (minLat: Double, maxLat: Double, minLon: Double, maxLon: Double)? {
-        let clean = grid4.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        guard isValidGrid(clean) else { return nil }
-        let bytes = Array(clean.utf8)
+        guard grid4.utf8.count >= 4 else { return nil }
+        let bytes = Array(grid4.utf8)
+        let b0 = (bytes[0] >= 97 && bytes[0] <= 122) ? bytes[0] - 32 : bytes[0]
+        let b1 = (bytes[1] >= 97 && bytes[1] <= 122) ? bytes[1] - 32 : bytes[1]
+        let b2 = bytes[2]
+        let b3 = bytes[3]
         
-        let minLon = Double(bytes[0] - 65) * 20.0 - 180.0 + Double(bytes[2] - 48) * 2.0
-        let minLat = Double(bytes[1] - 65) * 10.0 - 90.0 + Double(bytes[3] - 48) * 1.0
+        guard b0 >= 65 && b0 <= 82,
+              b1 >= 65 && b1 <= 82,
+              b2 >= 48 && b2 <= 57,
+              b3 >= 48 && b3 <= 57 else { return nil }
+        
+        let minLon = Double(b0 - 65) * 20.0 - 180.0 + Double(b2 - 48) * 2.0
+        let minLat = Double(b1 - 65) * 10.0 - 90.0 + Double(b3 - 48) * 1.0
         let maxLon = minLon + 2.0
         let maxLat = minLat + 1.0
         return (minLat, maxLat, minLon, maxLon)
@@ -419,7 +429,6 @@ public struct Maidenhead {
         guard !tokens.isEmpty else { return nil }
         
         let lastToken = tokens.last!
-        let endOfQSOTokens: Set<String> = ["RR73", "RRR", "73", "RO", "TU", "SK", "GL", "TNX"]
         if endOfQSOTokens.contains(lastToken) {
             return nil
         }

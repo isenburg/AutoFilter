@@ -603,18 +603,6 @@ struct ContentView: View {
                     leftSidebar
                         .frame(minWidth: 220, idealWidth: CGFloat(leftSidebarWidth), maxWidth: 300, maxHeight: .infinity)
                         .background(Color(NSColor.windowBackgroundColor))
-                        .background(
-                            GeometryReader { geo in
-                                Color.clear
-                                    .preference(key: LeftSidebarWidthPreferenceKey.self, value: geo.size.width)
-                            }
-                        )
-                        .onPreferenceChange(LeftSidebarWidthPreferenceKey.self) { width in
-                            guard !isTransitioningMode, !isCompactMode, isLeftSidebarVisible else { return }
-                            if width >= 220 {
-                                leftSidebarWidth = Double(width)
-                            }
-                        }
                         .layoutPriority(0)
                 }
                 
@@ -640,18 +628,6 @@ struct ContentView: View {
                         if !isLogConsoleDetached {
                             logConsoleView
                                 .frame(minHeight: 80, idealHeight: CGFloat(logConsoleHeight), maxHeight: 450)
-                                .background(
-                                    GeometryReader { geo in
-                                        Color.clear
-                                            .preference(key: ConsoleHeightPreferenceKey.self, value: geo.size.height)
-                                    }
-                                )
-                                .onPreferenceChange(ConsoleHeightPreferenceKey.self) { height in
-                                    guard !isTransitioningMode, !isCompactMode else { return }
-                                    if height >= 80 {
-                                        logConsoleHeight = Double(height)
-                                    }
-                                }
                                 .layoutPriority(0)
                         }
                         
@@ -720,20 +696,9 @@ struct ContentView: View {
                         
                         mostWantedSectionView
                             .frame(minHeight: 60, idealHeight: CGFloat(mostWantedPanelHeight), maxHeight: 300)
-                            .background(
-                                GeometryReader { geo in
-                                    Color.clear
-                                        .preference(key: MostWantedHeightPreferenceKey.self, value: geo.size.height)
-                                }
-                            )
-                            .onPreferenceChange(MostWantedHeightPreferenceKey.self) { height in
-                                guard !isTransitioningMode, !isCompactMode else { return }
-                                if height >= 60 {
-                                    mostWantedPanelHeight = Double(height)
-                                }
-                            }
                             .layoutPriority(0)
                     }
+                    .background(SplitViewAutosaver(name: "AutoQSO_Main_VSplitView"))
                 }
                 .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
                 .layoutPriority(1)
@@ -742,21 +707,10 @@ struct ContentView: View {
                     rightSidebar
                         .frame(minWidth: 250, idealWidth: CGFloat(rightSidebarWidth), maxWidth: 400, maxHeight: .infinity)
                         .background(Color(NSColor.windowBackgroundColor))
-                        .background(
-                            GeometryReader { geo in
-                                Color.clear
-                                    .preference(key: RightSidebarWidthPreferenceKey.self, value: geo.size.width)
-                            }
-                        )
-                        .onPreferenceChange(RightSidebarWidthPreferenceKey.self) { width in
-                            guard !isTransitioningMode, !isCompactMode, isSidebarVisible else { return }
-                            if width >= 250 {
-                                rightSidebarWidth = Double(width)
-                            }
-                        }
                         .layoutPriority(0)
                 }
             }
+            .background(SplitViewAutosaver(name: "AutoQSO_Main_HSplitView"))
             .background(Color(NSColor.windowBackgroundColor))
             
             Divider()
@@ -810,20 +764,9 @@ struct ContentView: View {
                 
                 compactMostWantedView
                     .frame(minHeight: 40, idealHeight: CGFloat(compactMostWantedHeight), maxHeight: 150)
-                    .background(
-                        GeometryReader { geo in
-                            Color.clear
-                                .preference(key: CompactMostWantedHeightPreferenceKey.self, value: geo.size.height)
-                        }
-                    )
-                    .onPreferenceChange(CompactMostWantedHeightPreferenceKey.self) { height in
-                        guard !isTransitioningMode, isCompactMode else { return }
-                        if height >= 40 {
-                            compactMostWantedHeight = Double(height)
-                        }
-                    }
                     .layoutPriority(0)
             }
+            .background(SplitViewAutosaver(name: "AutoQSO_Compact_VSplitView"))
         }
     }
 
@@ -2875,41 +2818,6 @@ struct UnifiedTextFieldStyle: TextFieldStyle {
             .padding(.vertical, 4)
             .background(RoundedRectangle(cornerRadius: 4).fill(colorScheme == .light ? Color(white: 0.90) : Color(white: 0.18)))
             .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.secondary.opacity(0.3), lineWidth: 1))
-    }
-}
-
-struct LeftSidebarWidthPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
-struct RightSidebarWidthPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
-struct ConsoleHeightPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
-struct MostWantedHeightPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
-struct CompactMostWantedHeightPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }
 
