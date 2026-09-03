@@ -13,6 +13,12 @@
 - **Primary Function (DX-Filter)**: Analyzes, classifies, and filters incoming DX spots and decodes in real-time according to custom criteria, callsign lists, countries, and bands.
 - **WSJT-X Integration (Auto QSO)**: Automated transmit engine for FT8 and FT4 contacts, cross-referencing incoming decodes against a local SQLite logbook synchronized with RUMlogNG, ARRL LoTW, and QRZ.com, prioritizing rare Most-Wanted DXCC stations.
 
+### 🔄 Inline-Filter Architecture
+AutoQSO operates as an inline filter positioned between incoming signal streams (up to **3 simultaneous DX Clusters** plus **WSJT-X UDP Decodes**) and your logging software (such as **RUMlogNG**):
+- **No Cluster Commands Required**: Eliminates the need to configure server-side filter commands on individual cluster servers.
+- **Independent of Cluster Software**: Consistent local filtering regardless of cluster type (DXSpider, AR-Cluster, CC-Cluster, RBN).
+- **Telnet Forwarding**: Filtered spots are forwarded via the built-in Telnet server directly to RUMlogNG.
+
 ---
 
 ## ⚡ Key Features

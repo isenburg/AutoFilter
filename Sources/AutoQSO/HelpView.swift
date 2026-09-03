@@ -333,6 +333,31 @@ struct HelpView: View {
                 .cornerRadius(8)
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.accentColor.opacity(0.3), lineWidth: 1))
                 
+                // Inline-Filter Architektur Callout
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "arrow.triangle.branch")
+                            .font(.title3)
+                            .foregroundStyle(.blue)
+                        Text(isDe ? "Inline-Filter zwischen Clustern, WSJT-X und Logger" : "Inline Filter between Clusters, WSJT-X, and Logger")
+                            .font(.headline)
+                    }
+                    
+                    Text(isDe ? 
+                        "AutoQSO sitzt als Inline-Filter zwischen bis zu drei DX-Clustern, WSJT-X und einer Logging-App wie beispielsweise **RUMlogNG**:" : 
+                        "AutoQSO operates as an inline filter between up to three DX clusters, WSJT-X, and a logging application such as **RUMlogNG**:")
+                        .font(.subheadline)
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        bullet(isDe ? "**Keine Cluster-Kommandos nötig**: Es müssen keine serverseitigen Filterkommandos auf den Cluster-Servern konfiguriert werden." : "**No cluster commands required**: Eliminates the need to configure server-side filter commands on individual cluster servers.")
+                        bullet(isDe ? "**Unabhängig vom Cluster-Typ**: Einheitliche Filterung unabhängig von der eingesetzten Cluster-Software (z. B. DXSpider, AR-Cluster oder CC-Cluster)." : "**Independent of cluster software**: Uniform filtering regardless of the backend cluster type (e.g. DXSpider, AR-Cluster, or CC-Cluster).")
+                        bullet(isDe ? "**Telnet-Weiterleitung**: Gefilterte Spots werden über den integrierten Telnet-Server an RUMlogNG weitergereicht." : "**Telnet forwarding**: Filtered spots are passed to RUMlogNG via the built-in Telnet server.")
+                    }
+                }
+                .padding(14)
+                .background(Color.secondary.opacity(0.06))
+                .cornerRadius(10)
+                
                 Text(isDe ? "Hauptfunktionen:" : "Key Features:")
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 6) {

@@ -1586,34 +1586,33 @@ struct ContentView: View {
                                 Label(isDe ? "Profile verwalten..." : "Manage Profiles...", systemImage: "slider.horizontal.2.square")
                             }
                         } label: {
-                            HStack(spacing: 5) {
-                                Image(systemName: viewModel.activeFilterProfile?.iconName ?? "bookmark.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(.blue)
+                            let isModified = viewModel.isFilterProfileModified
+                            let currentProfile = viewModel.activeFilterProfile
+                            let titleText = isModified ? "\(currentProfile?.name ?? "Allround") *" : (currentProfile?.name ?? "Allround")
+                            
+                            HStack(spacing: 6) {
+                                Image(systemName: currentProfile?.iconName ?? "bookmark.fill")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(isModified ? Color.orange : Color.blue)
                                 
-                                Text(viewModel.activeFilterProfile?.name ?? "Allround")
-                                    .font(.system(size: 11, weight: .semibold))
+                                Text(titleText)
+                                    .font(.system(size: 11, weight: isModified ? .bold : .semibold))
+                                    .foregroundStyle(isModified ? Color.orange : Color.primary)
                                     .lineLimit(1)
-                                
-                                if viewModel.isFilterProfileModified {
-                                    Text("*")
-                                        .font(.system(size: 12, weight: .bold))
-                                        .foregroundStyle(.orange)
-                                }
                                 
                                 Spacer()
                                 
                                 Image(systemName: "chevron.up.chevron.down")
                                     .font(.system(size: 8))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(isModified ? Color.orange : Color.secondary)
                             }
                             .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color(NSColor.controlBackgroundColor))
+                            .padding(.vertical, 5)
+                            .background(isModified ? Color.orange.opacity(0.12) : Color(NSColor.controlBackgroundColor))
                             .clipShape(.rect(cornerRadius: 6))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 6)
-                                    .stroke(viewModel.isFilterProfileModified ? Color.orange.opacity(0.6) : Color.secondary.opacity(0.2), lineWidth: 1)
+                                    .stroke(isModified ? Color.orange : Color.secondary.opacity(0.2), lineWidth: isModified ? 1.5 : 1)
                             )
                         }
                         .menuStyle(.borderlessButton)
