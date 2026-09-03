@@ -11,7 +11,7 @@ struct InteractiveQTHPickerView: View {
     @State private var selectedGrid: String
     @State private var mapStyleOption: MapStyleOption = .hybrid
 
-    @ObservedObject private var langManager = LanguageManager.shared
+    private var langManager = LanguageManager.shared
     private var isDe: Bool { langManager.isGerman }
 
     init(myGridLocator: Binding<String>) {
@@ -44,14 +44,14 @@ struct InteractiveQTHPickerView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "mappin.circle.fill")
                             .font(.title2)
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                         Text("Interactive QTH Finder")
                             .font(.headline)
                             .bold()
                     }
                     Text(isDe ? "Das Maidenhead-Gitter passt sich beim Hineinzoomen automatisch von 2- bis 8-Stellen an." : "The Maidenhead grid dynamically adjusts from 2 to 8 characters when zooming in.")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 
                 Spacer()
@@ -60,10 +60,10 @@ struct InteractiveQTHPickerView: View {
                 HStack(spacing: 6) {
                     Text(isDe ? "Ausgewählt:" : "Selected:")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     Text(selectedGrid)
                         .font(.system(size: 15, weight: .black, design: .monospaced))
-                        .foregroundColor(.yellow)
+                        .foregroundStyle(.yellow)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
                         .background(Color.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 6))
@@ -97,10 +97,10 @@ struct InteractiveQTHPickerView: View {
                                     HStack(spacing: 4) {
                                         Image(systemName: "location.fill")
                                             .font(.system(size: 10))
-                                            .foregroundColor(.red)
+                                            .foregroundStyle(.red)
                                         Text(selectedGrid)
                                             .font(.system(size: 11, weight: .black, design: .monospaced))
-                                            .foregroundColor(.white)
+                                            .foregroundStyle(.white)
                                     }
                                     .padding(.horizontal, 7)
                                     .padding(.vertical, 4)
@@ -109,7 +109,7 @@ struct InteractiveQTHPickerView: View {
                                     
                                     Image(systemName: "triangle.fill")
                                         .font(.system(size: 8))
-                                        .foregroundColor(.red)
+                                        .foregroundStyle(.red)
                                         .rotationEffect(.degrees(180))
                                         .offset(y: -2)
                                 }
@@ -151,7 +151,7 @@ struct InteractiveQTHPickerView: View {
                                     .font(.system(size: 12, weight: .medium))
                                 Image(systemName: "chevron.up.chevron.down")
                                     .font(.system(size: 9, weight: .bold))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 5.5)

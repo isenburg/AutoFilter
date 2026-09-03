@@ -1,11 +1,13 @@
+import Observation
 import Foundation
 import Combine
 import AppKit
 
-class RUMlogManager: ObservableObject {
-    @Published var isDownloading: Bool = false
-    @Published var errorMessage: String? = nil
-    @Published var logHistory: [String] = []
+@Observable
+class RUMlogManager {
+    var isDownloading: Bool = false
+    var errorMessage: String? = nil
+    var logHistory: [String] = []
     
     private let userDefaultsLastSyncKey = "rumlogLastSyncTimestamp"
     

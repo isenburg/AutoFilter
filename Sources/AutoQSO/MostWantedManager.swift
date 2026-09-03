@@ -1,3 +1,4 @@
+import Observation
 import Foundation
 
 public struct MostWantedEntity: Identifiable, Codable {
@@ -8,10 +9,11 @@ public struct MostWantedEntity: Identifiable, Codable {
     public var continent: String
 }
 
-public class MostWantedManager: ObservableObject {
+@Observable
+public class MostWantedManager {
     public static let shared = MostWantedManager()
     
-    @Published public var mostWantedList: [MostWantedEntity] = []
+    public var mostWantedList: [MostWantedEntity] = []
     
     private var prefixToRank: [String: Int] = [:]
     private var dxccIdToRank: [Int: Int] = [:]

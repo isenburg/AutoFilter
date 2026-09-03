@@ -1,9 +1,19 @@
 import SwiftUI
 
 struct LogsConsoleView: View {
-    @ObservedObject var viewModel: DecodeViewModel
-    @ObservedObject private var langManager = LanguageManager.shared
+    var viewModel: DecodeViewModel
+    @Bindable var logs: LogsViewModel
+    var isEmbedded: Bool = false
+
+    init(viewModel: DecodeViewModel, isEmbedded: Bool = false) {
+        self.viewModel = viewModel
+        self.logs = viewModel.logsViewModel
+        self.isEmbedded = isEmbedded
+    }
+    private var langManager = LanguageManager.shared
+    private var isDe: Bool { langManager.isGerman }
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openWindow) private var openWindow
     
     @AppStorage("logConsoleTab") private var consoleTab = 0
     @AppStorage("isLogConsoleDetached") private var isLogConsoleDetached = false
@@ -97,26 +107,26 @@ struct LogsConsoleView: View {
                 Spacer()
                 
                 Button(action: {
-                    viewModel.isLogScrollPaused.toggle()
+                    logs.isLogScrollPaused.toggle()
                 }) {
-                    Image(systemName: viewModel.isLogScrollPaused ? "play.circle" : "pause.circle")
+                    Image(systemName: logs.isLogScrollPaused ? "play.circle" : "pause.circle")
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .foregroundColor(viewModel.isLogScrollPaused ? .orange : .primary)
-                .help(viewModel.isLogScrollPaused ? L("toolbar.freeze.tooltip.resume") : L("toolbar.freeze.tooltip.pause"))
+                .foregroundStyle(logs.isLogScrollPaused ? .orange : .primary)
+                .help(logs.isLogScrollPaused ? L("toolbar.freeze.tooltip.resume") : L("toolbar.freeze.tooltip.pause"))
                 
                 HStack(spacing: 4) {
                     Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
-                    TextField(L("logs.search"), text: $viewModel.logConsoleSearchText)
+                        .foregroundStyle(.secondary)
+                    TextField(L("logs.search"), text: $logs.logConsoleSearchText)
                         .font(.system(size: 11))
                         .textFieldStyle(.plain)
                         .frame(width: 150)
-                    if !viewModel.logConsoleSearchText.isEmpty {
-                        Button(action: { viewModel.logConsoleSearchText = "" }) {
+                    if !logs.logConsoleSearchText.isEmpty {
+                        Button(action: { logs.logConsoleSearchText = "" }) {
                             Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
                     }
@@ -124,7 +134,7 @@ struct LogsConsoleView: View {
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
                 .background(Color(NSColor.textBackgroundColor))
-                .cornerRadius(6)
+                .clipShape(.rect(cornerRadius: 6))
                 
                 if consoleTab == 2 {
                     Button(action: {
@@ -139,14 +149,14 @@ struct LogsConsoleView: View {
                 
                 Button(action: {
                     if consoleTab == 0 {
-                        viewModel.logHistory.removeAll()
+                        logs.logHistory.removeAll()
                         viewModel.lotwManager.logHistory.removeAll()
                         viewModel.qrzManager.logHistory.removeAll()
                         viewModel.rumlogManager.logHistory.removeAll()
                     } else if consoleTab == 1 {
-                        viewModel.wsjtxRawLogs.removeAll()
+                        logs.wsjtxRawLogs.removeAll()
                     } else {
-                        viewModel.clusterRawLogs.removeAll()
+                        logs.clusterRawLogs.removeAll()
                     }
                 }) {
                     Image(systemName: "trash")
@@ -155,13 +165,27 @@ struct LogsConsoleView: View {
                 .controlSize(.small)
                 .help(L("logs.clear"))
                 
-                Button(L("logs.attach")) {
-                    isLogConsoleDetached = false
-                    dismiss()
+                if isEmbedded {
+                    Button(action: {
+                        isLogConsoleDetached = true
+                        openWindow(id: "logs_raw")
+                    }) {
+                        Label(isDe ? "Konsole abdocken" : "Detach Console", systemImage: "arrow.up.right.square")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .padding(.trailing, 8)
+                } else {
+                    Button(action: {
+                        isLogConsoleDetached = false
+                        dismiss()
+                    }) {
+                        Label(isDe ? "Konsole andocken" : "Attach Console", systemImage: "arrow.down.left.square")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .padding(.trailing, 8)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .padding(.trailing, 8)
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 8)
@@ -173,7 +197,7 @@ struct LogsConsoleView: View {
                 if consoleTab == 0 {
                     LogConsoleTextView(
                         lines: systemLogLines,
-                        isPaused: viewModel.isLogScrollPaused,
+                        isPaused: logs.isLogScrollPaused,
                         fontSize: fontSizeLog,
                         isNewestOnTop: isNewestOnTop,
                         backgroundColor: Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor))
@@ -181,7 +205,7 @@ struct LogsConsoleView: View {
                 } else if consoleTab == 1 {
                     LogConsoleTextView(
                         lines: wsjtxLogLines,
-                        isPaused: viewModel.isLogScrollPaused,
+                        isPaused: logs.isLogScrollPaused,
                         fontSize: fontSizeLog,
                         isNewestOnTop: isNewestOnTop,
                         backgroundColor: Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor))
@@ -189,7 +213,7 @@ struct LogsConsoleView: View {
                 } else {
                     LogConsoleTextView(
                         lines: clusterLogLines,
-                        isPaused: viewModel.isLogScrollPaused,
+                        isPaused: logs.isLogScrollPaused,
                         fontSize: fontSizeLog,
                         isNewestOnTop: isNewestOnTop,
                         backgroundColor: Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor))
@@ -199,26 +223,21 @@ struct LogsConsoleView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor)))
         }
-        .frame(minWidth: 500, minHeight: 300)
         .preferredColorScheme(preferredScheme)
         .sheet(isPresented: $isClusterSendSheetPresented) {
             ClusterSendDialog(viewModel: viewModel)
-        }
-        .onDisappear {
-            // When window is closed, mark it as docked back
-            isLogConsoleDetached = false
         }
     }
 
     private var systemLogLines: [LogLine] {
         let rawLogs: [String]
-        if viewModel.isLogScrollPaused, let frozen = viewModel.frozenSystemLogs {
+        if logs.isLogScrollPaused, let frozen = logs.frozenSystemLogs {
             rawLogs = frozen
         } else {
-            rawLogs = (viewModel.logHistory + viewModel.lotwManager.logHistory + viewModel.qrzManager.logHistory + viewModel.rumlogManager.logHistory).sorted()
+            rawLogs = (logs.logHistory + viewModel.lotwManager.logHistory + viewModel.qrzManager.logHistory + viewModel.rumlogManager.logHistory).sorted()
         }
         
-        let query = viewModel.logConsoleSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let query = logs.logConsoleSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let filteredLogs: [String]
         if query.isEmpty {
             filteredLogs = rawLogs
@@ -232,10 +251,10 @@ struct LogsConsoleView: View {
     
     private var wsjtxLogLines: [LogLine] {
         let rawWSJTXLogs: [WSJTXRawLogEntry]
-        if viewModel.isLogScrollPaused, let frozen = viewModel.frozenWSJTXLogs {
+        if logs.isLogScrollPaused, let frozen = logs.frozenWSJTXLogs {
             rawWSJTXLogs = frozen
         } else {
-            rawWSJTXLogs = viewModel.wsjtxRawLogs
+            rawWSJTXLogs = logs.wsjtxRawLogs
         }
         
         let activeTypeLogs = rawWSJTXLogs.filter { log in
@@ -246,7 +265,7 @@ struct LogsConsoleView: View {
             }
         }
         
-        let query = viewModel.logConsoleSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let query = logs.logConsoleSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let filteredLogs: [WSJTXRawLogEntry]
         if query.isEmpty {
             filteredLogs = activeTypeLogs
@@ -263,13 +282,13 @@ struct LogsConsoleView: View {
     
     private var clusterLogLines: [LogLine] {
         let rawClusterLogs: [ClusterRawLogEntry]
-        if viewModel.isLogScrollPaused, let frozen = viewModel.frozenClusterLogs {
+        if logs.isLogScrollPaused, let frozen = logs.frozenClusterLogs {
             rawClusterLogs = frozen
         } else {
-            rawClusterLogs = viewModel.clusterRawLogs
+            rawClusterLogs = logs.clusterRawLogs
         }
         
-        let query = viewModel.logConsoleSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let query = logs.logConsoleSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let filteredLogs: [ClusterRawLogEntry]
         if query.isEmpty {
             filteredLogs = rawClusterLogs

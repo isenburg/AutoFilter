@@ -1,3 +1,4 @@
+import Observation
 import Foundation
 import Combine
 
@@ -10,12 +11,13 @@ class WSJTXServer: ObservableObject {
     var onQSOLogged: (([QSOEntry]) -> Void)?
     var onHaltTx: (() -> Void)?
     var onDecodeReceived: ((WSJTXDecode, Data) -> Void)?
+    var onDecodesBatchReceived: (([(WSJTXDecode, Data)]) -> Void)?
     var onRawLogReceived: ((WSJTXRawLogType, String) -> Void)?
     
     private let queue = DispatchQueue(label: "com.autoqso.wsjtx", qos: .userInitiated)
     private var wsjtSocketFd: Int32 = -1
     private var readSource: DispatchSourceRead?
-    @Published var wsjtxClientId: String = ""
+    var wsjtxClientId: String = ""
     private var lastWSJTClientAddr: sockaddr_in?
     private var recentlyLoggedCalls = [String: Date]()
     
@@ -146,12 +148,24 @@ class WSJTXServer: ObservableObject {
     
     private var pendingDecodes: [(WSJTXDecode, Data)] = []
     private var isDecodeFlushScheduled = false
+    private var recentDecodeKeys = Set<String>()
+    private let maxRecentKeys = 1000
     
     private func enqueueDecode(_ decode: WSJTXDecode, rawData: Data) {
+        let key = "\(decode.message)_\(decode.time)_\(decode.deltaFrequency)"
+        if recentDecodeKeys.contains(key) {
+            return
+        }
+        recentDecodeKeys.insert(key)
+        if recentDecodeKeys.count > maxRecentKeys {
+            recentDecodeKeys.removeAll(keepingCapacity: true)
+        }
+        
         pendingDecodes.append((decode, rawData))
         guard !isDecodeFlushScheduled else { return }
         isDecodeFlushScheduled = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
             guard let self = self else { return }
             self.isDecodeFlushScheduled = false
             let batch = self.pendingDecodes
@@ -159,29 +173,20 @@ class WSJTXServer: ObservableObject {
             
             guard !batch.isEmpty else { return }
             
-            var newDecodes = self.decodes
-            var acceptedBatch: [(WSJTXDecode, Data)] = []
-            
-            for (dec, data) in batch {
-                let isDuplicate = newDecodes.contains { existing in
-                    existing.message == dec.message &&
-                    existing.time == dec.time &&
-                    existing.deltaFrequency == dec.deltaFrequency
-                }
-                if !isDuplicate {
-                    newDecodes.insert(dec, at: 0)
-                    acceptedBatch.append((dec, data))
-                }
+            let window = UserDefaults.standard.integer(forKey: "mapTimeWindow") == 0 ? 30 : UserDefaults.standard.integer(forKey: "mapTimeWindow")
+            let cutoff = Date().addingTimeInterval(-Double(window) * 60)
+            var newDecodes = (batch.map { $0.0 } + self.decodes).filter { $0.receivedAt >= cutoff }
+            if newDecodes.count > 500 {
+                newDecodes.removeSubrange(500...)
             }
-            
-            if newDecodes.count > 250 {
-                newDecodes.removeSubrange(250...)
-            }
-            
             self.decodes = newDecodes
             
-            for (dec, data) in acceptedBatch {
-                self.onDecodeReceived?(dec, data)
+            if let batchHandler = self.onDecodesBatchReceived {
+                batchHandler(batch)
+            } else {
+                for (dec, data) in batch {
+                    self.onDecodeReceived?(dec, data)
+                }
             }
         }
     }

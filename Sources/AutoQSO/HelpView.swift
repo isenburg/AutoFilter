@@ -117,7 +117,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
 }
 
 struct HelpView: View {
-    @ObservedObject private var langManager = LanguageManager.shared
+    private var langManager = LanguageManager.shared
     @Environment(\.openWindow) private var openWindow
     @State private var selectedSection: HelpSection = .overview
     @State private var searchText = ""
@@ -1078,23 +1078,20 @@ struct HelpView: View {
                             .clipShape(Capsule())
                     }
                     
-                    if isDe {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("• **Performance-Optimierung**: Optimierte UI-Performance und entkoppelte Log-Updates, um Ruckler bei vielen Spots zu vermeiden.")
-                        }
-                    } else {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("• **Performance Improvements**: Optimized UI rendering and debounced log ingestion to prevent sluggishness during high-volume periods.")
-                        }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
+                            .font(.subheadline)
+                            .bold()
+                        bullet(isDe ? "Konsequente Daten- und Anzeige-Entkopplung: Vorberechnetes Display-Modell (SpotRowData) für absolut flüssiges UI-Rendering ohne CPU-Overhead bei vielen Spots." : "Decoupled Data & Display Model: Pre-computed SpotRowData for zero-overhead, buttery smooth UI table rendering.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "100% GPU-beschleunigte MapKit-Karten: Native Metal-Overlays für Maidenhead-Gitter und gearbeitete Grids ohne Wisch-Verzögerung oder Ruckeln." : "100% GPU-Accelerated MapKit Overlays: Native Metal renderers for Maidenhead grids and worked shading with zero gesture lag.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "O(1) Grid- & QSO-Indexierung: Blitzschnelle Grid-Inspektion und Popover-Anzeige direkt an der Kartenposition." : "O(1) Grid & QSO Indexing: Instantaneous grid popover inspection anchored directly to the clicked map coordinate.", font: .subheadline, color: .secondary)
                     }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(12)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color(NSColor.gridColor), lineWidth: 1)
-                )
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
                 
                 // Version 4.3.1
                 VStack(alignment: .leading, spacing: 8) {
@@ -1117,7 +1114,7 @@ struct HelpView: View {
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.green.opacity(0.08))
+                .background(Color.gray.opacity(0.06))
                 .cornerRadius(8)
                 
                 Divider()

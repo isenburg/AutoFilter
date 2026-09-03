@@ -88,8 +88,8 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 // MARK: - Hauptansicht für Einstellungen
 
 struct SettingsView: View {
-    @ObservedObject var viewModel: DecodeViewModel
-    @ObservedObject private var langManager = LanguageManager.shared
+    @Bindable var viewModel: DecodeViewModel
+    @Bindable private var langManager = LanguageManager.shared
     
     // Lokaler Zustand der UI & gespeicherte Ziel-Sektion
     @AppStorage("settingsSelectedSection") private var selectedSectionRaw: String = SettingsSection.udp.rawValue
@@ -1434,8 +1434,8 @@ struct SettingsView: View {
 
 /// View zur Bearbeitung, Sortierung und Hinzufügen von DX Cluster Servern
 struct ClusterManagerView: View {
-    @ObservedObject var viewModel: DecodeViewModel
-    @ObservedObject private var langManager = LanguageManager.shared
+    @Bindable var viewModel: DecodeViewModel
+    var langManager = LanguageManager.shared
     @State private var newName = ""
     @State private var newHost = ""
     @State private var newPort = "7373"

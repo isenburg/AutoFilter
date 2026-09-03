@@ -3,20 +3,26 @@ import MapKit
 import Network
 
 struct NewGridMapView: View {
-    @ObservedObject var viewModel: DecodeViewModel
+    @Bindable var viewModel: DecodeViewModel
     @State private var sortMode = 0 // 0: Grid (A-Z), 1: Spots, 2: Kontinent
     @State private var showList = true
     @State private var searchText = ""
     @State private var collapsedContinents: Set<String> = []
-    @State private var cameraPosition: MapCameraPosition = .automatic
+    @State private var cameraPosition: MapCameraPosition = .region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 48.0, longitude: 10.0), span: MKCoordinateSpan(latitudeDelta: 30.0, longitudeDelta: 40.0)))
 
     @State private var showMaidenheadOverlay = true
+    @State private var programmaticRegion: MKCoordinateRegion? = nil
     @State private var currentRegion = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 48.0, longitude: 10.0), span: MKCoordinateSpan(latitudeDelta: 30.0, longitudeDelta: 40.0))
 
     @AppStorage("mapTimeWindow") private var mapTimeWindow = 30
     @AppStorage("fontSizeTable") private var fontSizeTable = 11.0
     @AppStorage("showBlockedGridSpots") private var showBlockedGridSpots = true
     @AppStorage("showWorkedGridShading") private var showWorkedGridShading = false
+    @AppStorage("gridOverlayShowPill") private var gridOverlayShowPill = true
+    @AppStorage("gridOverlayTextColor") private var gridOverlayTextColor = ""
+    @AppStorage("gridOverlayLineColor") private var gridOverlayLineColor = ""
+    @AppStorage("gridOverlayBadgeColor") private var gridOverlayBadgeColor = ""
+    @AppStorage("gridOverlayFontSize") private var gridOverlayFontSize = 11.0
     @AppStorage("newGridMapStyle") private var selectedMapStyleRaw: String = MapStyleOption.standard.rawValue
     @AppStorage("myGridLocator") private var myGridLocator = "JO31"
     @AppStorage("newGridSidebarCompact") private var isCompactMode = false
@@ -72,23 +78,10 @@ struct NewGridMapView: View {
             }
         }
         .onAppear {
-            displayGridClusters = viewModel.newGridClusters
-            viewModel.updatePropagationClusters()
+            displayGridClusters = viewModel.mapState.newGridClusters
         }
-        .onChange(of: viewModel.newGridClusters) { _, newClusters in
+        .onChange(of: viewModel.mapState.newGridClusters) { _, newClusters in
             displayGridClusters = newClusters
-            cachedGlobeSpotItems = newClusters.map { cluster in
-                let band = cluster.bands.first?.name ?? ""
-                let sub = cluster.bands.map { "\($0.name):\($0.count)" }.joined(separator: " ")
-                return GlobeSpotItem(
-                    id: cluster.grid,
-                    title: cluster.grid,
-                    subtitle: "\(cluster.country) (\(sub))",
-                    latitude: cluster.upperRightLatitude,
-                    longitude: cluster.upperRightLongitude,
-                    bandName: band
-                )
-            }
         }
         .sheet(item: Binding(
             get: { selectedWorkedGrid.map { WorkedGridItem(grid: $0) } },
@@ -96,20 +89,67 @@ struct NewGridMapView: View {
         )) { item in
             WorkedGridDetailView(
                 grid: item.grid,
-                qsos: viewModel.lotwManager.logbook.filter {
-                    $0.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased().hasPrefix(item.grid)
-                }
+                qsos: viewModel.lotwManager.qsos(forGrid4: item.grid)
             )
         }
     }
 
     @State private var selectedWorkedGrid: String? = nil
     @State private var inspectedGrid: GridInspectorInfo? = nil
+    @State private var popoverTapPoint: CGPoint? = nil
     @State private var cachedGlobeSpotItems: [GlobeSpotItem] = []
 
     private struct WorkedGridItem: Identifiable {
         let grid: String
         var id: String { grid }
+    }
+
+        private func makeGridInspectorInfo(for coord: CLLocationCoordinate2D, spanDelta: Double) -> GridInspectorInfo {
+        let length = spanDelta <= 2.5 ? 6 : 4
+        let grid = Maidenhead.latLonToLocator(lat: coord.latitude, lon: coord.longitude, length: length)
+        let grid4 = String(grid.prefix(4))
+        
+        let center = Maidenhead.locatorToLatLon(grid)
+        let gridCenterCoord = center.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) } ?? coord
+        
+        let matchingQSOs = viewModel.lotwManager.qsos(forGrid4: grid4)
+        
+        let activeCluster = displayGridClusters.first(where: {
+            $0.grid == grid || $0.grid == grid4
+        })
+        
+        var country = activeCluster?.country ?? ""
+        var continent = activeCluster?.continent ?? ""
+        
+        if country.isEmpty || country == "DX", let firstCall = matchingQSOs.first?.callsign, !firstCall.isEmpty {
+            let matchedCountry = PrefixMatcher.shared.country(for: firstCall)
+            if matchedCountry != "OTHER" && !matchedCountry.isEmpty {
+                country = matchedCountry
+            }
+            let matchedContinent = PrefixMatcher.shared.continent(for: firstCall)
+            if matchedContinent != "OTHER" && !matchedContinent.isEmpty {
+                continent = matchedContinent
+            }
+        }
+        
+        if country.isEmpty {
+            if let dxccId = matchingQSOs.first?.dxcc, !dxccId.isEmpty {
+                country = "DXCC \(dxccId)"
+            } else {
+                country = "DX"
+            }
+        }
+        
+        return GridInspectorInfo(
+            grid: grid,
+            coordinate: gridCenterCoord,
+            is6Char: length == 6,
+            country: country,
+            continent: continent,
+            isWorked: !matchingQSOs.isEmpty,
+            workedCount: matchingQSOs.count,
+            activeCluster: activeCluster
+        )
     }
 
     private func inspectCoordinate(_ coord: CLLocationCoordinate2D) {
@@ -121,9 +161,7 @@ struct NewGridMapView: View {
         let center = Maidenhead.locatorToLatLon(grid)
         let gridCenterCoord = center.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) } ?? coord
         
-        let matchingQSOs = viewModel.lotwManager.logbook.filter {
-            $0.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased().hasPrefix(grid4)
-        }
+        let matchingQSOs = viewModel.lotwManager.qsos(forGrid4: grid4)
         
         let activeCluster = displayGridClusters.first(where: {
             $0.grid == grid || $0.grid == grid4
@@ -166,9 +204,7 @@ struct NewGridMapView: View {
     private func inspectCluster(_ cluster: NewGridCluster) {
         let coord = CLLocationCoordinate2D(latitude: cluster.latitude, longitude: cluster.longitude)
         let grid4 = String(cluster.grid.prefix(4))
-        let matchingQSOs = viewModel.lotwManager.logbook.filter {
-            $0.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased().hasPrefix(grid4)
-        }
+        let matchingQSOs = viewModel.lotwManager.qsos(forGrid4: grid4)
         inspectedGrid = GridInspectorInfo(
             grid: cluster.grid,
             coordinate: coord,
@@ -201,103 +237,52 @@ struct NewGridMapView: View {
     }
 
     @ViewBuilder
-    private func renderMapView(proxy: MapProxy) -> some View {
-        if selectedMapStyle == .globus {
-            GlobeMapViewContainer(
-                region: $currentRegion,
-                showGridOverlay: showMaidenheadOverlay,
-                workedGrids: viewModel.worked4CharGrids,
-                showWorkedGridShading: showWorkedGridShading,
-                spotItems: cachedGlobeSpotItems,
-                onSelectGrid: { grid4 in
-                    let matching = viewModel.lotwManager.logbook.filter {
-                        $0.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased().hasPrefix(grid4)
-                    }
-                    if !matching.isEmpty {
-                        selectedWorkedGrid = grid4
-                    }
-                }
-            )
-            .id("new-grid-globe-map-instance")
-        } else {
-            Map(position: $cameraPosition) {
-                ForEach(bandFilteredClusters) { cluster in
-                    Annotation("", coordinate: CLLocationCoordinate2D(
-                        latitude: cluster.upperRightLatitude,
-                        longitude: cluster.upperRightLongitude
-                    )) {
-                        GridMarkerView(cluster: cluster)
-                            .mapAnnotationZPriority(10)
-                            .onTapGesture {
-                                inspectCluster(cluster)
-                            }
-                    }
-                }
-                
-                if let info = inspectedGrid {
-                    Annotation("", coordinate: info.coordinate) {
-                        Circle()
-                            .fill(Color.yellow.opacity(0.15))
-                            .frame(width: 14, height: 14)
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.yellow, lineWidth: 2)
+    private func renderMapView() -> some View {
+        GlobeMapViewContainer(
+            programmaticRegion: programmaticRegion,
+            showGridOverlay: showMaidenheadOverlay,
+            workedGrids: viewModel.worked4CharGrids,
+            showWorkedGridShading: showWorkedGridShading,
+            showBadges: gridOverlayShowPill,
+            gridTextColor: gridOverlayTextColor,
+            gridLineColor: gridOverlayLineColor,
+            gridBadgeColor: gridOverlayBadgeColor,
+            gridFontSize: gridOverlayFontSize,
+            spotItems: [],
+            mapStyle: selectedMapStyle,
+            inspectPopoverBuilder: { coord, spanDelta, closeAction in
+                let info = makeGridInspectorInfo(for: coord, spanDelta: spanDelta)
+                return AnyView(
+                    GridDetailInspectorPopover(
+                        info: info,
+                        homeCoordinate: homeCoordinate,
+                        onShowWorkedQSOs: {
+                            closeAction()
+                            selectedWorkedGrid = String(info.grid.prefix(4))
+                        },
+                        onCenterMap: {
+                            closeAction()
+                            programmaticRegion = MKCoordinateRegion(
+                                center: info.coordinate,
+                                span: MKCoordinateSpan(latitudeDelta: info.is6Char ? 1.5 : 5.0, longitudeDelta: info.is6Char ? 1.5 : 5.0)
                             )
-                            .mapAnnotationZPriority(500)
-                            .popover(isPresented: Binding(
-                                get: { inspectedGrid != nil },
-                                set: { if !$0 { inspectedGrid = nil } }
-                            )) {
-                                GridDetailInspectorPopover(
-                                    info: info,
-                                    homeCoordinate: homeCoordinate,
-                                    onShowWorkedQSOs: {
-                                        selectedWorkedGrid = String(info.grid.prefix(4))
-                                    },
-                                    onCenterMap: {
-                                        withAnimation {
-                                            cameraPosition = .region(MKCoordinateRegion(
-                                                center: info.coordinate,
-                                                span: MKCoordinateSpan(latitudeDelta: info.is6Char ? 1.5 : 5.0, longitudeDelta: info.is6Char ? 1.5 : 5.0)
-                                            ))
-                                        }
-                                    },
-                                    onOpenQRZ: { call in
-                                        openQRZ(for: call)
-                                    }
-                                )
-                            }
-                    }
-                }
+                        },
+                        onOpenQRZ: { call in
+                            openQRZ(for: call)
+                        },
+                        onClose: {
+                            closeAction()
+                        }
+                    )
+                )
             }
-            .id("new-grid-map-instance")
-            .mapStyle(selectedMapStyle.mapStyle)
-            .onMapCameraChange { context in
-                currentRegion = context.region
-            }
-            .onTapGesture { position in
-                if let coord = proxy.convert(position, from: .local) {
-                    inspectCoordinate(coord)
-                }
-            }
-        }
+        )
     }
 
     private var mapSection: some View {
-        MapReader { proxy in
-            ZStack(alignment: .bottom) {
-                renderMapView(proxy: proxy)
-                .overlay {
-                    if showMaidenheadOverlay && selectedMapStyle != .globus {
-                        MaidenheadGridCanvasView(
-                            proxy: proxy,
-                            region: currentRegion,
-                            workedGrids: showWorkedGridShading ? viewModel.worked4CharGrids : []
-                        )
-                        .allowsHitTesting(false)
-                    }
-                }
-                .overlay(alignment: .topTrailing) {
+        ZStack(alignment: .bottom) {
+            renderMapView()
+            .overlay(alignment: .topTrailing) {
                     HStack(spacing: 6) {
                         Menu {
                             ForEach(MapStyleOption.allCases) { style in
@@ -318,7 +303,7 @@ struct NewGridMapView: View {
                                     .font(.system(size: 12, weight: .medium))
                                 Image(systemName: "chevron.up.chevron.down")
                                     .font(.system(size: 9, weight: .bold))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 5.5)
@@ -338,7 +323,7 @@ struct NewGridMapView: View {
                                 .padding(6)
                                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.1), lineWidth: 1))
-                                .foregroundColor(showWorkedGridShading ? .green : .primary)
+                                .foregroundStyle(showWorkedGridShading ? .green : .primary)
                         }
                         .buttonStyle(.plain)
                         .help("Gearbeitete 4-Stellen Grid-Felder (aus Logbuch) einfärben")
@@ -353,7 +338,7 @@ struct NewGridMapView: View {
                                 .padding(6)
                                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.1), lineWidth: 1))
-                                .foregroundColor(showMaidenheadOverlay ? .blue : .primary)
+                                .foregroundStyle(showMaidenheadOverlay ? .blue : .primary)
                         }
                         .buttonStyle(.plain)
                         .help("Maidenhead Grid-Gitter ein/ausblenden (bis 8-Stellen Resolution)")
@@ -379,7 +364,7 @@ struct NewGridMapView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 4) {
                             Image(systemName: "square.grid.3x3.topleft.filled")
-                                .foregroundColor(.green)
+                                .foregroundStyle(.green)
                             Text("Neue Maidenhead Grids").font(.caption).bold()
                         }
                         
@@ -389,20 +374,20 @@ struct NewGridMapView: View {
                         Text("\(bandFilteredClusters.count) ungearbeitete Grids\(selectedBand == "ALL" ? "" : " (\(selectedBand))")")
                             .font(.system(size: 10, weight: .semibold))
                             .lineLimit(1)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                         
                         if count4 > 0 || count6 > 0 {
                             Text("4-Stellen: \(count4)  ·  6-Stellen: \(count6)")
                                 .font(.system(size: 9))
                                 .lineLimit(1)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         
                         if showMaidenheadOverlay {
                             Text("Grid Overlay: \(MaidenheadGridGenerator.resolutionText(for: currentRegion.span.latitudeDelta))")
                                 .font(.system(size: 9, weight: .bold))
                                 .lineLimit(1)
-                                .foregroundColor(.cyan)
+                                .foregroundStyle(.cyan)
                         }
                         
                         Rectangle().fill(.secondary.opacity(0.2)).frame(height: 1)
@@ -441,7 +426,7 @@ struct NewGridMapView: View {
                                         : Color.clear,
                                         in: Capsule()
                                     )
-                                    .foregroundColor(selectedBand == band ? .white : .primary)
+                                    .foregroundStyle(selectedBand == band ? .white : .primary)
                             }
                             .buttonStyle(.plain)
                         }
@@ -458,7 +443,6 @@ struct NewGridMapView: View {
                 .padding(.bottom, 24)
             }
         }
-    }
 
     private func centerOnCluster(_ cluster: NewGridCluster) {
         withAnimation {
@@ -532,7 +516,7 @@ private struct NewGridSidebarView: View, Equatable {
             HStack {
                 HStack(spacing: 4) {
                     Image(systemName: "mappin.circle.fill")
-                        .foregroundColor(.green)
+                        .foregroundStyle(.green)
                     Text("Neue Grids (\(clusters.count))").font(.headline)
                 }
                 Spacer()
@@ -540,7 +524,7 @@ private struct NewGridSidebarView: View, Equatable {
                 Button(action: { isCompactMode.toggle() }) {
                     Image(systemName: isCompactMode ? "rectangle.grid.1x2" : "list.bullet")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .padding(4)
                         .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
                 }
@@ -559,14 +543,14 @@ private struct NewGridSidebarView: View, Equatable {
 
             HStack(spacing: 4) {
                 Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 TextField("Grid oder Callsign filtern...", text: $searchText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 11))
                 if !searchText.isEmpty {
                     Button(action: { searchText = "" }) {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -574,7 +558,7 @@ private struct NewGridSidebarView: View, Equatable {
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(Color(NSColor.controlBackgroundColor))
-            .cornerRadius(6)
+            .clipShape(.rect(cornerRadius: 6))
             .padding(.horizontal, 8)
             .padding(.bottom, 6)
             
@@ -594,15 +578,15 @@ private struct NewGridSidebarView: View, Equatable {
                 VStack(spacing: 6) {
                     Image(systemName: "checkmark.seal")
                         .font(.largeTitle)
-                        .foregroundColor(.green.opacity(0.6))
+                        .foregroundStyle(.green.opacity(0.6))
                     Text("Keine aktiven Grids im Zeitfenster")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
             } else if sortedClusters.isEmpty {
                 Spacer()
-                Text("Kein Treffer für '\(searchText)'").foregroundColor(.secondary)
+                Text("Kein Treffer für '\(searchText)'").foregroundStyle(.secondary)
                 Spacer()
             } else {
                 List {
@@ -639,7 +623,7 @@ private struct NewGridSidebarView: View, Equatable {
                                     Text("\(group.clusters.count)")
                                         .font(.caption2)
                                         .bold()
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 1)
                                         .background(Color.secondary.opacity(0.15), in: Capsule())
@@ -687,19 +671,19 @@ private struct GridMarkerView: View, Equatable {
             if cluster.isBlocked {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 9))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
             }
 
             if isFresh {
                 Image(systemName: "bolt.fill")
                     .font(.system(size: 9))
-                    .foregroundColor(.yellow)
+                    .foregroundStyle(.yellow)
             }
 
             if let firstCall = cluster.calls.first {
                 Text(firstCall)
                     .font(.system(size: 10, weight: .black, design: .monospaced))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
                     .background(
@@ -712,13 +696,13 @@ private struct GridMarkerView: View, Equatable {
                 if cluster.calls.count > 1 {
                     Text("+\(cluster.calls.count - 1)")
                         .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
                         .padding(.trailing, 4)
                 }
             } else {
                 Text("\(cluster.spotCount) Spots")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
                     .background(
@@ -782,17 +766,17 @@ private struct NewGridListRow: View, Equatable {
                             ? Color.orange.opacity(0.2)
                             : (cluster.is6Char ? Color.blue.opacity(0.2) : Color.green.opacity(0.2))
                         )
-                        .foregroundColor(
+                        .foregroundStyle(
                             cluster.isBlocked
                             ? .orange
                             : (cluster.is6Char ? .blue : .green)
                         )
-                        .cornerRadius(4)
+                        .clipShape(.rect(cornerRadius: 4))
 
                     if let beam = headingAndDistance {
                         Text(beam)
                             .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
 
                     Text(cluster.country)
@@ -804,7 +788,7 @@ private struct NewGridListRow: View, Equatable {
                     if isFresh {
                         Image(systemName: "bolt.fill")
                             .font(.system(size: 8))
-                            .foregroundColor(.yellow)
+                            .foregroundStyle(.yellow)
                     }
 
                     HStack(spacing: 3) {
@@ -814,8 +798,8 @@ private struct NewGridListRow: View, Equatable {
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 1)
                                 .background(colorForBandName(band.name).opacity(0.25))
-                                .foregroundColor(colorForBandName(band.name))
-                                .cornerRadius(3)
+                                .foregroundStyle(colorForBandName(band.name))
+                                .clipShape(.rect(cornerRadius: 3))
                         }
                     }
                 }
@@ -834,20 +818,20 @@ private struct NewGridListRow: View, Equatable {
                                 ? Color.orange.opacity(0.2)
                                 : (cluster.is6Char ? Color.blue.opacity(0.2) : Color.green.opacity(0.2))
                             )
-                            .foregroundColor(
+                            .foregroundStyle(
                                 cluster.isBlocked
                                 ? .orange
                                 : (cluster.is6Char ? .blue : .green)
                             )
-                            .cornerRadius(4)
+                            .clipShape(.rect(cornerRadius: 4))
                         
                         Text(cluster.isBlocked ? "Ausgefiltert" : (cluster.is6Char ? "6-Stellen" : "4-Stellen"))
                             .font(.system(size: 8, weight: .semibold))
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1)
                             .background(cluster.isBlocked ? Color.orange.opacity(0.15) : Color.secondary.opacity(0.15))
-                            .foregroundColor(cluster.isBlocked ? .orange : .secondary)
-                            .cornerRadius(3)
+                            .foregroundStyle(cluster.isBlocked ? .orange : .secondary)
+                            .clipShape(.rect(cornerRadius: 3))
                         
                         if isFresh {
                             HStack(spacing: 2) {
@@ -857,8 +841,8 @@ private struct NewGridListRow: View, Equatable {
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1)
                             .background(Color.yellow.opacity(0.25))
-                            .foregroundColor(.yellow)
-                            .cornerRadius(3)
+                            .foregroundStyle(.yellow)
+                            .clipShape(.rect(cornerRadius: 3))
                         }
 
                         Text(cluster.country)
@@ -868,24 +852,24 @@ private struct NewGridListRow: View, Equatable {
                         
                         Text("\(cluster.spotCount) Spot\(cluster.spotCount == 1 ? "" : "s")")
                             .font(.system(size: 9))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     
                     if let beam = headingAndDistance {
                         HStack(spacing: 4) {
                             Image(systemName: "safari")
                                 .font(.system(size: 9))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Text("Peilung: \(beam)")
                                 .font(.system(size: 9.5, weight: .medium, design: .monospaced))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                     }
 
                     if !cluster.calls.isEmpty {
                         Text("Stationen: " + cluster.calls.joined(separator: ", "))
                             .font(.system(size: 10))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .lineLimit(2)
                     }
                     
@@ -896,8 +880,8 @@ private struct NewGridListRow: View, Equatable {
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 1)
                                 .background(colorForBandName(band.name).opacity(0.2))
-                                .foregroundColor(colorForBandName(band.name))
-                                .cornerRadius(3)
+                                .foregroundStyle(colorForBandName(band.name))
+                                .clipShape(.rect(cornerRadius: 3))
                         }
                     }
                 }
@@ -934,6 +918,7 @@ struct GridDetailInspectorPopover: View {
     let onShowWorkedQSOs: () -> Void
     let onCenterMap: () -> Void
     let onOpenQRZ: (String) -> Void
+    var onClose: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
 
     private var headingAndDistance: String? {
@@ -949,7 +934,7 @@ struct GridDetailInspectorPopover: View {
             HStack(spacing: 8) {
                 Text(info.grid)
                     .font(.system(size: 16, weight: .black, design: .monospaced))
-                    .foregroundColor(.yellow)
+                    .foregroundStyle(.yellow)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(Color.black.opacity(0.85), in: RoundedRectangle(cornerRadius: 6))
@@ -962,15 +947,21 @@ struct GridDetailInspectorPopover: View {
                     if !info.continent.isEmpty {
                         Text(info.continent)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 
                 Spacer()
                 
-                Button(action: { dismiss() }) {
+                Button(action: {
+                    if let close = onClose {
+                        close()
+                    } else {
+                        dismiss()
+                    }
+                }) {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .font(.title3)
                 }
                 .buttonStyle(.plain)
@@ -984,10 +975,10 @@ struct GridDetailInspectorPopover: View {
                     if info.isWorked {
                         HStack(spacing: 4) {
                             Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
+                                .foregroundStyle(.green)
                             Text("Gearbeitet (\(info.workedCount) QSO\(info.workedCount == 1 ? "" : "s"))")
                                 .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(.green)
+                                .foregroundStyle(.green)
                         }
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -1002,10 +993,10 @@ struct GridDetailInspectorPopover: View {
                     } else {
                         HStack(spacing: 4) {
                             Image(systemName: "star.fill")
-                                .foregroundColor(.orange)
+                                .foregroundStyle(.orange)
                             Text("Ungearbeitetes Grid")
                                 .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(.orange)
+                                .foregroundStyle(.orange)
                         }
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
@@ -1016,18 +1007,18 @@ struct GridDetailInspectorPopover: View {
                 if let beam = headingAndDistance {
                     HStack(spacing: 4) {
                         Image(systemName: "safari.fill")
-                            .foregroundColor(.blue)
+                            .foregroundStyle(.blue)
                             .font(.system(size: 11))
                         Text("Peilung / Distanz:")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                         Text(beam)
                             .font(.system(size: 11, weight: .bold, design: .monospaced))
                     }
                 }
             }
             
-            // Aktive Spots / Stationen
+            // Aktive Stationen
             if let cluster = info.activeCluster, !cluster.calls.isEmpty {
                 Divider()
                 
@@ -1036,11 +1027,11 @@ struct GridDetailInspectorPopover: View {
                         Text("Aktive Stationen (\(cluster.spotCount) Spots):")
                             .font(.caption)
                             .bold()
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                         Spacer()
                         Text("Klick = QRZ.com")
                             .font(.system(size: 9))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -1056,23 +1047,9 @@ struct GridDetailInspectorPopover: View {
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 3)
                                     .background(Color.blue.opacity(0.15), in: RoundedRectangle(cornerRadius: 4))
-                                    .foregroundColor(.blue)
                                 }
                                 .buttonStyle(.plain)
-                                .help("QRZ.com für \(call) öffnen")
                             }
-                        }
-                    }
-                    
-                    HStack(spacing: 4) {
-                        ForEach(cluster.bands, id: \.name) { band in
-                            Text("\(band.name): \(band.count)")
-                                .font(.system(size: 9, weight: .bold))
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(colorForBandName(band.name).opacity(0.2))
-                                .foregroundColor(colorForBandName(band.name))
-                                .cornerRadius(3)
                         }
                     }
                 }
@@ -1080,15 +1057,13 @@ struct GridDetailInspectorPopover: View {
             
             Divider()
             
+            // Actions
             HStack {
                 Button(action: {
                     dismiss()
                     onCenterMap()
                 }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "scope")
-                        Text("Hierhin zentrieren")
-                    }
+                    Label("Zentrieren & Zoomen", systemImage: "viewfinder")
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
@@ -1154,14 +1129,14 @@ struct WorkedGridDetailView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "checkmark.square.fill")
                             .font(.title2)
-                            .foregroundColor(.green)
+                            .foregroundStyle(.green)
                         Text("Gearbeitete Stationen in Grid \(grid)")
                             .font(.title2)
                             .bold()
                     }
                     Text("\(qsos.count) QSO\(qsos.count == 1 ? "" : "s") im Logbuch · Doppelklick öffnet QRZ.com")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 
                 Spacer()
@@ -1179,20 +1154,20 @@ struct WorkedGridDetailView: View {
             // Search Filter Bar
             HStack {
                 Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 TextField("Rufzeichen, Band oder Land filtern...", text: $searchText)
                     .textFieldStyle(.plain)
                 if !searchText.isEmpty {
                     Button(action: { searchText = "" }) {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
                 }
             }
             .padding(8)
             .background(Color(NSColor.textBackgroundColor))
-            .cornerRadius(6)
+            .clipShape(.rect(cornerRadius: 6))
             .padding(.horizontal)
             .padding(.vertical, 8)
 

@@ -2,7 +2,8 @@ import SwiftUI
 import Charts
 
 struct PropagationChartView: View {
-    @ObservedObject var viewModel: DecodeViewModel
+    var viewModel: DecodeViewModel
+    var mapState: PropagationMapState
     @State private var isStacked = false
     @State private var isInteracting = false
     @State private var frozenChartData: [PropagationChartItem] = []
@@ -11,10 +12,11 @@ struct PropagationChartView: View {
 
     init(viewModel: DecodeViewModel) {
         self.viewModel = viewModel
+        self.mapState = viewModel.mapState
     }
 
     private var chartData: [PropagationChartItem] {
-        isInteracting ? frozenChartData : viewModel.propagationChartData
+        isInteracting ? frozenChartData : mapState.propagationChartData
     }
 
     var body: some View {
@@ -26,7 +28,7 @@ struct PropagationChartView: View {
                         .font(.headline)
                     Text("Gefilterte Spots im \(UserDefaults.standard.integer(forKey: "mapTimeWindow") == 0 ? 30 : UserDefaults.standard.integer(forKey: "mapTimeWindow")) Min. Zeitfenster")
                         .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
 
@@ -35,7 +37,7 @@ struct PropagationChartView: View {
                     Button(action: { isStacked.toggle() }) {
                         Image(systemName: isStacked ? "chart.bar.fill" : "chart.bar.xaxis")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(isStacked ? .accentColor : .secondary)
+                            .foregroundStyle(isStacked ? Color.accentColor : Color.secondary)
                     }
                     .buttonStyle(.plain)
                     .padding(5)
@@ -63,7 +65,7 @@ struct PropagationChartView: View {
                             y: .value("Spots", min(item.count, 200))
                         )
                         .foregroundStyle(by: .value("Band", item.band))
-                        .cornerRadius(3)
+                        .clipShape(.rect(cornerRadius: 3))
                     } else {
                         BarMark(
                             x: .value("Kontinent", item.continent),
@@ -99,7 +101,7 @@ struct PropagationChartView: View {
         .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willMoveNotification)) { _ in
             if !isInteracting {
-                frozenChartData = viewModel.propagationChartData
+                frozenChartData = viewModel.mapState.propagationChartData
                 isInteracting = true
             }
         }
@@ -110,7 +112,7 @@ struct PropagationChartView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willStartLiveResizeNotification)) { _ in
             if !isInteracting {
-                frozenChartData = viewModel.propagationChartData
+                frozenChartData = viewModel.mapState.propagationChartData
                 isInteracting = true
             }
         }

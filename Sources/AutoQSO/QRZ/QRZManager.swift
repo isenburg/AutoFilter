@@ -1,10 +1,12 @@
+import Observation
 import Foundation
 import Combine
 
-class QRZManager: ObservableObject {
-    @Published var isDownloading = false
-    @Published var errorMessage: String?
-    @Published var logHistory: [String] = []
+@Observable
+class QRZManager {
+    var isDownloading = false
+    var errorMessage: String?
+    var logHistory: [String] = []
     
     private func addLog(_ message: String) {
         let formatter = DateFormatter()

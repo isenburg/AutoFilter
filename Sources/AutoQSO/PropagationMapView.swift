@@ -2,7 +2,7 @@ import SwiftUI
 import MapKit
 
 struct PropagationMapView: View {
-    @ObservedObject var viewModel: DecodeViewModel
+    @Bindable var viewModel: DecodeViewModel
     @State private var now = Date()
     @State private var refreshTimer: Timer?
     @State private var sortMode = 0 // 0: Continent, 1: A–Z, 2: Spots
@@ -21,8 +21,13 @@ struct PropagationMapView: View {
     @State private var displayClusters: [CountryCluster] = []
     @State private var cachedGlobeSpotItems: [GlobeSpotItem] = []
     @State private var showMaidenheadOverlay = false
+    @AppStorage("gridOverlayShowPill") private var gridOverlayShowPill = true
+    @AppStorage("gridOverlayTextColor") private var gridOverlayTextColor = ""
+    @AppStorage("gridOverlayLineColor") private var gridOverlayLineColor = ""
+    @AppStorage("gridOverlayBadgeColor") private var gridOverlayBadgeColor = ""
+    @AppStorage("gridOverlayFontSize") private var gridOverlayFontSize = 11.0
     @State private var showPropagationChart = false
-    @State private var currentRegion = MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 48.0, longitude: 10.0), span: MKCoordinateSpan(latitudeDelta: 30.0, longitudeDelta: 40.0))
+    @State private var programmaticRegion: MKCoordinateRegion? = nil
     @State private var cameraPosition: MapCameraPosition = .region(MKCoordinateRegion(center: CLLocationCoordinate2D(latitude: 48.0, longitude: 10.0), span: MKCoordinateSpan(latitudeDelta: 30.0, longitudeDelta: 40.0)))
 
     static func centerRegionForQSO(from coord1: CLLocationCoordinate2D, to coord2: CLLocationCoordinate2D) -> MKCoordinateRegion {
@@ -57,7 +62,7 @@ struct PropagationMapView: View {
     private func centerOnActiveQSO(_ path: ActiveQSOPath) {
         let qsoRegion = PropagationMapView.centerRegionForQSO(from: path.myCoordinate, to: path.targetCoordinate)
         withAnimation(.easeInOut(duration: 0.8)) {
-            currentRegion = qsoRegion
+            programmaticRegion = qsoRegion
             cameraPosition = .region(qsoRegion)
         }
     }
@@ -108,7 +113,7 @@ struct PropagationMapView: View {
     private var spotsPerHour: (received: Int, filtered: Int) {
         let elapsed = now.timeIntervalSince(viewModel.counterStartTime)
         let hours = max(elapsed / 3600.0, 1.0 / 60.0)
-        return (Int(round(Double(viewModel.totalReceived) / hours)), Int(round(Double(viewModel.totalForwarded) / hours)))
+        return (Int(round(Double(viewModel.mapState.totalReceived) / hours)), Int(round(Double(viewModel.mapState.totalForwarded) / hours)))
     }
 
     var body: some View {
@@ -136,7 +141,7 @@ struct PropagationMapView: View {
             refreshTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in 
                 now = Date() 
             }
-            displayClusters = viewModel.propagationClusters
+            displayClusters = viewModel.mapState.propagationClusters
             viewModel.updatePropagationClusters()
             if let path = viewModel.activeQSOPath {
                 centerOnActiveQSO(path)
@@ -150,7 +155,7 @@ struct PropagationMapView: View {
                 centerOnActiveQSO(path)
             }
         }
-        .onChange(of: viewModel.propagationClusters) { _, newClusters in
+        .onChange(of: viewModel.mapState.propagationClusters) { _, newClusters in
             displayClusters = newClusters
             cachedGlobeSpotItems = newClusters.map { cluster in
                 let band = cluster.bands.first?.name ?? ""
@@ -172,89 +177,24 @@ struct PropagationMapView: View {
     }
 
     @ViewBuilder
-    private func renderMapView(proxy: MapProxy) -> some View {
-        if selectedMapStyle == .globus {
-            GlobeMapViewContainer(
-                region: $currentRegion,
-                showGridOverlay: showMaidenheadOverlay,
-                spotItems: cachedGlobeSpotItems,
-                activeQSOPath: viewModel.activeQSOPath
-            )
-            .id("propagation-globe-map-instance")
-        } else {
-            let topCount = min(displayClusters.count, 20)
-            let detailClusters = displayClusters.prefix(topCount)
-            let backgroundClusters = displayClusters.dropFirst(topCount)
-
-            Map(position: $cameraPosition) {
-                ForEach(backgroundClusters) { cluster in
-                    Marker(cluster.country, coordinate: CLLocationCoordinate2D(
-                        latitude: cluster.latitude,
-                        longitude: cluster.longitude
-                    ))
-                    .tint(colorForBandName(cluster.bands.first?.name ?? ""))
-                }
-
-                ForEach(detailClusters) { cluster in
-                    Annotation("", coordinate: CLLocationCoordinate2D(
-                        latitude: cluster.latitude,
-                        longitude: cluster.longitude
-                    )) {
-                        CountryMarkerView(cluster: cluster, fontSize: fontSizeTable)
-                            .mapAnnotationZPriority(10)
-                    }
-                }
-
-                if let path = viewModel.activeQSOPath {
-                    let pathCoords = geodesicCoordinates(from: path.myCoordinate, to: path.targetCoordinate)
-                    MapPolyline(coordinates: pathCoords)
-                        .stroke(.yellow, lineWidth: 3.5)
-
-                    Annotation("", coordinate: path.myCoordinate) {
-                        Image(systemName: "house.fill")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(5)
-                            .background(Color.green, in: Circle())
-                            .shadow(color: .black.opacity(0.4), radius: 3)
-                            .mapAnnotationZPriority(900)
-                    }
-
-                    Annotation("", coordinate: path.targetCoordinate) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "bolt.fill").font(.system(size: 10)).foregroundColor(.yellow)
-                            let locLabel = path.targetGrid ?? path.targetCountry ?? ""
-                            Text("\(path.targetCall)\(!locLabel.isEmpty ? " (\(locLabel))" : "")")
-                                .font(.system(size: 10, weight: .black, design: .monospaced))
-                                .foregroundColor(.white)
-                        }
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(Color.orange.opacity(0.95), in: Capsule())
-                        .overlay(Capsule().stroke(Color.yellow, lineWidth: 1.5))
-                        .shadow(color: .orange.opacity(0.6), radius: 6)
-                        .mapAnnotationZPriority(1000)
-                    }
-                }
-            }
-            .id("propagation-map-instance")
-            .mapStyle(selectedMapStyle.mapStyle)
-            .onMapCameraChange { context in
-                currentRegion = context.region
-            }
-        }
+    private func renderMapView() -> some View {
+        GlobeMapViewContainer(
+            programmaticRegion: programmaticRegion,
+            showGridOverlay: showMaidenheadOverlay,
+            showBadges: gridOverlayShowPill,
+            gridTextColor: gridOverlayTextColor,
+            gridLineColor: gridOverlayLineColor,
+            gridBadgeColor: gridOverlayBadgeColor,
+            gridFontSize: gridOverlayFontSize,
+            spotItems: cachedGlobeSpotItems,
+            activeQSOPath: viewModel.activeQSOPath,
+            mapStyle: selectedMapStyle
+        )
     }
 
     private var mapSection: some View {
-        MapReader { proxy in
-            ZStack(alignment: .bottom) {
-                renderMapView(proxy: proxy)
-                .overlay {
-                    if showMaidenheadOverlay && selectedMapStyle != .globus {
-                        MaidenheadGridCanvasView(proxy: proxy, region: currentRegion)
-                            .allowsHitTesting(false)
-                    }
-                }
+        ZStack(alignment: .bottom) {
+            renderMapView()
                 .overlay(alignment: .top) {
                     if let path = viewModel.activeQSOPath {
                         Button(action: {
@@ -262,18 +202,18 @@ struct PropagationMapView: View {
                         }) {
                             HStack(spacing: 8) {
                                 Circle().fill(Color.orange).frame(width: 8, height: 8)
-                                Text("⚡ AKTIVES QSO:").font(.caption).bold().foregroundColor(.orange)
+                                Text("⚡ AKTIVES QSO:").font(.caption).bold().foregroundStyle(.orange)
                                 let locLabel = path.targetGrid ?? path.targetCountry ?? ""
                                 Text("\(path.myGrid) ➔ \(path.targetCall)\(!locLabel.isEmpty ? " (\(locLabel))" : "")")
                                     .font(.system(size: 11, weight: .black, design: .monospaced))
                                 if let dist = path.distanceKm {
                                     Text("·  \(Int(round(dist))) km")
                                         .font(.system(size: 10, weight: .semibold))
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                 }
                                 Image(systemName: "scope")
                                     .font(.system(size: 10, weight: .bold))
-                                    .foregroundColor(.orange)
+                                    .foregroundStyle(.orange)
                             }
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
@@ -311,8 +251,8 @@ struct PropagationMapView: View {
                             
                             Rectangle().fill(.secondary.opacity(0.2)).frame(height: 1)
                             
-                            StatRow(label: "Empf.", value: "\(viewModel.totalReceived)", rate: "\(spotsPerHour.received)/h")
-                            StatRow(label: "Durchg.", value: "\(viewModel.totalForwarded)", rate: "\(spotsPerHour.filtered)/h", color: .green)
+                            StatRow(label: "Empf.", value: "\(viewModel.mapState.totalReceived)", rate: "\(spotsPerHour.received)/h")
+                            StatRow(label: "Durchg.", value: "\(viewModel.mapState.totalForwarded)", rate: "\(spotsPerHour.filtered)/h", color: .green)
                         }
                         .fixedSize()
                         .padding(10)
@@ -348,7 +288,7 @@ struct PropagationMapView: View {
                                     .font(.system(size: 12, weight: .medium))
                                 Image(systemName: "chevron.up.chevron.down")
                                     .font(.system(size: 9, weight: .bold))
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 5.5)
@@ -368,7 +308,7 @@ struct PropagationMapView: View {
                                 .padding(6)
                                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.1), lineWidth: 1))
-                                .foregroundColor(showPropagationChart ? .orange : .primary)
+                                .foregroundStyle(showPropagationChart ? .orange : .primary)
                         }
                         .buttonStyle(.plain)
                         .help("Ausbreitungsdiagramm (Propagation Chart) ein/ausblenden")
@@ -383,7 +323,7 @@ struct PropagationMapView: View {
                                 .padding(6)
                                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.1), lineWidth: 1))
-                                .foregroundColor(showMaidenheadOverlay ? .blue : .primary)
+                                .foregroundStyle(showMaidenheadOverlay ? .blue : .primary)
                         }
                         .buttonStyle(.plain)
                         .help("Maidenhead Grid-Gitter ein/ausblenden (bis 8-Stellen Resolution)")
@@ -427,7 +367,6 @@ struct PropagationMapView: View {
                 .padding(.bottom, 24)
             }
         }
-    }
 }
 
 private struct PropagationSidebarView: View, Equatable {
@@ -495,7 +434,7 @@ private struct PropagationSidebarView: View, Equatable {
 
             if clusters.isEmpty {
                 Spacer()
-                Text("Noch keine Spots").foregroundColor(.secondary)
+                Text("Noch keine Spots").foregroundStyle(.secondary)
                 Spacer()
             } else {
                 List {
@@ -515,14 +454,14 @@ private struct PropagationSidebarView: View, Equatable {
                                             .font(.system(size: 8, weight: .bold))
                                         Text(group.continent)
                                             .font(.system(size: CGFloat(fontSizeTable), weight: .black))
-                                            .foregroundColor(.primary.opacity(0.7))
+                                            .foregroundStyle(.primary.opacity(0.7))
                                         Spacer()
-                                        Text("\(group.clusters.count)").font(.system(size: CGFloat(max(8, fontSizeTable - 2)))).foregroundColor(.secondary)
+                                        Text("\(group.clusters.count)").font(.system(size: CGFloat(max(8, fontSizeTable - 2)))).foregroundStyle(.secondary)
                                     }
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 2)
                                     .background(continentColor(for: group.continent))
-                                    .cornerRadius(4)
+                                    .clipShape(.rect(cornerRadius: 4))
                                 }
                                 .buttonStyle(.plain)
                                 .padding(.horizontal, -4)
@@ -586,7 +525,7 @@ private struct CountryMarkerView: View, Equatable {
                 ForEach(cluster.bands, id: \.name) { band in
                     Text("\(band.name):\(band.count)")
                         .font(.system(size: CGFloat(max(6, fontSize - 3)), weight: .bold, design: .monospaced))
-                        .foregroundColor(.white)
+                        .foregroundStyle(.white)
                         .padding(.horizontal, 3)
                         .padding(.vertical, 1)
                         .background(colorForBandName(band.name), in: RoundedRectangle(cornerRadius: 3))
@@ -610,7 +549,7 @@ private struct CountryListRow: View, Equatable {
                 Spacer()
                 Text("\(cluster.spotCount)")
                     .font(.system(size: CGFloat(max(8, fontSize - 2))))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             HStack(spacing: 4) {
                 ForEach(cluster.bands, id: \.name) { band in
@@ -620,8 +559,8 @@ private struct CountryListRow: View, Equatable {
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
                         .background(bColor.opacity(0.2))
-                        .foregroundColor(bColor)
-                        .cornerRadius(3)
+                        .foregroundStyle(bColor)
+                        .clipShape(.rect(cornerRadius: 3))
                 }
             }
         }
@@ -637,10 +576,10 @@ private struct StatRow: View {
     
     var body: some View {
         HStack {
-            Text(label + ":").font(.system(size: 10)).foregroundColor(.secondary).lineLimit(1).frame(width: 52, alignment: .leading)
-            Text(value).font(.system(size: 10, weight: .bold)).foregroundColor(color)
+            Text(label + ":").font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1).frame(width: 52, alignment: .leading)
+            Text(value).font(.system(size: 10, weight: .bold)).foregroundStyle(color)
             Spacer()
-            Text(rate).font(.system(size: 9)).lineLimit(1).foregroundColor(.secondary)
+            Text(rate).font(.system(size: 9)).lineLimit(1).foregroundStyle(.secondary)
         }
     }
 }

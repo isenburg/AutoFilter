@@ -1,5 +1,5 @@
 import Foundation
-import Combine
+import Observation
 
 enum WorkedBeforeUnit: String, CaseIterable, Identifiable, Codable {
     case hours = "hours"
@@ -43,16 +43,18 @@ enum WorkedBeforeUnit: String, CaseIterable, Identifiable, Codable {
     }
 }
 
-class LoTWManager: ObservableObject {
-    @Published var isDownloading = false
-    @Published var errorMessage: String?
-    @Published var logHistory: [String] = []
-    @Published var logbook: [QSOEntry] = []
+@Observable
+class LoTWManager {
+    var isDownloading = false
+    var errorMessage: String?
+    var logHistory: [String] = []
+    var logbook: [QSOEntry] = []
     
     private var workedSet = Set<String>()
     private(set) var workedGridsSet = Set<String>()
     private(set) var workedGrids6Set = Set<String>()
     private(set) var latestQSOByCallBand: [String: Date] = [:]
+    private(set) var qsosByGrid4: [String: [QSOEntry]] = [:]
     
     init() {
         loadLog()
@@ -74,6 +76,7 @@ class LoTWManager: ObservableObject {
             var newGrids = Set<String>()
             var newGrids6 = Set<String>()
             var newLatestQSO = [String: Date]()
+            var newGrid4Dict = [String: [QSOEntry]]()
             newSet.reserveCapacity(qsos.count)
             newLatestQSO.reserveCapacity(qsos.count)
             for qso in qsos {
@@ -94,7 +97,9 @@ class LoTWManager: ObservableObject {
                 }
                 let cleanGrid = qso.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
                 if cleanGrid.count >= 4 {
-                    newGrids.insert(String(cleanGrid.prefix(4)))
+                    let g4 = String(cleanGrid.prefix(4))
+                    newGrids.insert(g4)
+                    newGrid4Dict[g4, default: []].append(qso)
                 }
                 if cleanGrid.count >= 6 {
                     newGrids6.insert(String(cleanGrid.prefix(6)))
@@ -107,6 +112,7 @@ class LoTWManager: ObservableObject {
                 self?.workedGridsSet = newGrids
                 self?.workedGrids6Set = newGrids6
                 self?.latestQSOByCallBand = newLatestQSO
+                self?.qsosByGrid4 = newGrid4Dict
                 self?.addLog("SQLite Logbuch geladen: \(qsos.count) QSOs (\(newGrids.count) 4-Stellen Grids / \(newGrids6.count) 6-Stellen Grids).")
             }
         }
@@ -198,6 +204,7 @@ class LoTWManager: ObservableObject {
             var newGrids = Set<String>()
             var newGrids6 = Set<String>()
             var newLatestQSO = [String: Date]()
+            var newGrid4Dict = [String: [QSOEntry]]()
             newSet.reserveCapacity(updatedLog.count)
             newLatestQSO.reserveCapacity(updatedLog.count)
             for qso in updatedLog {
@@ -218,7 +225,9 @@ class LoTWManager: ObservableObject {
                 }
                 let cleanGrid = qso.grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
                 if cleanGrid.count >= 4 {
-                    newGrids.insert(String(cleanGrid.prefix(4)))
+                    let g4 = String(cleanGrid.prefix(4))
+                    newGrids.insert(g4)
+                    newGrid4Dict[g4, default: []].append(qso)
                 }
                 if cleanGrid.count >= 6 {
                     newGrids6.insert(String(cleanGrid.prefix(6)))
@@ -231,11 +240,17 @@ class LoTWManager: ObservableObject {
                 self?.workedGridsSet = newGrids
                 self?.workedGrids6Set = newGrids6
                 self?.latestQSOByCallBand = newLatestQSO
+                self?.qsosByGrid4 = newGrid4Dict
                 self?.addLog("SQLite Logbuch aktualisiert: +\(addedCount) neue QSOs. Gesamt: \(updatedLog.count) QSOs (\(newGrids.count) 4-Stellen Grids / \(newGrids6.count) 6-Stellen Grids).")
             }
         }
     }
     
+        func qsos(forGrid4 grid4: String) -> [QSOEntry] {
+        let clean = String(grid4.prefix(4)).trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        return qsosByGrid4[clean] ?? []
+    }
+
     func hasWorked(callsign: String, band: String) -> Bool {
         guard !callsign.isEmpty, !band.isEmpty else { return false }
         let cleanCall = callsign.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)

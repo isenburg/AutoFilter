@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ClusterSendDialog: View {
-    @ObservedObject var viewModel: DecodeViewModel
+    @Bindable var viewModel: DecodeViewModel
     @Environment(\.dismiss) var dismiss
     
     @State private var text1 = ""
@@ -18,7 +18,7 @@ struct ClusterSendDialog: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("DX Cluster 1:")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     HStack {
                         TextField("Befehl eingeben...", text: $text1)
                             .textFieldStyle(.roundedBorder)
@@ -36,7 +36,7 @@ struct ClusterSendDialog: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("DX Cluster 2:")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     HStack {
                         TextField("Befehl eingeben...", text: $text2)
                             .textFieldStyle(.roundedBorder)
@@ -54,7 +54,7 @@ struct ClusterSendDialog: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("DX Cluster 3:")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     HStack {
                         TextField("Befehl eingeben...", text: $text3)
                             .textFieldStyle(.roundedBorder)

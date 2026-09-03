@@ -1,3 +1,4 @@
+import Observation
 import Foundation
 import Combine
 import SwiftUI
@@ -152,17 +153,98 @@ public enum FilterOrderMode: String, Codable {
     case custom = "custom"
 }
 
-class DecodeViewModel: ObservableObject {
+@Observable
+class DecodeViewModel {
+    var displaySpots: [SpotRowData] = []
+    private let maxDisplaySpots = 300
+    func makeSpotRowData(for decode: WSJTXDecode, recordDuplicates: Bool = false) -> SpotRowData {
+        let accepted = self.shouldAccept(decode: decode, recordDuplicates: recordDuplicates)
+        let isWorked = self.lotwManager.hasWorkedRecently(callsign: decode.callsign, band: decode.band, duration: self.workedBeforeDuration, unit: self.workedBeforeUnit)
+        
+        let commentUpper = decode.message.uppercased()
+        let isInteresting = commentUpper.contains("CQ") || commentUpper.contains("QRZ") || commentUpper.contains("TEST")
+        
+        let highlightMW = UserDefaults.standard.bool(forKey: "highlightMostWanted")
+        let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
+        
+        return SpotRowData.from(
+            decode: decode,
+            myGrid: myGrid,
+            isAccepted: accepted,
+            isWorked: isWorked,
+            isInteresting: isInteresting,
+            highlightMostWanted: highlightMW
+        )
+    }
+    
+    func refreshDisplaySpotsBackground() {
+        let current = self.displaySpots
+        guard !current.isEmpty else { return }
+        recalcQueue.async { [weak self] in
+            guard let self = self else { return }
+            let updated = current.map { self.makeSpotRowData(for: $0.rawDecode, recordDuplicates: false) }
+            DispatchQueue.main.async {
+                self.displaySpots = updated
+            }
+        }
+    }
+
+
+    private func checkActiveTargetCall(decode: WSJTXDecode) {
+        if !self.currentTargetCall.isEmpty {
+            let targetUpper = self.currentTargetCall.uppercased()
+            let ownCall = (UserDefaults.standard.string(forKey: "lotwUsername") ?? "").uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+            let msgUpper = decode.message.uppercased()
+            let tokens = msgUpper.components(separatedBy: .whitespacesAndNewlines)
+                .map { $0.trimmingCharacters(in: CharacterSet.alphanumerics.inverted) }
+                .filter { !$0.isEmpty }
+            
+            let isFromTarget = (decode.callsign.uppercased() == targetUpper) || (tokens.count >= 2 && tokens[1] == targetUpper)
+            
+            if isFromTarget && tokens.count >= 2 {
+                let recipient = tokens[0]
+                let isCQ = recipient.hasPrefix("CQ") || recipient == "QRZ" || recipient == "DE"
+                let isForMe = !ownCall.isEmpty && (recipient == ownCall || recipient.contains(ownCall))
+                
+                if !isCQ && !isForMe {
+                    let otherCall = recipient
+                    let msg = "QSO abgebrochen: \(targetUpper) antwortet \(otherCall) (Kein Cooldown, bereit für nächsten Trigger)."
+                    self.currentQSOStatus = msg
+                    self.addLog("ℹ️ \(msg)")
+                    
+                    self.currentTargetCall = ""
+                    self.qsoStartTime = nil
+                    self.txEnabledStartTime = nil
+                    self.lastTriggeredTarget = nil
+                    self.txTriggerAttempts = 0
+                    self.lastTxTriggerTime = nil
+                    
+                    self.server.sendHaltTx(autoTxOnly: false)
+                }
+            }
+        }
+    }
+
+    // Cluster ingest buffering
+    private var pendingClusterDecodes: [WSJTXDecode] = []
+    private var pendingClusterReceivedDelta = 0
+    private var pendingClusterForwardedDelta = 0
+    private var isClusterFlushScheduled = false
+    private let clusterIngestLock = NSLock()
+
+    public let logsViewModel = LogsViewModel()
+    public let mapState = PropagationMapState()
+
     var server = WSJTXServer()
     var lotwManager = LoTWManager()
     var qrzManager = QRZManager()
     var rumlogManager = RUMlogManager()
-    @Published var selectedCallsign: String = ""
+    var selectedCallsign: String = ""
     private var recalculationTimer: Timer?
     private var needsRecalculation = false
     private var isRecalculating = false
     private let recalcQueue = DispatchQueue(label: "com.autoqso.recalc", qos: .userInitiated)
-    @Published var isAutoModeEnabled: Bool = false {
+    var isAutoModeEnabled: Bool = false {
         didSet {
             if !isAutoModeEnabled {
                 currentTargetCall = ""
@@ -174,40 +256,40 @@ class DecodeViewModel: ObservableObject {
             }
         }
     }
-    @Published var retryCooldownMinutes: Int = 10
-    @Published var currentQSOStatus: String = "Bereit"
-    @Published var logHistory: [String] = []
+    var retryCooldownMinutes: Int = 10
+    var currentQSOStatus: String = "Bereit"
+    var logHistory: [String] = []
     
     // Filter Settings
-    @Published var blockedCountries: [String] = []
-    @Published var allowedCountries: [String] = []
-    @Published var allowedGrids: [String] = []
-    @Published var allowedSpotterCountries: [String] = []
-    @Published var allowedDXCallsigns: [String] = []
-    @Published var allowedSpotterCallsigns: [String] = []
-    @Published var disabledContinents: [String] = []
-    @Published var blockedCQZones: [Int] = []
-    @Published var blockedITUZones: [Int] = []
+    var blockedCountries: [String] = []
+    var allowedCountries: [String] = []
+    var allowedGrids: [String] = []
+    var allowedSpotterCountries: [String] = []
+    var allowedDXCallsigns: [String] = []
+    var allowedSpotterCallsigns: [String] = []
+    var disabledContinents: [String] = []
+    var blockedCQZones: [Int] = []
+    var blockedITUZones: [Int] = []
     
-    @Published var isFiltersEnabled: Bool = true
-    @Published var isWsjtSpecialFilterEnabled: Bool = false
-    @Published var isAutoModeOnlyCQEnabled: Bool = false
-    @Published var isAutoModeAnswerCallersEnabled: Bool = true
-    @Published var isOnlyMostWantedFilterEnabled: Bool = false
-    @Published var maxMostWantedRank: Int = 100
-    @Published var isNew4CharGridOnlyFilterEnabled: Bool = false
-    @Published var isNew6CharGridOnlyFilterEnabled: Bool = false
-    @Published var isWorkedBeforeFilterEnabled: Bool = false
-    @Published var workedBeforeDuration: Int = 1
-    @Published var workedBeforeUnit: WorkedBeforeUnit = .months
-    @Published var isDuplicateFilterEnabled: Bool = true
-    @Published var duplicateSpotWindowMinutes: Int = 1
-    @Published var duplicateSpotFrequencyTolerance: Double = 0.5
-    @Published var isFilterDebugLoggingEnabled: Bool = false
+    var isFiltersEnabled: Bool = true
+    var isWsjtSpecialFilterEnabled: Bool = false
+    var isAutoModeOnlyCQEnabled: Bool = false
+    var isAutoModeAnswerCallersEnabled: Bool = true
+    var isOnlyMostWantedFilterEnabled: Bool = false
+    var maxMostWantedRank: Int = 100
+    var isNew4CharGridOnlyFilterEnabled: Bool = false
+    var isNew6CharGridOnlyFilterEnabled: Bool = false
+    var isWorkedBeforeFilterEnabled: Bool = false
+    var workedBeforeDuration: Int = 1
+    var workedBeforeUnit: WorkedBeforeUnit = .months
+    var isDuplicateFilterEnabled: Bool = true
+    var duplicateSpotWindowMinutes: Int = 1
+    var duplicateSpotFrequencyTolerance: Double = 0.5
+    var isFilterDebugLoggingEnabled: Bool = false
     
     // Filter Order & Presets (First-Match Pipeline)
-    @Published var activeFilterOrderMode: FilterOrderMode = .defaultOrder
-    @Published var customFilterOrder: [DXFilterSectionId] = DXFilterSectionId.defaultOrder
+    var activeFilterOrderMode: FilterOrderMode = .defaultOrder
+    var customFilterOrder: [DXFilterSectionId] = DXFilterSectionId.defaultOrder
     
     var activeFilterOrder: [DXFilterSectionId] {
         activeFilterOrderMode == .defaultOrder ? DXFilterSectionId.defaultOrder : customFilterOrder
@@ -265,24 +347,27 @@ class DecodeViewModel: ObservableObject {
             self.isLogFlushScheduled = false
             
             if !self.pendingLogHistory.isEmpty {
-                self.logHistory.append(contentsOf: self.pendingLogHistory)
-                if self.logHistory.count > 150 {
-                    self.logHistory.removeFirst(self.logHistory.count - 150)
+                self.logsViewModel.logHistory.append(contentsOf: self.pendingLogHistory)
+                if self.logsViewModel.logHistory.count > 300 {
+                    self.logsViewModel.logHistory.removeFirst(self.logsViewModel.logHistory.count - 300)
                 }
+                self.logHistory = self.logsViewModel.logHistory
                 self.pendingLogHistory.removeAll()
             }
             if !self.pendingWsjtxLogs.isEmpty {
-                self.wsjtxRawLogs.append(contentsOf: self.pendingWsjtxLogs)
-                if self.wsjtxRawLogs.count > 300 {
-                    self.wsjtxRawLogs.removeFirst(self.wsjtxRawLogs.count - 300)
+                self.logsViewModel.wsjtxRawLogs.append(contentsOf: self.pendingWsjtxLogs)
+                if self.logsViewModel.wsjtxRawLogs.count > 300 {
+                    self.logsViewModel.wsjtxRawLogs.removeFirst(self.logsViewModel.wsjtxRawLogs.count - 300)
                 }
+                self.wsjtxRawLogs = self.logsViewModel.wsjtxRawLogs
                 self.pendingWsjtxLogs.removeAll()
             }
             if !self.pendingClusterLogs.isEmpty {
-                self.clusterRawLogs.append(contentsOf: self.pendingClusterLogs)
-                if self.clusterRawLogs.count > 300 {
-                    self.clusterRawLogs.removeFirst(self.clusterRawLogs.count - 300)
+                self.logsViewModel.clusterRawLogs.append(contentsOf: self.pendingClusterLogs)
+                if self.logsViewModel.clusterRawLogs.count > 300 {
+                    self.logsViewModel.clusterRawLogs.removeFirst(self.logsViewModel.clusterRawLogs.count - 300)
                 }
+                self.clusterRawLogs = self.logsViewModel.clusterRawLogs
                 self.pendingClusterLogs.removeAll()
             }
         }
@@ -323,22 +408,22 @@ class DecodeViewModel: ObservableObject {
     // Let's deduce band from frequency.
     
     // Cluster properties
-    @Published var isConnected1 = false
-    @Published var isConnected2 = false
-    @Published var isConnected3 = false
+    var isConnected1 = false
+    var isConnected2 = false
+    var isConnected3 = false
     
-    @Published var clusterError1: String? = nil
-    @Published var clusterError2: String? = nil
-    @Published var clusterError3: String? = nil
+    var clusterError1: String? = nil
+    var clusterError2: String? = nil
+    var clusterError3: String? = nil
     
-    @Published var telnetClientCount = 0
-    @Published var telnetServerError: String? = nil
-    @Published var clusterSpots: [WSJTXDecode] = []
-    @Published var propagationClusters: [CountryCluster] = []
-    @Published var propagationChartData: [PropagationChartItem] = []
-    @Published var newGridClusters: [NewGridCluster] = []
-    @Published var mostWantedDecodes: [WSJTXDecode] = []
-    @Published var isMainTableScrollPaused: Bool = false {
+    var telnetClientCount = 0
+    var telnetServerError: String? = nil
+    var clusterSpots: [WSJTXDecode] = []
+    var propagationClusters: [CountryCluster] = []
+    var propagationChartData: [PropagationChartItem] = []
+    var newGridClusters: [NewGridCluster] = []
+    var mostWantedDecodes: [WSJTXDecode] = []
+    var isMainTableScrollPaused: Bool = false {
         didSet {
             if isMainTableScrollPaused {
                 frozenMainDecodes = server.decodes
@@ -347,7 +432,7 @@ class DecodeViewModel: ObservableObject {
             }
         }
     }
-    @Published var isLogScrollPaused: Bool = false {
+    var isLogScrollPaused: Bool = false {
         didSet {
             if isLogScrollPaused {
                 frozenSystemLogs = (logHistory + lotwManager.logHistory + qrzManager.logHistory + rumlogManager.logHistory).sorted()
@@ -360,24 +445,24 @@ class DecodeViewModel: ObservableObject {
             }
         }
     }
-    @Published var mainTableSearchText: String = ""
-    @Published var logConsoleSearchText: String = ""
-    @Published var frozenMainDecodes: [WSJTXDecode]? = nil
-    @Published var frozenSystemLogs: [String]? = nil
-    @Published var frozenWSJTXLogs: [WSJTXRawLogEntry]? = nil
-    @Published var frozenClusterLogs: [ClusterRawLogEntry]? = nil
+    var mainTableSearchText: String = ""
+    var logConsoleSearchText: String = ""
+    var frozenMainDecodes: [WSJTXDecode]? = nil
+    var frozenSystemLogs: [String]? = nil
+    var frozenWSJTXLogs: [WSJTXRawLogEntry]? = nil
+    var frozenClusterLogs: [ClusterRawLogEntry]? = nil
     private var pendingRecalculationWorkItem: DispatchWorkItem?
-    @Published var totalReceived = 0
-    @Published var totalForwarded = 0
-    @Published var counterStartTime = Date()
-    @Published var wsjtxRawLogs: [WSJTXRawLogEntry] = []
-    @Published var clusterRawLogs: [ClusterRawLogEntry] = []
+    var totalReceived = 0
+    var totalForwarded = 0
+    var counterStartTime = Date()
+    var wsjtxRawLogs: [WSJTXRawLogEntry] = []
+    var clusterRawLogs: [ClusterRawLogEntry] = []
     
     let client1 = DXClusterClient()
     let client2 = DXClusterClient()
     let client3 = DXClusterClient()
     let telnetServer = DXClusterServer()
-    @Published var availableClusters: [ClusterServer] = []
+    var availableClusters: [ClusterServer] = []
 
     private var cancellables = Set<AnyCancellable>()
     
@@ -401,6 +486,39 @@ class DecodeViewModel: ObservableObject {
         
         setupRecalculationTimer()
         
+                server.onDecodesBatchReceived = { [weak self] batch in
+            guard let self = self else { return }
+            var acceptedCount = 0
+            var newRows: [SpotRowData] = []
+            
+            for (decode, rawData) in batch {
+                let row = self.makeSpotRowData(for: decode, recordDuplicates: true)
+                newRows.append(row)
+                
+                self.bridgeDecodeIfEnabled(decode: decode, rawData: rawData, accepted: row.isAccepted)
+                if !self.isFiltersEnabled || row.isAccepted {
+                    acceptedCount += 1
+                    if UserDefaults.standard.bool(forKey: "isWsjtTelnetOutputEnabled") {
+                        self.broadcastWSJTSpot(decode: decode)
+                    }
+                }
+                self.checkActiveTargetCall(decode: decode)
+            }
+            
+            let window = UserDefaults.standard.integer(forKey: "mapTimeWindow") == 0 ? 30 : UserDefaults.standard.integer(forKey: "mapTimeWindow")
+            let cutoff = Date().addingTimeInterval(-Double(window) * 60)
+            
+            var combined = (newRows + self.displaySpots).filter { $0.receivedAt >= cutoff }
+            if combined.count > self.maxDisplaySpots {
+                combined.removeSubrange(self.maxDisplaySpots...)
+            }
+            self.displaySpots = combined
+            
+            self.mapState.totalReceived += batch.count
+            self.mapState.totalForwarded += acceptedCount
+            self.updatePropagationClusters()
+        }
+        
         server.onDecodeReceived = { [weak self] decode, rawData in
             guard let self = self else { return }
             let accepted = self.shouldAccept(decode: decode, recordDuplicates: true)
@@ -410,47 +528,12 @@ class DecodeViewModel: ObservableObject {
                     self.broadcastWSJTSpot(decode: decode)
                 }
             }
-            self.totalReceived += 1
+            self.mapState.totalReceived += 1
             if accepted {
-                self.totalForwarded += 1
+                self.mapState.totalForwarded += 1
             }
             self.updatePropagationClusters()
-
-            // Überprüfung aktiver Anruf: Wenn unsere Zielstation einer anderen Station antwortet -> Sofort HaltTx, kein Cooldown!
-            if !self.currentTargetCall.isEmpty {
-                let targetUpper = self.currentTargetCall.uppercased()
-                let ownCall = (UserDefaults.standard.string(forKey: "lotwUsername") ?? "").uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
-                let msgUpper = decode.message.uppercased()
-                let tokens = msgUpper.components(separatedBy: .whitespacesAndNewlines)
-                    .map { $0.trimmingCharacters(in: CharacterSet.alphanumerics.inverted) }
-                    .filter { !$0.isEmpty }
-                
-                let isFromTarget = (decode.callsign.uppercased() == targetUpper) || (tokens.count >= 2 && tokens[1] == targetUpper)
-                
-                if isFromTarget && tokens.count >= 2 {
-                    let recipient = tokens[0]
-                    let isCQ = recipient.hasPrefix("CQ") || recipient == "QRZ" || recipient == "DE"
-                    let isForMe = !ownCall.isEmpty && (recipient == ownCall || recipient.contains(ownCall))
-                    
-                    if !isCQ && !isForMe {
-                        let otherCall = recipient
-                        let msg = "QSO abgebrochen: \(targetUpper) antwortet \(otherCall) (Kein Cooldown, bereit für nächsten Trigger)."
-                        self.currentQSOStatus = msg
-                        self.addLog("ℹ️ \(msg)")
-                        
-                        // Zuerst State zurücksetzen, damit nachfolgendes HaltTx keinen Cooldown anlegt
-                        self.currentTargetCall = ""
-                        self.qsoStartTime = nil
-                        self.txEnabledStartTime = nil
-                        self.lastTriggeredTarget = nil
-                        self.txTriggerAttempts = 0
-                        self.lastTxTriggerTime = nil
-                        
-                        // Senden in WSJT-X sofort stoppen
-                        self.server.sendHaltTx(autoTxOnly: false)
-                    }
-                }
-            }
+            self.checkActiveTargetCall(decode: decode)
         }
         
         server.onRawLogReceived = { [weak self] type, message in
@@ -463,29 +546,7 @@ class DecodeViewModel: ObservableObject {
         server.objectWillChange
             .throttle(for: .seconds(3), scheduler: RunLoop.main, latest: true)
             .sink { [weak self] _ in
-                self?.objectWillChange.send()
                 self?.evaluateAutoQSO()
-            }
-            .store(in: &cancellables)
-            
-        lotwManager.objectWillChange
-            .debounce(for: .seconds(1), scheduler: RunLoop.main)
-            .sink { [weak self] _ in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-            
-        qrzManager.objectWillChange
-            .debounce(for: .seconds(1), scheduler: RunLoop.main)
-            .sink { [weak self] _ in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-            
-        rumlogManager.objectWillChange
-            .debounce(for: .seconds(1), scheduler: RunLoop.main)
-            .sink { [weak self] _ in
-                self?.objectWillChange.send()
             }
             .store(in: &cancellables)
             
@@ -1053,7 +1114,7 @@ class DecodeViewModel: ObservableObject {
     func saveClusters() {
         if let data = try? JSONEncoder().encode(availableClusters) {
             UserDefaults.standard.set(data, forKey: "availableClusters")
-            self.objectWillChange.send()
+            // Updated via @Observable
         }
     }
     
@@ -1207,7 +1268,7 @@ class DecodeViewModel: ObservableObject {
         return UInt32(seconds * 1000)
     }
     
-    private func createAndAddClusterSpot(call: String, freq: Double, spotter: String, comment: String, raw: String) {
+        private func createAndAddClusterSpot(call: String, freq: Double, spotter: String, comment: String, raw: String) {
         let hfFreqHz = UInt64(freq * 1000)
         let cleanComment = comment.isEmpty ? "DX spot" : comment
         
@@ -1226,50 +1287,84 @@ class DecodeViewModel: ObservableObject {
             customCallsign: call
         )
         
-        DispatchQueue.main.async { [weak self] in
+        // Filter evaluation and telnet broadcast directly on background queue
+        let accepted = self.shouldAccept(decode: decode, recordDuplicates: true)
+        if !self.isFiltersEnabled || accepted {
+            let resolvedCountry = self.matcher.country(for: call)
+            let resolvedContinent = self.matcher.continent(for: call)
+            let resolvedCq = self.matcher.cqZone(for: call)
+            let resolvedItu = self.matcher.ituZone(for: call)
+            let resolvedCoords = self.matcher.coordinates(forCountry: resolvedCountry)
+            
+            let spot = DXSpot(
+                dxCall: call,
+                country: resolvedCountry,
+                continent: resolvedContinent,
+                cqZone: resolvedCq,
+                ituZone: resolvedItu,
+                frequency: freq,
+                spotter: spotter,
+                timestamp: Date(),
+                rawLine: raw.isEmpty ? self.formatAsDXSpot(spotter: spotter, freq: freq, call: call, info: cleanComment) : raw,
+                isFiltered: false,
+                comment: cleanComment,
+                isWsjt: false,
+                latitude: resolvedCoords?.latitude,
+                longitude: resolvedCoords?.longitude
+            )
+            self.telnetServer.broadcast(spot: spot)
+        }
+        
+        clusterIngestLock.lock()
+        pendingClusterDecodes.append(decode)
+        pendingClusterReceivedDelta += 1
+        if !self.isFiltersEnabled || accepted {
+            pendingClusterForwardedDelta += 1
+        }
+        let schedule = !isClusterFlushScheduled
+        isClusterFlushScheduled = true
+        clusterIngestLock.unlock()
+        
+        guard schedule else { return }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
             guard let self = self else { return }
+            self.clusterIngestLock.lock()
+            self.isClusterFlushScheduled = false
+            let batch = self.pendingClusterDecodes
+            let recDelta = self.pendingClusterReceivedDelta
+            let fwdDelta = self.pendingClusterForwardedDelta
+            self.pendingClusterDecodes.removeAll(keepingCapacity: true)
+            self.pendingClusterReceivedDelta = 0
+            self.pendingClusterForwardedDelta = 0
+            self.clusterIngestLock.unlock()
             
-            // Unconditional insertion: All received spots appear in table list
-            self.clusterSpots.insert(decode, at: 0)
-            if self.clusterSpots.count > 500 {
-                self.clusterSpots.removeSubrange(500...)
+            guard !batch.isEmpty else { return }
+            
+            let window = UserDefaults.standard.integer(forKey: "mapTimeWindow") == 0 ? 30 : UserDefaults.standard.integer(forKey: "mapTimeWindow")
+            let cutoff = Date().addingTimeInterval(-Double(window) * 60)
+            
+            var newClusterSpots = (batch + self.clusterSpots).filter { $0.receivedAt >= cutoff }
+            if newClusterSpots.count > 300 {
+                newClusterSpots.removeSubrange(300...)
             }
+            self.clusterSpots = newClusterSpots
             
-            self.server.decodes.insert(decode, at: 0)
-            if self.server.decodes.count > 500 {
-                self.server.decodes.removeSubrange(500...)
+            var newServerDecodes = (batch + self.server.decodes).filter { $0.receivedAt >= cutoff }
+            if newServerDecodes.count > 300 {
+                newServerDecodes.removeSubrange(300...)
             }
+            self.server.decodes = newServerDecodes
             
-            self.totalReceived += 1
-            
-            let accepted = self.shouldAccept(decode: decode, recordDuplicates: true)
-            if !self.isFiltersEnabled || accepted {
-                self.totalForwarded += 1
-                let resolvedCountry = self.matcher.country(for: call)
-                let resolvedContinent = self.matcher.continent(for: call)
-                let resolvedCq = self.matcher.cqZone(for: call)
-                let resolvedItu = self.matcher.ituZone(for: call)
-                let resolvedCoords = self.matcher.coordinates(forCountry: resolvedCountry)
-                
-                let spot = DXSpot(
-                    dxCall: call,
-                    country: resolvedCountry,
-                    continent: resolvedContinent,
-                    cqZone: resolvedCq,
-                    ituZone: resolvedItu,
-                    frequency: freq,
-                    spotter: spotter,
-                    timestamp: Date(),
-                    rawLine: raw.isEmpty ? self.formatAsDXSpot(spotter: spotter, freq: freq, call: call, info: cleanComment) : raw,
-                    isFiltered: false,
-                    comment: cleanComment,
-                    isWsjt: false,
-                    latitude: resolvedCoords?.latitude,
-                    longitude: resolvedCoords?.longitude
-                )
-                self.telnetServer.broadcast(spot: spot)
+            let newRows = batch.map { self.makeSpotRowData(for: $0, recordDuplicates: false) }
+            var combined = (newRows + self.displaySpots).filter { $0.receivedAt >= cutoff }
+            if combined.count > self.maxDisplaySpots {
+                combined.removeSubrange(self.maxDisplaySpots...)
             }
+            self.displaySpots = combined
             
+            self.mapState.totalReceived += recDelta
+            self.mapState.totalForwarded += fwdDelta
             self.updatePropagationClusters()
         }
     }
@@ -1618,15 +1713,22 @@ class DecodeViewModel: ObservableObject {
 
     // Performance Cache: Memoized evaluation for UI rendering
     private var decodeEvalCache: [UUID: (isInteresting: Bool, isWorked: Bool, shouldAccept: Bool)] = [:]
+    private let evalCacheLock = NSLock()
     
     func clearEvaluationCache() {
+        evalCacheLock.lock()
         decodeEvalCache.removeAll(keepingCapacity: true)
+        evalCacheLock.unlock()
     }
 
     func evaluateDecodeFast(_ decode: WSJTXDecode) -> (isInteresting: Bool, isWorked: Bool, shouldAccept: Bool) {
+        evalCacheLock.lock()
         if let cached = decodeEvalCache[decode.id] {
+            evalCacheLock.unlock()
             return cached
         }
+        evalCacheLock.unlock()
+        
         let accepted = shouldAccept(decode: decode)
         let workedEver = lotwManager.hasWorked(callsign: decode.callsign, band: decode.band)
         let workedBlocked = isWorkedBeforeFilterEnabled ?
@@ -1634,10 +1736,14 @@ class DecodeViewModel: ObservableObject {
             workedEver
         let interesting = isAutoQSOInterestingEvaluated(decode: decode, accepted: accepted, workedBlocked: workedBlocked)
         let result = (isInteresting: interesting, isWorked: workedEver, shouldAccept: accepted)
-        if decodeEvalCache.count > 2000 {
+        
+        evalCacheLock.lock()
+        if decodeEvalCache.count > 1000 {
             decodeEvalCache.removeAll(keepingCapacity: true)
         }
         decodeEvalCache[decode.id] = result
+        evalCacheLock.unlock()
+        
         return result
     }
 
@@ -1987,7 +2093,7 @@ class DecodeViewModel: ObservableObject {
 
     func clearBlockedDecodes() {
         DispatchQueue.main.async { [weak self] in
-            self?.objectWillChange.send()
+            // Updated via @Observable
         }
     }
     
@@ -2015,17 +2121,35 @@ class DecodeViewModel: ObservableObject {
     }
     
     private func pruneOldData() {
+        let now = Date()
         let window = UserDefaults.standard.integer(forKey: "mapTimeWindow") == 0 ? 30 : UserDefaults.standard.integer(forKey: "mapTimeWindow")
-        let cutoff = Date().addingTimeInterval(-Double(window + 5) * 60)
+        let cutoff = now.addingTimeInterval(-Double(window) * 60)
         
-        let initialSpotCount = clusterSpots.count
+        let initialClusterCount = clusterSpots.count
         clusterSpots.removeAll { $0.receivedAt < cutoff }
-        if clusterSpots.count != initialSpotCount {
+        
+        let initialServerCount = server.decodes.count
+        server.decodes.removeAll { $0.receivedAt < cutoff }
+        
+        let initialDisplayCount = displaySpots.count
+        displaySpots.removeAll { $0.receivedAt < cutoff }
+        
+        // Prune blacklistedCalls older than retry cooldown
+        let blacklistCutoff = now.addingTimeInterval(-Double(retryCooldownMinutes * 60))
+        blacklistedCalls = blacklistedCalls.filter { $0.value > blacklistCutoff }
+        
+        // Prune filter log deduplication dictionary
+        let logCutoff = now.addingTimeInterval(-10.0)
+        lastLoggedFilterMessages = lastLoggedFilterMessages.filter { $0.value > logCutoff }
+        
+        // Periodic cache trim
+        if decodeEvalCache.count > 1000 {
+            clearEvaluationCache()
+        }
+        
+        if clusterSpots.count != initialClusterCount || server.decodes.count != initialServerCount || displaySpots.count != initialDisplayCount {
             needsRecalculation = true
         }
-
-        // We can't prune server.decodes directly here safely as it's modified by WSJTXServer,
-        // but we assume WSJTXServer keeps a max of 250 elements anyway.
     }
     
     private func scheduleRecalculations() {
@@ -2033,9 +2157,7 @@ class DecodeViewModel: ObservableObject {
     }
     
     private func performRecalculationsBackground(currentDecodes: [WSJTXDecode], currentSpots: [WSJTXDecode]) {
-        DispatchQueue.main.sync {
-            self.clearEvaluationCache()
-        }
+        self.clearEvaluationCache()
         
         let newPropData = recalculatePropagationClusters(currentDecodes: currentDecodes, currentSpots: currentSpots)
         let newMostWanted = recalculateMostWantedDecodes(currentDecodes: currentDecodes, currentSpots: currentSpots)
@@ -2043,10 +2165,10 @@ class DecodeViewModel: ObservableObject {
         
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            self.propagationClusters = newPropData.clusters
-            self.propagationChartData = newPropData.chartItems
+            self.mapState.propagationClusters = newPropData.clusters
+            self.mapState.propagationChartData = newPropData.chartItems
+            self.mapState.newGridClusters = newGridClusters
             self.mostWantedDecodes = newMostWanted
-            self.newGridClusters = newGridClusters
             self.isRecalculating = false
         }
     }

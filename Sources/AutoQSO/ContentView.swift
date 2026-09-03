@@ -1,9 +1,19 @@
+struct ConsoleHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 180
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        let next = nextValue()
+        if next > 60 {
+            value = next
+        }
+    }
+}
+
 import SwiftUI
 import UniformTypeIdentifiers
 
 struct ContentView: View {
-    @ObservedObject var viewModel: DecodeViewModel
-    @ObservedObject private var langManager = LanguageManager.shared
+    @Bindable var viewModel: DecodeViewModel
+    var langManager = LanguageManager.shared
     private var isDe: Bool { langManager.isGerman }
     
     @State private var draggedFilterSection: DXFilterSectionId? = nil
@@ -15,10 +25,10 @@ struct ContentView: View {
     @AppStorage("udpAddress") private var udpAddress = "224.0.0.1"
     @AppStorage("retryCooldownMinutes") private var retryCooldownMinutes: Int = 10
     @AppStorage("mostWantedPanelHeight") private var mostWantedPanelHeight: Double = 120.0
-    @AppStorage("decode_column_customization") private var decodeColumnCustomization: TableColumnCustomization<WSJTXDecode>
-    @AppStorage("compact_decode_column_customization") private var compactDecodeColumnCustomization: TableColumnCustomization<WSJTXDecode>
+    @AppStorage("decode_column_customization") private var decodeColumnCustomization: TableColumnCustomization<SpotRowData>
+    @AppStorage("compact_decode_column_customization") private var compactDecodeColumnCustomization: TableColumnCustomization<SpotRowData>
     
-    @State private var tableSelection: WSJTXDecode.ID? = nil
+    @State private var tableSelection: SpotRowData.ID? = nil
     
     @AppStorage("isSidebarVisible") private var isSidebarVisible = true
     @AppStorage("isLeftSidebarVisible") private var isLeftSidebarVisible = true
@@ -116,30 +126,24 @@ struct ContentView: View {
     
     @AppStorage("showOnlyAcceptedSpots") private var showOnlyAcceptedSpots = false
     
-    private var displayDecodes: [WSJTXDecode] {
-        let baseList: [WSJTXDecode]
-        if viewModel.isMainTableScrollPaused, let frozen = viewModel.frozenMainDecodes {
-            baseList = frozen
-        } else {
-            baseList = viewModel.server.decodes
-        }
-        
+    private var displayRows: [SpotRowData] {
+        let baseList = viewModel.displaySpots
         let query = viewModel.mainTableSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        var filtered: [WSJTXDecode]
+        var filtered: [SpotRowData]
         
         if showOnlyAcceptedSpots {
-            filtered = baseList.filter { viewModel.evaluateDecodeFast($0).shouldAccept }
+            filtered = baseList.filter { $0.isAccepted }
         } else {
             filtered = baseList
         }
         
         if !query.isEmpty {
-            filtered = filtered.filter { decode in
-                decode.callsign.lowercased().contains(query) ||
-                decode.country.lowercased().contains(query) ||
-                decode.spotter.lowercased().contains(query) ||
-                (decode.grid?.lowercased().contains(query) ?? false) ||
-                decode.message.lowercased().contains(query)
+            filtered = filtered.filter { row in
+                row.callsign.lowercased().contains(query) ||
+                row.country.lowercased().contains(query) ||
+                row.spotter.lowercased().contains(query) ||
+                (row.grid?.lowercased().contains(query) ?? false) ||
+                row.message.lowercased().contains(query)
             }
         }
         
@@ -222,7 +226,7 @@ struct ContentView: View {
                     Image(systemName: viewModel.isMainTableScrollPaused ? "play.circle" : "pause.circle")
                 }
                 .buttonStyle(.bordered)
-                .foregroundColor(viewModel.isMainTableScrollPaused ? .orange : .primary)
+                .foregroundStyle(viewModel.isMainTableScrollPaused ? .orange : .primary)
                 .help(viewModel.isMainTableScrollPaused ? L("toolbar.freeze.tooltip.resume") : L("toolbar.freeze.tooltip.pause"))
                 
                 // Filter Switch: Nur akzeptierte/gefilterte Spots anzeigen (links von Suchen)
@@ -246,7 +250,7 @@ struct ContentView: View {
                 // Search field
                 HStack(spacing: 4) {
                     Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     TextField(L("toolbar.search.placeholder"), text: $viewModel.mainTableSearchText)
                         .font(.system(size: 11))
                         .textFieldStyle(.plain)
@@ -254,7 +258,7 @@ struct ContentView: View {
                     if !viewModel.mainTableSearchText.isEmpty {
                         Button(action: { viewModel.mainTableSearchText = "" }) {
                             Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
                     }
@@ -262,7 +266,7 @@ struct ContentView: View {
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
                 .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(6)
+                .clipShape(.rect(cornerRadius: 6))
                 
                 Button(action: {
                     viewModel.clearTable()
@@ -375,7 +379,7 @@ struct ContentView: View {
                 HStack(spacing: 8) {
                     Text(displayCall)
                         .font(.system(size: 18, weight: .black, design: .monospaced))
-                        .foregroundColor(mwRank != nil ? .red : .orange)
+                        .foregroundStyle(mwRank != nil ? .red : .orange)
                     
                     if let rank = mwRank {
                         Text("🔥 #\(rank)")
@@ -383,8 +387,8 @@ struct ContentView: View {
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
                             .background(Color.red)
-                            .foregroundColor(.white)
-                            .cornerRadius(4)
+                            .foregroundStyle(.white)
+                            .clipShape(.rect(cornerRadius: 4))
                     }
                     
                     Button(action: {
@@ -403,12 +407,12 @@ struct ContentView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "location.fill")
                         .font(.caption2)
-                        .foregroundColor(.blue)
+                        .foregroundStyle(.blue)
                     
                     if let dist = distanceKm {
                         Text(String(format: "%.0f km", dist))
                             .font(.system(size: 13, weight: .bold, design: .monospaced))
-                            .foregroundColor(.blue)
+                            .foregroundStyle(.blue)
                         if let g = grid {
                             Text("(\(g))")
                                 .font(.caption2)
@@ -427,7 +431,7 @@ struct ContentView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(Color.blue.opacity(0.1))
-                .cornerRadius(6)
+                .clipShape(.rect(cornerRadius: 6))
                 
                 Divider()
                     .frame(height: 20)
@@ -446,8 +450,8 @@ struct ContentView: View {
                                 .padding(.horizontal, 7)
                                 .padding(.vertical, 3)
                                 .background(isWorked ? Color.green : Color(NSColor.controlBackgroundColor))
-                                .foregroundColor(isWorked ? .white : .secondary)
-                                .cornerRadius(4)
+                                .foregroundStyle(isWorked ? .white : .secondary)
+                                .clipShape(.rect(cornerRadius: 4))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 4)
                                         .stroke(isWorked ? Color.green : Color.gray.opacity(0.3), lineWidth: 1)
@@ -485,20 +489,8 @@ struct ContentView: View {
                 normalMainView
             }
         }
-        .onChange(of: viewModel.totalReceived) { _, _ in
-            guard !viewModel.isMainTableScrollPaused else { return }
-            self.scrollToNewestRow()
-        }
-        .onChange(of: viewModel.isMainTableScrollPaused) { _, isPaused in
-            if !isPaused {
-                self.scrollToNewestRow()
-            }
-        }
-        .onChange(of: isNewestOnTop) { _, _ in
-            if !viewModel.isMainTableScrollPaused {
-                self.scrollToNewestRow()
-            }
-        }
+        
+        
         .alert("Fehler beim LoTW Sync", isPresented: Binding(
             get: { viewModel.lotwManager.errorMessage != nil },
             set: { if !$0 { viewModel.lotwManager.errorMessage = nil } }
@@ -611,7 +603,7 @@ struct ContentView: View {
                         HStack(spacing: 8) {
                             Text(L("logs.detached.banner"))
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Spacer()
                             Button(L("logs.attach")) {
                                 isLogConsoleDetached = false
@@ -622,83 +614,38 @@ struct ContentView: View {
                         .padding(6)
                         .background(Color(NSColor.controlBackgroundColor))
                         Divider()
-                    }
-                    
-                    VSplitView {
-                        if !isLogConsoleDetached {
-                            logConsoleView
-                                .frame(minHeight: 80, idealHeight: CGFloat(logConsoleHeight), maxHeight: 450)
+                        
+                        VSplitView {
+                            mainFullTableView
+                                .frame(minHeight: 200, maxHeight: .infinity)
+                                .layoutPriority(1)
+                            
+                            mostWantedSectionView
+                                .frame(minHeight: 60, idealHeight: CGFloat(mostWantedPanelHeight), maxHeight: 300)
                                 .layoutPriority(0)
                         }
-                        
-                        Table(displayDecodes, selection: $tableSelection, columnCustomization: $decodeColumnCustomization) {
-                            TableColumn(L("table.col.time")) { decode in
-                                timeCell(for: decode)
-                            }
-                            .width(min: 65, ideal: 75, max: 100)
-                            .customizationID("time")
+                        .id("main_vsplit_detached")
+                        .background(SplitViewAutosaver(name: "AutoQSO_Main_VSplit_Detached"))
+                    } else {
+                        VSplitView {
+                            let initialH = UserDefaults.standard.double(forKey: "AutoQSO_SplitPos_AutoQSO_Main_VSplit_Docked")
+                            let targetH: CGFloat = initialH >= 70 ? CGFloat(initialH) : 180.0
                             
-                            TableColumn("DX Call") { decode in
-                                dxCallCell(for: decode)
-                            }
-                            .width(min: 80, ideal: 105, max: 180)
-                            .customizationID("callsign")
+                            LogsConsoleView(viewModel: viewModel, isEmbedded: true)
+                                .frame(minHeight: 80, idealHeight: targetH, maxHeight: 450)
+                                .layoutPriority(0)
+                                .background(SplitViewAutosaver(name: "AutoQSO_Main_VSplit_Docked"))
                             
-                            TableColumn(L("table.col.country")) { decode in
-                                landCell(for: decode)
-                            }
-                            .width(min: 80, ideal: 120, max: 200)
-                            .customizationID("country")
+                            mainFullTableView
+                                .frame(minHeight: 200, maxHeight: .infinity)
+                                .layoutPriority(1)
                             
-                            TableColumn(L("table.col.spotter")) { decode in
-                                spotterCell(for: decode)
-                            }
-                            .width(min: 60, ideal: 80, max: 120)
-                            .customizationID("spotter")
-                            
-                            TableColumn("Most Wanted") { decode in
-                                mostWantedCell(for: decode)
-                            }
-                            .width(min: 75, ideal: 95, max: 130)
-                            .customizationID("mostwanted")
-                            
-                            TableColumn(L("table.col.distance")) { decode in
-                                distanceCell(for: decode)
-                            }
-                            .width(min: 65, ideal: 85, max: 120)
-                            .customizationID("distance")
-                            
-                            TableColumn(L("table.col.snr")) { decode in
-                                snrCell(for: decode)
-                            }
-                            .width(min: 40, ideal: 55, max: 80)
-                            .customizationID("snr")
-                            
-                            TableColumn(L("table.col.dt")) { decode in
-                                dtCell(for: decode)
-                            }
-                            .width(min: 40, ideal: 55, max: 80)
-                            .customizationID("dt")
-                            
-                            TableColumn(L("table.col.freq")) { decode in
-                                frequencyCell(for: decode)
-                            }
-                            .width(min: 100, ideal: 130, max: 180)
-                            .customizationID("frequency")
-                            
-                            TableColumn(L("table.col.message")) { decode in
-                                messageCell(for: decode)
-                            }
-                            .width(min: 120, ideal: 260, max: 2000)
-                            .customizationID("message")
+                            mostWantedSectionView
+                                .frame(minHeight: 60, idealHeight: CGFloat(mostWantedPanelHeight), maxHeight: 300)
+                                .layoutPriority(0)
                         }
-                        .layoutPriority(1)
-                        
-                        mostWantedSectionView
-                            .frame(minHeight: 60, idealHeight: CGFloat(mostWantedPanelHeight), maxHeight: 300)
-                            .layoutPriority(0)
+                        .id("main_vsplit_docked")
                     }
-                    .background(SplitViewAutosaver(name: "AutoQSO_Main_VSplitView"))
                 }
                 .frame(minWidth: 500, maxWidth: .infinity, maxHeight: .infinity)
                 .layoutPriority(1)
@@ -718,6 +665,70 @@ struct ContentView: View {
         }
     }
 
+        private var mainFullTableView: some View {
+        Table(displayRows, selection: $tableSelection, columnCustomization: $decodeColumnCustomization) {
+            TableColumn(L("table.col.time")) { decode in
+                timeCell(for: decode)
+            }
+            .width(min: 65, ideal: 75, max: 100)
+            .customizationID("time")
+            
+            TableColumn("DX Call") { decode in
+                dxCallCell(for: decode)
+            }
+            .width(min: 80, ideal: 105, max: 180)
+            .customizationID("callsign")
+            
+            TableColumn(L("table.col.country")) { decode in
+                landCell(for: decode)
+            }
+            .width(min: 80, ideal: 120, max: 200)
+            .customizationID("country")
+            
+            TableColumn(L("table.col.spotter")) { decode in
+                spotterCell(for: decode)
+            }
+            .width(min: 60, ideal: 80, max: 120)
+            .customizationID("spotter")
+            
+            TableColumn("Most Wanted") { decode in
+                mostWantedCell(for: decode)
+            }
+            .width(min: 75, ideal: 95, max: 130)
+            .customizationID("mostwanted")
+            
+            TableColumn(L("table.col.distance")) { decode in
+                distanceCell(for: decode)
+            }
+            .width(min: 65, ideal: 85, max: 120)
+            .customizationID("distance")
+            
+            TableColumn(L("table.col.snr")) { decode in
+                snrCell(for: decode)
+            }
+            .width(min: 40, ideal: 55, max: 80)
+            .customizationID("snr")
+            
+            TableColumn(L("table.col.dt")) { decode in
+                dtCell(for: decode)
+            }
+            .width(min: 40, ideal: 55, max: 80)
+            .customizationID("dt")
+            
+            TableColumn(L("table.col.freq")) { decode in
+                frequencyCell(for: decode)
+            }
+            .width(min: 100, ideal: 130, max: 180)
+            .customizationID("frequency")
+            
+            TableColumn(L("table.col.message")) { decode in
+                messageCell(for: decode)
+            }
+            .width(min: 120, ideal: 260, max: 2000)
+            .customizationID("message")
+        }
+    }
+
     private var compactMainView: some View {
         VStack(spacing: 0) {
             compactToolbarView
@@ -729,7 +740,7 @@ struct ContentView: View {
             }
             
             VSplitView {
-                Table(displayDecodes, selection: $tableSelection, columnCustomization: $compactDecodeColumnCustomization) {
+                Table(displayRows, selection: $tableSelection, columnCustomization: $compactDecodeColumnCustomization) {
                     TableColumn("Zeit") { decode in
                         timeCell(for: decode)
                     }
@@ -776,20 +787,20 @@ struct ContentView: View {
             // Header
             HStack(spacing: 8) {
                 Image(systemName: "flame.fill")
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
                     .font(.system(size: 14, weight: .bold))
                 
                 Text(L("mostWanted.title"))
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
                 
                 Text("\(mostWantedDecodes.count)")
                     .font(.system(size: 10, weight: .bold))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(mostWantedDecodes.isEmpty ? Color.gray.opacity(0.3) : Color.red)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
+                    .foregroundStyle(.white)
+                    .clipShape(.rect(cornerRadius: 10))
                 
                 Spacer()
                 
@@ -811,7 +822,7 @@ struct ContentView: View {
                         Spacer()
                         Text(L("mostWanted.empty"))
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                         Spacer()
                     }
                     Spacer()
@@ -830,20 +841,20 @@ struct ContentView: View {
                                     HStack(spacing: 4) {
                                         Text(decode.callsign)
                                             .font(.system(size: 13, weight: .bold, design: .monospaced))
-                                            .foregroundColor(.primary)
+                                            .foregroundStyle(.primary)
                                         if let rank = mwRank {
                                             Text("#\(rank)")
                                                 .font(.system(size: 8, weight: .bold))
                                                 .padding(.horizontal, 4)
                                                 .padding(.vertical, 1)
                                                 .background(Color.red)
-                                                .foregroundColor(.white)
-                                                .cornerRadius(3)
+                                                .foregroundStyle(.white)
+                                                .clipShape(.rect(cornerRadius: 3))
                                         }
                                     }
                                     Text(decode.message)
                                         .font(.system(size: 10, design: .monospaced))
-                                        .foregroundColor(.secondary)
+                                        .foregroundStyle(.secondary)
                                 }
                                 
                                 VStack(alignment: .trailing, spacing: 2) {
@@ -852,13 +863,13 @@ struct ContentView: View {
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 2)
                                         .background(Color.blue.opacity(0.15))
-                                        .foregroundColor(.blue)
-                                        .cornerRadius(4)
+                                        .foregroundStyle(.blue)
+                                        .clipShape(.rect(cornerRadius: 4))
                                     
                                     if let d = dist {
                                         Text(String(format: "%.0f km", d))
                                             .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(.secondary)
                                     }
                                 }
                                 
@@ -869,8 +880,8 @@ struct ContentView: View {
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 3)
                                         .background(Color.purple.opacity(0.15))
-                                        .foregroundColor(.purple)
-                                        .cornerRadius(4)
+                                        .foregroundStyle(.purple)
+                                        .clipShape(.rect(cornerRadius: 4))
                                 } else {
                                     Button(action: {
                                         viewModel.sendReply(for: decode)
@@ -890,7 +901,7 @@ struct ContentView: View {
                                 RoundedRectangle(cornerRadius: 6)
                                     .stroke(Color.red.opacity(0.3), lineWidth: 1)
                             )
-                            .cornerRadius(6)
+                            .clipShape(.rect(cornerRadius: 6))
                             .onTapGesture(count: 2) {
                                 if !decode.isClusterSpot {
                                     viewModel.sendReply(for: decode)
@@ -956,7 +967,7 @@ struct ContentView: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
-            .foregroundColor(viewModel.isMainTableScrollPaused ? .orange : .primary)
+            .foregroundStyle(viewModel.isMainTableScrollPaused ? .orange : .primary)
             .help(viewModel.isMainTableScrollPaused ? "Auto-Scroll fortsetzen" : "Auto-Scroll anhalten")
             
             // Filter-Toggle
@@ -985,7 +996,7 @@ struct ContentView: View {
             HStack(spacing: 3) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                 TextField("Suchen...", text: $viewModel.mainTableSearchText)
                     .font(.system(size: 10))
                     .textFieldStyle(.plain)
@@ -994,7 +1005,7 @@ struct ContentView: View {
                     Button(action: { viewModel.mainTableSearchText = "" }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 9))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -1002,7 +1013,7 @@ struct ContentView: View {
             .padding(.horizontal, 4)
             .padding(.vertical, 2)
             .background(Color(NSColor.controlBackgroundColor))
-            .cornerRadius(4)
+            .clipShape(.rect(cornerRadius: 4))
             
             // Clear table
             Button(action: {
@@ -1093,8 +1104,8 @@ struct ContentView: View {
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
                         .background(Color.red)
-                        .foregroundColor(.white)
-                        .cornerRadius(3)
+                        .foregroundStyle(.white)
+                        .clipShape(.rect(cornerRadius: 3))
                         .help(L("status.tx.transmitting"))
                 } else if viewModel.server.isTxEnabled {
                     Text("TX")
@@ -1102,8 +1113,8 @@ struct ContentView: View {
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
                         .background(Color.orange)
-                        .foregroundColor(.white)
-                        .cornerRadius(3)
+                        .foregroundStyle(.white)
+                        .clipShape(.rect(cornerRadius: 3))
                         .help(L("status.tx.ready"))
                 } else {
                     Text("TX")
@@ -1111,8 +1122,8 @@ struct ContentView: View {
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
                         .background(Color.gray)
-                        .foregroundColor(.white)
-                        .cornerRadius(3)
+                        .foregroundStyle(.white)
+                        .clipShape(.rect(cornerRadius: 3))
                         .help(L("status.tx.off"))
                 }
             }
@@ -1129,20 +1140,20 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Image(systemName: "flame.fill")
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
                     .font(.system(size: 11, weight: .bold))
                 
                 Text("MOST WANTED")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
                 
                 Text("\(mostWantedDecodes.count)")
                     .font(.system(size: 9, weight: .bold))
                     .padding(.horizontal, 5)
                     .padding(.vertical, 1)
                     .background(mostWantedDecodes.isEmpty ? Color.gray.opacity(0.3) : Color.red)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
+                    .foregroundStyle(.white)
+                    .clipShape(.rect(cornerRadius: 8))
             }
             .padding(.horizontal, 8)
             .padding(.top, 4)
@@ -1154,7 +1165,7 @@ struct ContentView: View {
                     Spacer()
                     Text("Keine Most Wanted Stationen.")
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .italic()
                     Spacer()
                 }
@@ -1176,14 +1187,14 @@ struct ContentView: View {
                                             .padding(.horizontal, 3)
                                             .padding(.vertical, 0.5)
                                             .background(Color.red)
-                                            .foregroundColor(.white)
-                                            .cornerRadius(2)
+                                            .foregroundStyle(.white)
+                                            .clipShape(.rect(cornerRadius: 2))
                                     }
                                 }
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 3)
                                 .background(Color.red.opacity(0.08))
-                                .cornerRadius(4)
+                                .clipShape(.rect(cornerRadius: 4))
                             }
                             .buttonStyle(.plain)
                         }
@@ -1202,11 +1213,11 @@ struct ContentView: View {
             // Left Side: QSO Status
             HStack(spacing: 6) {
                 Image(systemName: "info.circle.fill")
-                    .foregroundColor(.blue)
+                    .foregroundStyle(.blue)
                     .font(.system(size: 11))
                 Text(viewModel.currentQSOStatus == "Bereit" ? L("status.sync.ready") : viewModel.currentQSOStatus)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
             }
             
             Spacer()
@@ -1221,12 +1232,12 @@ struct ContentView: View {
                             .frame(width: 6, height: 6)
                         Text("WSJT-X: \(viewModel.server.wsjtxClientId)")
                             .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
                     .background(Color.green.opacity(0.1))
-                    .cornerRadius(4)
+                    .clipShape(.rect(cornerRadius: 4))
                 } else {
                     HStack(spacing: 4) {
                         Circle()
@@ -1234,12 +1245,12 @@ struct ContentView: View {
                             .frame(width: 6, height: 6)
                         Text(L("status.wsjtx.disconnected"))
                             .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                            .foregroundColor(.red.opacity(0.8))
+                            .foregroundStyle(.red.opacity(0.8))
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
                     .background(Color.red.opacity(0.1))
-                    .cornerRadius(4)
+                    .clipShape(.rect(cornerRadius: 4))
                 }
                 
                 // TX Status Indicator
@@ -1253,8 +1264,8 @@ struct ContentView: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(Color.red)
-                    .foregroundColor(.white)
-                    .cornerRadius(4)
+                    .foregroundStyle(.white)
+                    .clipShape(.rect(cornerRadius: 4))
                     .shadow(color: .red.opacity(0.5), radius: 2)
                 } else if viewModel.server.isTxEnabled {
                     HStack(spacing: 4) {
@@ -1267,8 +1278,8 @@ struct ContentView: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(Color.orange.opacity(0.2))
-                    .foregroundColor(.orange)
-                    .cornerRadius(4)
+                    .foregroundStyle(.orange)
+                    .clipShape(.rect(cornerRadius: 4))
                 } else {
                     HStack(spacing: 4) {
                         Circle()
@@ -1280,8 +1291,8 @@ struct ContentView: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(Color.gray.opacity(0.15))
-                    .foregroundColor(.secondary)
-                    .cornerRadius(4)
+                    .foregroundStyle(.secondary)
+                    .clipShape(.rect(cornerRadius: 4))
                 }
             }
         }
@@ -1291,10 +1302,10 @@ struct ContentView: View {
     }
     
     @ViewBuilder
-    private func dxCallCell(for decode: WSJTXDecode) -> some View {
+    private func dxCallCell(for row: SpotRowData) -> some View {
         HStack(spacing: 4) {
-            cellText(decode.callsign, decode: decode)
-            if decode.isMostWanted {
+            cellText(row.callsign, row: row)
+            if row.isMostWanted {
                 Text("🔥")
                     .font(.caption2)
             }
@@ -1302,21 +1313,21 @@ struct ContentView: View {
     }
     
     @ViewBuilder
-    private func landCell(for decode: WSJTXDecode) -> some View {
-        cellText(decode.country.isEmpty ? "Unbekannt" : decode.country, decode: decode)
+    private func landCell(for row: SpotRowData) -> some View {
+        cellText(row.country, row: row)
     }
     
     @ViewBuilder
-    private func mostWantedCell(for decode: WSJTXDecode) -> some View {
-        if let rank = decode.mostWantedRank {
+    private func mostWantedCell(for row: SpotRowData) -> some View {
+        if let rank = row.mostWantedRank {
             HStack(spacing: 4) {
                 Text("🔥 #\(rank)")
                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                     .padding(.horizontal, 5)
                     .padding(.vertical, 2)
                     .background(Color.red)
-                    .foregroundColor(.white)
-                    .cornerRadius(4)
+                    .foregroundStyle(.white)
+                    .clipShape(.rect(cornerRadius: 4))
             }
         } else {
             Text("-")
@@ -1326,41 +1337,36 @@ struct ContentView: View {
     }
     
     @ViewBuilder
-    private func distanceCell(for decode: WSJTXDecode) -> some View {
-        let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
-        if let dist = decode.distanceKm(myGrid: myGrid) {
-            cellText(String(format: "%.0f km", dist), decode: decode)
-        } else {
-            cellText("-", decode: decode)
-        }
+    private func distanceCell(for row: SpotRowData) -> some View {
+        cellText(row.distanceText, row: row)
     }
     
     @ViewBuilder
-    private func timeCell(for decode: WSJTXDecode) -> some View {
-        cellText(formatTime(decode.time), decode: decode)
+    private func timeCell(for row: SpotRowData) -> some View {
+        cellText(row.timeString, row: row)
     }
     
     @ViewBuilder
-    private func spotterCell(for decode: WSJTXDecode) -> some View {
-        cellText(decode.spotter, decode: decode)
+    private func spotterCell(for row: SpotRowData) -> some View {
+        cellText(row.spotter, row: row)
     }
     
     @ViewBuilder
-    private func snrCell(for decode: WSJTXDecode) -> some View {
-        cellText("\(decode.snr)", decode: decode)
+    private func snrCell(for row: SpotRowData) -> some View {
+        cellText(row.snrString, row: row)
     }
     
     @ViewBuilder
-    private func dtCell(for decode: WSJTXDecode) -> some View {
-        cellText(String(format: "%.1f", decode.deltaTime), decode: decode)
+    private func dtCell(for row: SpotRowData) -> some View {
+        cellText(row.dtString, row: row)
     }
     
     @ViewBuilder
-    private func frequencyCell(for decode: WSJTXDecode) -> some View {
+    private func frequencyCell(for row: SpotRowData) -> some View {
         HStack(spacing: 3) {
-            cellText(decode.formattedHfFrequency, decode: decode)
-            if decode.deltaFrequency > 0 {
-                Text("(+\(decode.deltaFrequency)Hz)")
+            cellText(row.formattedHfFrequency, row: row)
+            if row.deltaFrequency > 0 {
+                Text("(+\(row.deltaFrequency)Hz)")
                     .font(.system(size: max(8, CGFloat(fontSizeTable) - 2), design: .monospaced))
                     .foregroundStyle(.secondary)
             }
@@ -1368,26 +1374,26 @@ struct ContentView: View {
     }
     
     @ViewBuilder
-    private func messageCell(for decode: WSJTXDecode) -> some View {
-        cellText(decode.message, decode: decode)
+    private func messageCell(for row: SpotRowData) -> some View {
+        cellText(row.message, row: row)
     }
 
-    private func cellText(_ text: String, decode: WSJTXDecode) -> some View {
+    private func cellText(_ text: String, row: SpotRowData) -> some View {
         Text(text)
             .font(.system(size: CGFloat(fontSizeTable)))
-            .foregroundStyle(rowColor(for: decode))
+            .foregroundStyle(rowColor(for: row))
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .onTapGesture(count: 2) {
-                viewModel.sendReply(for: decode)
+                viewModel.sendReply(for: row.rawDecode)
             }
             .onTapGesture(count: 1) {
-                selectAndLookup(decode: decode)
+                selectAndLookup(row: row)
             }
     }
     
-    private func selectAndLookup(decode: WSJTXDecode) {
-        let call = decode.callsign
+    private func selectAndLookup(row: SpotRowData) {
+        let call = row.callsign
         guard !call.isEmpty else { return }
         viewModel.selectedCallsign = call
     }
@@ -1410,30 +1416,19 @@ struct ContentView: View {
         colorTableMostWanted.isEmpty ? .red : Color(hex: colorTableMostWanted)
     }
     
-    private func rowColor(for decode: WSJTXDecode) -> Color {
-        let call = decode.callsign
-        if call.isEmpty {
+    private func rowColor(for row: SpotRowData) -> Color {
+        switch row.status {
+        case .mostWanted:
+            return highlightMostWanted ? mostWantedColor : standardColor
+        case .interestingCQ:
+            return cqColor
+        case .worked:
+            return workedColor
+        case .filteredOut:
+            return .gray.opacity(0.6)
+        case .normal:
             return standardColor
         }
-        
-        let eval = viewModel.evaluateDecodeFast(decode)
-        if eval.isInteresting {
-            return cqColor
-        }
-        
-        if eval.isWorked {
-            return workedColor
-        }
-        
-        if !eval.shouldAccept {
-            return .gray.opacity(0.6)
-        }
-        
-        if highlightMostWanted && decode.isMostWanted {
-            return mostWantedColor
-        }
-        
-        return standardColor
     }
     
     private func formatTime(_ ms: UInt32) -> String {
@@ -1539,7 +1534,7 @@ struct ContentView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(viewModel.activeFilterOrderMode == .defaultOrder ? Color.blue : Color.secondary.opacity(0.18))
-                        .foregroundColor(viewModel.activeFilterOrderMode == .defaultOrder ? .white : .primary)
+                        .foregroundStyle(viewModel.activeFilterOrderMode == .defaultOrder ? .white : .primary)
                         .controlSize(.small)
                         .help(L("filter.order.tooltip.default"))
                         
@@ -1557,7 +1552,7 @@ struct ContentView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(viewModel.activeFilterOrderMode == .custom ? Color.blue : Color.secondary.opacity(0.18))
-                        .foregroundColor(viewModel.activeFilterOrderMode == .custom ? .white : .primary)
+                        .foregroundStyle(viewModel.activeFilterOrderMode == .custom ? .white : .primary)
                         .controlSize(.small)
                         .help(L("filter.order.tooltip.custom"))
                     }
@@ -1595,7 +1590,7 @@ struct ContentView: View {
             if let sec = sectionId {
                 Image(systemName: "line.3.horizontal")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .frame(width: 22, height: 22)
                     .contentShape(Rectangle())
                     .onDrag {
@@ -1607,7 +1602,7 @@ struct ContentView: View {
 
             Text(title)
                 .font(.system(size: 10, weight: .bold))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
                 .textCase(.uppercase)
                 .lineLimit(nil)
                 .multilineTextAlignment(.leading)
@@ -1620,11 +1615,11 @@ struct ContentView: View {
                     Text("\(activeCount)")
                         .font(.system(size: 8, weight: .bold))
                 }
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 4)
                 .padding(.vertical, 1)
                 .background(Color.blue)
-                .cornerRadius(4)
+                .clipShape(.rect(cornerRadius: 4))
             }
             
             Spacer()
@@ -1644,11 +1639,11 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(L("filter.continents.desc"))
                         .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .italic()
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+                .padding(6).background(Color.blue.opacity(0.05)).clipShape(.rect(cornerRadius: 6))
 
                 ForEach(continentCodes, id: \.code) { item in
                     Toggle(isOn: Binding(
@@ -1678,14 +1673,14 @@ struct ContentView: View {
                     Text("Blacklist-Modus").font(.caption).bold()
                     Text(L("filter.blacklist.desc"))
                         .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .italic()
                         .lineLimit(nil)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(6).background(Color.red.opacity(0.05)).cornerRadius(6)
+                .padding(6).background(Color.red.opacity(0.05)).clipShape(.rect(cornerRadius: 6))
                 
                 ForEach(viewModel.blockedCountries, id: \.self) { country in
                     HStack {
@@ -1695,7 +1690,7 @@ struct ContentView: View {
                     }
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(L("filter.blockCountry.label")).font(.caption2).foregroundColor(.secondary)
+                    Text(L("filter.blockCountry.label")).font(.caption2).foregroundStyle(.secondary)
                     CountryInputField(text: $newCountry, suggestions: viewModel.countrySuggestions(for: newCountry)) {
                         viewModel.addBlockedCountry(newCountry)
                         newCountry = ""
@@ -1708,17 +1703,17 @@ struct ContentView: View {
         case .allowedCountries:
             Section(isExpanded: $isAllowedDXCountriesExpanded) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("VIP").font(.caption).bold().foregroundColor(.blue)
+                    Text("VIP").font(.caption).bold().foregroundStyle(.blue)
                     Text(L("filter.whitelist.desc"))
                         .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .italic()
                         .lineLimit(nil)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+                .padding(6).background(Color.blue.opacity(0.05)).clipShape(.rect(cornerRadius: 6))
 
                 ForEach(viewModel.allowedCountries, id: \.self) { country in
                     HStack {
@@ -1729,7 +1724,7 @@ struct ContentView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(L("filter.allowCountry.label")).font(.caption2).foregroundColor(.secondary)
+                    Text(L("filter.allowCountry.label")).font(.caption2).foregroundStyle(.secondary)
                     CountryInputField(text: $newAllowedDXCountry, suggestions: viewModel.countrySuggestions(for: newAllowedDXCountry)) {
                         viewModel.addAllowedCountry(newAllowedDXCountry)
                         newAllowedDXCountry = ""
@@ -1744,11 +1739,11 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(L("filter.cqZone.desc"))
                         .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .italic()
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(6).background(Color.red.opacity(0.05)).cornerRadius(6)
+                .padding(6).background(Color.red.opacity(0.05)).clipShape(.rect(cornerRadius: 6))
 
                 ForEach(viewModel.blockedCQZones, id: \.self) { zone in
                     HStack {
@@ -1759,7 +1754,7 @@ struct ContentView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(L("filter.cqZone.label")).font(.caption2).foregroundColor(.secondary)
+                    Text(L("filter.cqZone.label")).font(.caption2).foregroundStyle(.secondary)
                     HStack {
                         TextField("z.B. 14", text: $newCQZone)
                             .textFieldStyle(UnifiedTextFieldStyle())
@@ -1773,7 +1768,7 @@ struct ContentView: View {
                             Image(systemName: "plus.circle.fill")
                         }
                         .buttonStyle(.plain)
-                        .foregroundColor(.blue)
+                        .foregroundStyle(.blue)
                         .disabled(Int(newCQZone.trimmingCharacters(in: .whitespaces)) == nil)
                     }
                 }.padding(.vertical, 4)
@@ -1786,11 +1781,11 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(L("filter.ituZone.desc"))
                         .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .italic()
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(6).background(Color.red.opacity(0.05)).cornerRadius(6)
+                .padding(6).background(Color.red.opacity(0.05)).clipShape(.rect(cornerRadius: 6))
 
                 ForEach(viewModel.blockedITUZones, id: \.self) { zone in
                     HStack {
@@ -1801,7 +1796,7 @@ struct ContentView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(L("filter.ituZone.label")).font(.caption2).foregroundColor(.secondary)
+                    Text(L("filter.ituZone.label")).font(.caption2).foregroundStyle(.secondary)
                     HStack {
                         TextField("z.B. 28", text: $newITUZone)
                             .textFieldStyle(UnifiedTextFieldStyle())
@@ -1815,7 +1810,7 @@ struct ContentView: View {
                             Image(systemName: "plus.circle.fill")
                         }
                         .buttonStyle(.plain)
-                        .foregroundColor(.blue)
+                        .foregroundStyle(.blue)
                         .disabled(Int(newITUZone.trimmingCharacters(in: .whitespaces)) == nil)
                     }
                 }.padding(.vertical, 4)
@@ -1826,17 +1821,17 @@ struct ContentView: View {
         case .allowedCallsigns:
             Section(isExpanded: $isAllowedDXCallsignsExpanded) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("VIP").font(.caption).bold().foregroundColor(.blue)
+                    Text("VIP").font(.caption).bold().foregroundStyle(.blue)
                     Text(L("filter.callsigns.desc"))
                         .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .italic()
                         .lineLimit(nil)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+                .padding(6).background(Color.blue.opacity(0.05)).clipShape(.rect(cornerRadius: 6))
 
                 ForEach(viewModel.allowedDXCallsigns, id: \.self) { callsign in
                     HStack {
@@ -1847,7 +1842,7 @@ struct ContentView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(L("filter.callsigns.label")).font(.caption2).foregroundColor(.secondary)
+                    Text(L("filter.callsigns.label")).font(.caption2).foregroundStyle(.secondary)
                     HStack(spacing: 4) {
                         TextField("z.B. DP0, K1, DL1ABC", text: $newAllowedDXCallsign)
                             .textFieldStyle(UnifiedTextFieldStyle())
@@ -1860,7 +1855,7 @@ struct ContentView: View {
                             newAllowedDXCallsign = ""
                         } label: {
                             Image(systemName: "plus.circle.fill")
-                                .foregroundColor(newAllowedDXCallsign.trimmingCharacters(in: .whitespaces).isEmpty ? .secondary : .blue)
+                                .foregroundStyle(newAllowedDXCallsign.trimmingCharacters(in: .whitespaces).isEmpty ? Color.secondary : Color.blue)
                         }
                         .buttonStyle(.plain)
                         .disabled(newAllowedDXCallsign.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -1873,17 +1868,17 @@ struct ContentView: View {
         case .allowedGrids:
             Section(isExpanded: $isAllowedGridsExpanded) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("VIP").font(.caption).bold().foregroundColor(.blue)
+                    Text("VIP").font(.caption).bold().foregroundStyle(.blue)
                     Text(L("filter.allowedGrids.desc"))
                         .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .italic()
                         .lineLimit(nil)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+                .padding(6).background(Color.blue.opacity(0.05)).clipShape(.rect(cornerRadius: 6))
 
                 ForEach(viewModel.allowedGrids, id: \.self) { grid in
                     HStack {
@@ -1894,7 +1889,7 @@ struct ContentView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(L("filter.allowedGrids.label")).font(.caption2).foregroundColor(.secondary)
+                    Text(L("filter.allowedGrids.label")).font(.caption2).foregroundStyle(.secondary)
                     HStack(spacing: 4) {
                         TextField("z.B. DN61-DN74 oder KN64, KN67", text: $newAllowedGrid)
                             .textFieldStyle(UnifiedTextFieldStyle())
@@ -1907,7 +1902,7 @@ struct ContentView: View {
                             newAllowedGrid = ""
                         } label: {
                             Image(systemName: "plus.circle.fill")
-                                .foregroundColor(newAllowedGrid.trimmingCharacters(in: .whitespaces).isEmpty ? .secondary : .blue)
+                                .foregroundStyle(newAllowedGrid.trimmingCharacters(in: .whitespaces).isEmpty ? Color.secondary : Color.blue)
                         }
                         .buttonStyle(.plain)
                         .disabled(newAllowedGrid.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -1947,14 +1942,14 @@ struct ContentView: View {
 
                     Text(L("filter.mostWantedOnly.desc"))
                         .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .italic()
                         .lineLimit(nil)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+                .padding(6).background(Color.blue.opacity(0.05)).clipShape(.rect(cornerRadius: 6))
             } header: {
                 sidebarHeader("\(index + 1). \(L("filter.section.mostWantedOnly"))", isExpanded: $isMostWantedOnlyExpanded, activeCount: viewModel.isOnlyMostWantedFilterEnabled ? 1 : 0, sectionId: sectionId)
             }
@@ -1996,14 +1991,14 @@ struct ContentView: View {
 
                     Text(L("filter.workedBefore.desc"))
                         .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .italic()
                         .lineLimit(nil)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+                .padding(6).background(Color.blue.opacity(0.05)).clipShape(.rect(cornerRadius: 6))
             } header: {
                 sidebarHeader("\(index + 1). \(L("filter.section.workedBefore"))", isExpanded: $isWorkedBeforeFilterExpanded, activeCount: viewModel.isWorkedBeforeFilterEnabled ? 1 : 0, sectionId: sectionId)
             }
@@ -2031,14 +2026,14 @@ struct ContentView: View {
 
                     Text(L("filter.grid.desc"))
                         .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .italic()
                         .lineLimit(nil)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+                .padding(6).background(Color.blue.opacity(0.05)).clipShape(.rect(cornerRadius: 6))
             } header: {
                 sidebarHeader("\(index + 1). \(L("filter.section.gridFilter"))", isExpanded: $isNewGridFilterExpanded, activeCount: (viewModel.isNew4CharGridOnlyFilterEnabled ? 1 : 0) + (viewModel.isNew6CharGridOnlyFilterEnabled ? 1 : 0), sectionId: sectionId)
             }
@@ -2057,14 +2052,14 @@ struct ContentView: View {
 
                     Text(L("filter.wsjtCQ.desc"))
                         .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .italic()
                         .lineLimit(nil)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+                .padding(6).background(Color.blue.opacity(0.05)).clipShape(.rect(cornerRadius: 6))
             } header: {
                 sidebarHeader("\(index + 1). \(L("filter.section.wsjtCQ"))", isExpanded: $isWsjtSpecialFilterExpanded, activeCount: viewModel.isWsjtSpecialFilterEnabled ? 1 : 0, sectionId: sectionId)
             }
@@ -2109,14 +2104,14 @@ struct ContentView: View {
 
                     Text(L("filter.duplicates.desc"))
                         .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .italic()
                         .lineLimit(nil)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+                .padding(6).background(Color.blue.opacity(0.05)).clipShape(.rect(cornerRadius: 6))
             } header: {
                 sidebarHeader("\(index + 1). \(L("filter.section.duplicates"))", isExpanded: $isDuplicateFilterExpanded, activeCount: viewModel.isDuplicateFilterEnabled ? 1 : 0, sectionId: sectionId)
             }
@@ -2130,14 +2125,14 @@ struct ContentView: View {
                 Text("Whitelist-Modus").font(.caption).bold()
                 Text(L("filter.spotter.desc"))
                     .font(.system(size: 9))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .italic()
                     .lineLimit(nil)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+            .padding(6).background(Color.blue.opacity(0.05)).clipShape(.rect(cornerRadius: 6))
 
             ForEach(viewModel.allowedSpotterCountries, id: \.self) { country in
                 HStack {
@@ -2148,7 +2143,7 @@ struct ContentView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(L("filter.spotter.label")).font(.caption2).foregroundColor(.secondary)
+                Text(L("filter.spotter.label")).font(.caption2).foregroundStyle(.secondary)
                 CountryInputField(text: $newSpotterCountry, suggestions: viewModel.countrySuggestions(for: newSpotterCountry)) {
                     viewModel.addAllowedSpotterCountry(newSpotterCountry)
                     newSpotterCountry = ""
@@ -2163,14 +2158,14 @@ struct ContentView: View {
                 Text("Whitelist-Modus").font(.caption).bold()
                 Text("NUR Dekodierungen, deren lokaler Spotter-Rufzeichen mit diesen übereinstimmt, werden durchgelassen.")
                     .font(.system(size: 9))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .italic()
                     .lineLimit(nil)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(6).background(Color.blue.opacity(0.05)).cornerRadius(6)
+            .padding(6).background(Color.blue.opacity(0.05)).clipShape(.rect(cornerRadius: 6))
 
             ForEach(viewModel.allowedSpotterCallsigns, id: \.self) { callsign in
                 HStack {
@@ -2181,7 +2176,7 @@ struct ContentView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Spotter erlauben").font(.caption2).foregroundColor(.secondary)
+                Text("Spotter erlauben").font(.caption2).foregroundStyle(.secondary)
                 HStack(spacing: 4) {
                     TextField("z.B. DJ6GI", text: $newAllowedSpotterCallsign)
                         .textFieldStyle(UnifiedTextFieldStyle())
@@ -2194,7 +2189,7 @@ struct ContentView: View {
                         newAllowedSpotterCallsign = ""
                     } label: {
                         Image(systemName: "plus.circle.fill")
-                            .foregroundColor(newAllowedSpotterCallsign.trimmingCharacters(in: .whitespaces).isEmpty ? .secondary : .blue)
+                            .foregroundStyle(newAllowedSpotterCallsign.trimmingCharacters(in: .whitespaces).isEmpty ? Color.secondary : Color.blue)
                     }
                     .buttonStyle(.plain)
                     .disabled(newAllowedSpotterCallsign.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -2211,7 +2206,7 @@ struct ContentView: View {
             HStack {
                 Text(L("sidebar.left.title").uppercased())
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                 Spacer()
             }
             .padding(.horizontal, 12)
@@ -2224,14 +2219,14 @@ struct ContentView: View {
                 Section(isExpanded: $isWsjtxServerExpanded) {
                     VStack(alignment: .leading, spacing: 8) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("UDP IP-Adresse").font(.caption).foregroundColor(.secondary)
+                            Text("UDP IP-Adresse").font(.caption).foregroundStyle(.secondary)
                             TextField("224.0.0.1", text: $udpAddress)
                                 .textFieldStyle(UnifiedTextFieldStyle())
                                 .controlSize(.small)
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("UDP Port").font(.caption).foregroundColor(.secondary)
+                            Text("UDP Port").font(.caption).foregroundStyle(.secondary)
                             NumericTextField("2237", value: $udpPort)
                                 .textFieldStyle(UnifiedTextFieldStyle())
                                 .controlSize(.small)
@@ -2254,8 +2249,8 @@ struct ContentView: View {
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 2)
                                 .background(isMulticastAddress ? Color.blue.opacity(0.15) : Color.orange.opacity(0.15))
-                                .foregroundColor(isMulticastAddress ? .blue : .orange)
-                                .cornerRadius(3)
+                                .foregroundStyle(isMulticastAddress ? .blue : .orange)
+                                .clipShape(.rect(cornerRadius: 3))
                         }
                         
                         Button(L("sidebar.left.connect")) {
@@ -2272,14 +2267,14 @@ struct ContentView: View {
                 Section(isExpanded: $isUdpBridgeExpanded) {
                     VStack(alignment: .leading, spacing: 8) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(isDe ? "UDP Weiterleitungs-IP" : "UDP Forwarding IP").font(.caption).foregroundColor(.secondary)
+                            Text(isDe ? "UDP Weiterleitungs-IP" : "UDP Forwarding IP").font(.caption).foregroundStyle(.secondary)
                             TextField("127.0.0.1", text: $udpBridgeAddress)
                                 .textFieldStyle(UnifiedTextFieldStyle())
                                 .controlSize(.small)
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(isDe ? "Weiterleitungs-Port (Bridge)" : "Forwarding Port (Bridge)").font(.caption).foregroundColor(.secondary)
+                            Text(isDe ? "Weiterleitungs-Port (Bridge)" : "Forwarding Port (Bridge)").font(.caption).foregroundStyle(.secondary)
                             NumericTextField(isDe ? "z.B. 2238 (0 = Aus)" : "e.g. 2238 (0 = Off)", value: $udpBridgePort)
                                 .textFieldStyle(UnifiedTextFieldStyle())
                                 .controlSize(.small)
@@ -2303,8 +2298,8 @@ struct ContentView: View {
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 2)
                                 .background(isBridgeActive ? Color.green.opacity(0.15) : Color.gray.opacity(0.15))
-                                .foregroundColor(isBridgeActive ? .green : .gray)
-                                .cornerRadius(3)
+                                .foregroundStyle(isBridgeActive ? .green : .gray)
+                                .clipShape(.rect(cornerRadius: 3))
                             
                             if isBridgeActive {
                                 Text(isMulticastBridge ? "MC" : "UC")
@@ -2312,14 +2307,14 @@ struct ContentView: View {
                                     .padding(.horizontal, 4)
                                     .padding(.vertical, 2)
                                     .background(isMulticastBridge ? Color.blue.opacity(0.15) : Color.orange.opacity(0.15))
-                                    .foregroundColor(isMulticastBridge ? .blue : .orange)
-                                    .cornerRadius(3)
+                                    .foregroundStyle(isMulticastBridge ? .blue : .orange)
+                                    .clipShape(.rect(cornerRadius: 3))
                             }
                         }
                         
                         Text(isDe ? "Leitet alle empfangenen FT8/FT4 Dekodierungen, welche die aktiven DX-Filter passiert haben, an diesen UDP-Port weiter." : "Forwards all received FT8/FT4 decodes passing active DX filters to this UDP port.")
                             .font(.system(size: 9))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .lineLimit(nil)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -2336,7 +2331,7 @@ struct ContentView: View {
                                 .frame(width: 7, height: 7)
                             Text("C1:")
                                 .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Picker("", selection: Binding(
                                 get: {
                                     viewModel.availableClusters.first { $0.host == cluster1Host && $0.port == cluster1Port && isCluster1Enabled }
@@ -2369,7 +2364,7 @@ struct ContentView: View {
                                 .frame(width: 7, height: 7)
                             Text("C2:")
                                 .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Picker("", selection: Binding(
                                 get: {
                                     viewModel.availableClusters.first { $0.host == cluster2Host && $0.port == cluster2Port && isCluster2Enabled }
@@ -2402,7 +2397,7 @@ struct ContentView: View {
                                 .frame(width: 7, height: 7)
                             Text("C3:")
                                 .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Picker("", selection: Binding(
                                 get: {
                                     viewModel.availableClusters.first { $0.host == cluster3Host && $0.port == cluster3Port && isCluster3Enabled }
@@ -2436,7 +2431,7 @@ struct ContentView: View {
                 Section(isExpanded: $isTelnetServerExpanded) {
                     VStack(alignment: .leading, spacing: 12) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(L("settings.telnet.port")).font(.caption).foregroundColor(.secondary)
+                            Text(L("settings.telnet.port")).font(.caption).foregroundStyle(.secondary)
                             TextField("8000", value: $telnetServerPort, format: .number.grouping(.never))
                                 .textFieldStyle(UnifiedTextFieldStyle())
                                 .controlSize(.small)
@@ -2455,12 +2450,12 @@ struct ContentView: View {
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 2)
                                 .background(isTelnetActive ? Color.green.opacity(0.15) : Color.red.opacity(0.15))
-                                .foregroundColor(isTelnetActive ? .green : .red)
-                                .cornerRadius(3)
+                                .foregroundStyle(isTelnetActive ? .green : .red)
+                                .clipShape(.rect(cornerRadius: 3))
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(L("settings.telnet.callsign")).font(.caption).foregroundColor(.secondary)
+                            Text(L("settings.telnet.callsign")).font(.caption).foregroundStyle(.secondary)
                             TextField("GUEST", text: $clusterCallsign)
                                 .textFieldStyle(UnifiedTextFieldStyle())
                                 .controlSize(.small)
@@ -2480,133 +2475,6 @@ struct ContentView: View {
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
-        }
-    }
-
-    @ViewBuilder
-    private var logConsoleView: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                if consoleTab == 1 {
-                    HStack(spacing: 8) {
-                        Toggle(L("logs.filter.decodes"), isOn: $wsjtxShowDecodes)
-                            .toggleStyle(.checkbox)
-                            .controlSize(.small)
-                        Toggle(L("logs.filter.in"), isOn: $wsjtxShowIncoming)
-                            .toggleStyle(.checkbox)
-                            .controlSize(.small)
-                        Toggle(L("logs.filter.out"), isOn: $wsjtxShowOutgoing)
-                            .toggleStyle(.checkbox)
-                            .controlSize(.small)
-                    }
-                } else {
-                    Spacer().frame(width: 1)
-                }
-                
-                Spacer()
-                
-                Picker("", selection: $consoleTab) {
-                    Text(L("logs.tab.system")).tag(0)
-                    Text(L("logs.tab.wsjtx")).tag(1)
-                    Text(L("logs.tab.cluster")).tag(2)
-                }
-                .pickerStyle(.segmented)
-                .controlSize(.small)
-                .frame(width: 320)
-                
-                Spacer()
-                
-                // Auto-scroll pause button
-                Button(action: {
-                    viewModel.isLogScrollPaused.toggle()
-                }) {
-                    Image(systemName: viewModel.isLogScrollPaused ? "play.circle" : "pause.circle")
-                        .foregroundColor(viewModel.isLogScrollPaused ? .orange : .primary)
-                }
-                .buttonStyle(.plain)
-                .help(viewModel.isLogScrollPaused ? L("toolbar.freeze.tooltip.resume") : L("toolbar.freeze.tooltip.pause"))
-                .padding(.trailing, 4)
-                
-                HStack(spacing: 4) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
-                    TextField(L("logs.search"), text: $viewModel.logConsoleSearchText)
-                        .font(.system(size: 11))
-                        .textFieldStyle(.plain)
-                        .frame(width: 150)
-                    if !viewModel.logConsoleSearchText.isEmpty {
-                        Button(action: { viewModel.logConsoleSearchText = "" }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(Color(NSColor.textBackgroundColor))
-                .cornerRadius(6)
-                .padding(.trailing, 4)
-                
-                if consoleTab == 2 {
-                    Button(action: {
-                        isClusterSendSheetPresented = true
-                    }) {
-                        Image(systemName: "paperplane")
-                            .foregroundColor(.primary)
-                    }
-                    .buttonStyle(.plain)
-                    .help(L("sidebar.left.sendSpot"))
-                    .padding(.trailing, 4)
-                }
-                
-                // Detach button
-                Button(action: {
-                    isLogConsoleDetached = true
-                    openWindow(id: "logs_raw")
-                }) {
-                    Image(systemName: "macwindow.badge.plus")
-                        .foregroundColor(.primary)
-                }
-                .buttonStyle(.plain)
-                .help(L("logs.detach"))
-                .padding(.trailing, 8)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Color(NSColor.controlBackgroundColor))
-            
-            Group {
-                if consoleTab == 0 {
-                    LogConsoleTextView(
-                        lines: systemLogLines,
-                        isPaused: viewModel.isLogScrollPaused,
-                        fontSize: fontSizeLog,
-                        isNewestOnTop: isNewestOnTop,
-                        backgroundColor: Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor))
-                    )
-                } else if consoleTab == 1 {
-                    LogConsoleTextView(
-                        lines: wsjtxLogLines,
-                        isPaused: viewModel.isLogScrollPaused,
-                        fontSize: fontSizeLog,
-                        isNewestOnTop: isNewestOnTop,
-                        backgroundColor: Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor))
-                    )
-                } else {
-                    LogConsoleTextView(
-                        lines: clusterLogLines,
-                        isPaused: viewModel.isLogScrollPaused,
-                        fontSize: fontSizeLog,
-                        isNewestOnTop: isNewestOnTop,
-                        backgroundColor: Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor))
-                    )
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .sheet(isPresented: $isClusterSendSheetPresented) {
-            ClusterSendDialog(viewModel: viewModel)
         }
     }
 
@@ -2639,129 +2507,6 @@ struct ContentView: View {
         }
     }
 
-    private func scrollToActive<T: Hashable>(proxy: ScrollViewProxy, count: Int, first: T?, last: T?) {
-        guard count > 0 else { return }
-        DispatchQueue.main.async {
-            if self.isNewestOnTop {
-                if let first = first {
-                    proxy.scrollTo(first, anchor: .top)
-                }
-            } else {
-                if let last = last {
-                    proxy.scrollTo(last, anchor: .bottom)
-                }
-            }
-        }
-    }
-
-    private func scrollToNewestRow() {
-        DispatchQueue.main.async {
-            guard let tableView = self.findTableView(),
-                  let scrollView = tableView.enclosingScrollView,
-                  let clipView = scrollView.contentView as NSClipView? else { return }
-            
-            if self.isNewestOnTop {
-                clipView.scroll(to: NSPoint(x: 0, y: 0))
-                scrollView.reflectScrolledClipView(clipView)
-            } else {
-                let maxY = max(0, tableView.frame.height - clipView.bounds.height)
-                clipView.scroll(to: NSPoint(x: 0, y: maxY))
-                scrollView.reflectScrolledClipView(clipView)
-            }
-        }
-    }
-
-    private var systemLogLines: [LogLine] {
-        let rawLogs: [String]
-        if viewModel.isLogScrollPaused, let frozen = viewModel.frozenSystemLogs {
-            rawLogs = frozen
-        } else {
-            rawLogs = (viewModel.logHistory + viewModel.lotwManager.logHistory + viewModel.qrzManager.logHistory + viewModel.rumlogManager.logHistory).sorted()
-        }
-        
-        let query = viewModel.logConsoleSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let filteredLogs: [String]
-        if query.isEmpty {
-            filteredLogs = rawLogs
-        } else {
-            filteredLogs = rawLogs.filter { $0.lowercased().contains(query) }
-        }
-        
-        let logs = isNewestOnTop ? Array(filteredLogs.reversed()) : filteredLogs
-        return logs.map { LogLine(text: $0, color: logColor(for: $0)) }
-    }
-    
-    private var wsjtxLogLines: [LogLine] {
-        let rawWSJTXLogs: [WSJTXRawLogEntry]
-        if viewModel.isLogScrollPaused, let frozen = viewModel.frozenWSJTXLogs {
-            rawWSJTXLogs = frozen
-        } else {
-            rawWSJTXLogs = viewModel.wsjtxRawLogs
-        }
-        
-        let activeTypeLogs = rawWSJTXLogs.filter { log in
-            switch log.type {
-            case .decode: return wsjtxShowDecodes
-            case .incoming: return wsjtxShowIncoming
-            case .outgoing: return wsjtxShowOutgoing
-            }
-        }
-        
-        let query = viewModel.logConsoleSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let filteredLogs: [WSJTXRawLogEntry]
-        if query.isEmpty {
-            filteredLogs = activeTypeLogs
-        } else {
-            filteredLogs = activeTypeLogs.filter { $0.message.lowercased().contains(query) }
-        }
-        
-        let logs = isNewestOnTop ? Array(filteredLogs.reversed()) : filteredLogs
-        return logs.map { log in
-            let ts = formatLogTime(log.timestamp)
-            return LogLine(text: "[\(ts)] [\(log.type.rawValue)] \(log.message)", color: wsjtxLogColor(for: log.type))
-        }
-    }
-    
-    private var clusterLogLines: [LogLine] {
-        let rawClusterLogs: [ClusterRawLogEntry]
-        if viewModel.isLogScrollPaused, let frozen = viewModel.frozenClusterLogs {
-            rawClusterLogs = frozen
-        } else {
-            rawClusterLogs = viewModel.clusterRawLogs
-        }
-        
-        let query = viewModel.logConsoleSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let filteredLogs: [ClusterRawLogEntry]
-        if query.isEmpty {
-            filteredLogs = rawClusterLogs
-        } else {
-            filteredLogs = rawClusterLogs.filter { $0.message.lowercased().contains(query) }
-        }
-        
-        let logs = isNewestOnTop ? Array(filteredLogs.reversed()) : filteredLogs
-        let clusterColor = Color(hex: UserDefaults.standard.string(forKey: "colorLogCluster") ?? "", defaultColor: .primary)
-        return logs.map { LogLine(text: $0.message, color: clusterColor) }
-    }
-
-    private func findTableView() -> NSTableView? {
-        guard let window = self.hostingWindow ?? NSApp.mainWindow ?? NSApp.keyWindow else { return nil }
-        if let contentView = window.contentView {
-            return findTableView(in: contentView)
-        }
-        return nil
-    }
-
-    private func findTableView(in view: NSView) -> NSTableView? {
-        if let tableView = view as? NSTableView, tableView.tableColumns.count > 1 {
-            return tableView
-        }
-        for subview in view.subviews {
-            if let found = findTableView(in: subview) {
-                return found
-            }
-        }
-        return nil
-    }
 }
 
 struct CountryInputField: View {
@@ -2779,7 +2524,7 @@ struct CountryInputField: View {
                     Image(systemName: "plus.circle.fill")
                 }
                 .buttonStyle(.plain)
-                .foregroundColor(.blue)
+                .foregroundStyle(.blue)
                 .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             if !suggestions.isEmpty {
@@ -2802,7 +2547,7 @@ struct CountryInputField: View {
                     }
                 }
                 .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(4)
+                .clipShape(.rect(cornerRadius: 4))
                 .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.secondary.opacity(0.2), lineWidth: 1))
             }
         }

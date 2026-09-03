@@ -1,3 +1,4 @@
+import Observation
 import SwiftUI
 import Combine
 
@@ -22,12 +23,13 @@ public enum AppLanguage: String, CaseIterable, Identifiable {
 }
 
 /// Zentraler Manager für die Mehrsprachigkeit (Deutsch & Englisch) in AutoQSO
-public class LanguageManager: ObservableObject {
+@Observable
+public class LanguageManager {
     public static let shared = LanguageManager()
     
     private let userDefaultsKey = "appLanguage"
     
-    @Published public var selectedLanguage: AppLanguage {
+    public var selectedLanguage: AppLanguage {
         didSet {
             UserDefaults.standard.set(selectedLanguage.rawValue, forKey: userDefaultsKey)
         }

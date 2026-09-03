@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct LogbookView: View {
-    @ObservedObject var viewModel: DecodeViewModel
-    @ObservedObject private var langManager = LanguageManager.shared
+    @Bindable var viewModel: DecodeViewModel
+    var langManager = LanguageManager.shared
     
     @State private var selection = Set<QSOEntry.ID>()
     @State private var sortOrder = [KeyPathComparator(\QSOEntry.qsoDate, order: .reverse)]
@@ -81,7 +81,7 @@ struct LogbookView: View {
                         selection.remove(qso.id)
                     } label: {
                         Image(systemName: "trash")
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                     }
                     .buttonStyle(.plain)
                     .help(L("logbook.delete"))

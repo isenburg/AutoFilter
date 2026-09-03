@@ -3,13 +3,12 @@ import SwiftUI
 @main
 struct AutoQSOApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @StateObject private var viewModel: DecodeViewModel
-    @ObservedObject private var langManager = LanguageManager.shared
+    @State private var viewModel = DecodeViewModel()
+    private var langManager = LanguageManager.shared
     @AppStorage("appColorScheme") private var appColorScheme = "system"
     
     init() {
         _ = DatabaseManager.shared
-        _viewModel = StateObject(wrappedValue: DecodeViewModel())
     }
     
     private var isDe: Bool { langManager.isGerman }

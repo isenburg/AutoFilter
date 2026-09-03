@@ -1,8 +1,10 @@
+import Observation
 import Foundation
 import Network
 import Combine
 
-class DXClusterClient: ObservableObject {
+@Observable
+class DXClusterClient {
     private var connection: NWConnection?
     private let clientQueue = DispatchQueue(label: "com.dxfilter.client", qos: .userInitiated)
     private var receiveBuffer = ""
@@ -62,6 +64,9 @@ class DXClusterClient: ObservableObject {
         connection?.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
             guard let self = self else { return }
             if let data = data, let newStr = String(data: data, encoding: .utf8) {
+                if self.receiveBuffer.count > 65536 {
+                    self.receiveBuffer = ""
+                }
                 self.receiveBuffer += newStr
                 
                 var components = self.receiveBuffer.components(separatedBy: .newlines)
