@@ -79,9 +79,14 @@ struct NewGridMapView: View {
         }
         .onAppear {
             displayGridClusters = viewModel.mapState.newGridClusters
+            updateCachedSpotItems(from: bandFilteredClusters)
         }
         .onChange(of: viewModel.mapState.newGridClusters) { _, newClusters in
             displayGridClusters = newClusters
+            updateCachedSpotItems(from: bandFilteredClusters)
+        }
+        .onChange(of: selectedBand) { _, _ in
+            updateCachedSpotItems(from: bandFilteredClusters)
         }
         .sheet(item: Binding(
             get: { selectedWorkedGrid.map { WorkedGridItem(grid: $0) } },
@@ -98,6 +103,22 @@ struct NewGridMapView: View {
     @State private var inspectedGrid: GridInspectorInfo? = nil
     @State private var popoverTapPoint: CGPoint? = nil
     @State private var cachedGlobeSpotItems: [GlobeSpotItem] = []
+
+    private func updateCachedSpotItems(from clusters: [NewGridCluster]) {
+        cachedGlobeSpotItems = clusters.map { cluster in
+            let topCall = cluster.calls.first ?? cluster.grid
+            let primaryBand = cluster.bands.first?.name ?? "20m"
+            return GlobeSpotItem(
+                id: cluster.id,
+                title: "\(cluster.grid): \(topCall)",
+                subtitle: "\(cluster.country) (\(cluster.spotCount) Spots)",
+                latitude: cluster.latitude,
+                longitude: cluster.longitude,
+                bandName: primaryBand
+            )
+        }
+    }
+
 
     private struct WorkedGridItem: Identifiable {
         let grid: String
@@ -248,7 +269,7 @@ struct NewGridMapView: View {
             gridLineColor: gridOverlayLineColor,
             gridBadgeColor: gridOverlayBadgeColor,
             gridFontSize: gridOverlayFontSize,
-            spotItems: [],
+            spotItems: cachedGlobeSpotItems,
             mapStyle: selectedMapStyle,
             inspectPopoverBuilder: { coord, spanDelta, closeAction in
                 let info = makeGridInspectorInfo(for: coord, spanDelta: spanDelta)

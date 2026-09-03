@@ -124,6 +124,7 @@ public enum DXFilterSectionId: String, CaseIterable, Codable, Identifiable {
     case blockedITUZones = "blockedITUZones"
     case allowedCallsigns = "allowedCallsigns"
     case allowedGrids = "allowedGrids"
+    case messageFilter = "messageFilter"
     case mostWantedOnly = "mostWantedOnly"
     case workedBefore = "workedBefore"
     case gridFilter = "gridFilter"
@@ -136,6 +137,7 @@ public enum DXFilterSectionId: String, CaseIterable, Codable, Identifiable {
         .allowedGrids,
         .allowedCallsigns,
         .allowedCountries,
+        .messageFilter,
         .continents,
         .blockedCountries,
         .blockedCQZones,
@@ -273,6 +275,8 @@ class DecodeViewModel {
     
     var isFiltersEnabled: Bool = true
     var isWsjtSpecialFilterEnabled: Bool = false
+    var isMessageFilterEnabled: Bool = false
+    var messageFilterQuery: String = ""
     var isAutoModeOnlyCQEnabled: Bool = false
     var isAutoModeAnswerCallersEnabled: Bool = true
     var isOnlyMostWantedFilterEnabled: Bool = false
@@ -290,6 +294,15 @@ class DecodeViewModel {
     // Filter Order & Presets (First-Match Pipeline)
     var activeFilterOrderMode: FilterOrderMode = .defaultOrder
     var customFilterOrder: [DXFilterSectionId] = DXFilterSectionId.defaultOrder
+    
+    // Filter Profiles & Smart Presets
+    var filterProfiles: [FilterProfile] = []
+    var activeFilterProfileId: String = "system_allround"
+    var isFilterProfileModified: Bool = false
+    
+    var activeFilterProfile: FilterProfile? {
+        filterProfiles.first(where: { $0.id == activeFilterProfileId }) ?? filterProfiles.first
+    }
     
     var activeFilterOrder: [DXFilterSectionId] {
         activeFilterOrderMode == .defaultOrder ? DXFilterSectionId.defaultOrder : customFilterOrder
@@ -1467,6 +1480,8 @@ class DecodeViewModel {
         blockedITUZones = defaults.array(forKey: "blockedITUZones") as? [Int] ?? []
         
         isWsjtSpecialFilterEnabled = defaults.bool(forKey: "isWsjtSpecialFilterEnabled")
+        isMessageFilterEnabled = defaults.bool(forKey: "isMessageFilterEnabled")
+        messageFilterQuery = defaults.string(forKey: "messageFilterQuery") ?? ""
         isAutoModeOnlyCQEnabled = defaults.bool(forKey: "isAutoModeOnlyCQEnabled")
         isAutoModeAnswerCallersEnabled = defaults.object(forKey: "isAutoModeAnswerCallersEnabled") as? Bool ?? true
         isOnlyMostWantedFilterEnabled = defaults.bool(forKey: "onlyMostWanted")
@@ -1509,6 +1524,7 @@ class DecodeViewModel {
         } else {
             customFilterOrder = DXFilterSectionId.defaultOrder
         }
+        loadFilterProfiles()
     }
     
     func saveFilters() {
@@ -1525,6 +1541,8 @@ class DecodeViewModel {
         defaults.set(blockedITUZones, forKey: "blockedITUZones")
         
         defaults.set(isWsjtSpecialFilterEnabled, forKey: "isWsjtSpecialFilterEnabled")
+        defaults.set(isMessageFilterEnabled, forKey: "isMessageFilterEnabled")
+        defaults.set(messageFilterQuery, forKey: "messageFilterQuery")
         defaults.set(isAutoModeOnlyCQEnabled, forKey: "isAutoModeOnlyCQEnabled")
         defaults.set(isAutoModeAnswerCallersEnabled, forKey: "isAutoModeAnswerCallersEnabled")
         defaults.set(isOnlyMostWantedFilterEnabled, forKey: "onlyMostWanted")
@@ -1544,7 +1562,221 @@ class DecodeViewModel {
         
         clearEvaluationCache()
         scheduleRecalculations()
+        self.isFilterProfileModified = checkIsFilterProfileModified()
     }
+
+    // MARK: - Filter Profile Management
+    
+    func loadFilterProfiles() {
+        let loaded = DatabaseManager.shared.loadFilterProfiles()
+        self.filterProfiles = loaded
+        
+        if let savedId = UserDefaults.standard.string(forKey: "activeFilterProfileId"),
+           loaded.contains(where: { $0.id == savedId }) {
+            self.activeFilterProfileId = savedId
+        } else {
+            self.activeFilterProfileId = "system_allround"
+        }
+        
+        self.isFilterProfileModified = checkIsFilterProfileModified()
+    }
+    
+    func applyFilterProfile(id: String) {
+        guard let profile = filterProfiles.first(where: { $0.id == id }) else { return }
+        applyFilterProfile(profile)
+    }
+    
+    func applyFilterProfile(_ profile: FilterProfile) {
+        self.activeFilterProfileId = profile.id
+        UserDefaults.standard.set(profile.id, forKey: "activeFilterProfileId")
+        
+        // Apply Whitelists
+        self.allowedDXCallsigns = profile.allowedDXCallsigns
+        self.allowedGrids = profile.allowedGrids
+        self.allowedCountries = profile.allowedCountries
+        self.allowedSpotterCountries = profile.allowedSpotterCountries
+        self.allowedSpotterCallsigns = profile.allowedSpotterCallsigns
+        
+        // Apply Message Filter
+        self.isMessageFilterEnabled = profile.isMessageFilterEnabled
+        self.messageFilterQuery = profile.messageFilterQuery
+        
+        // Apply Blacklists
+        self.blockedCountries = profile.blockedCountries
+        self.disabledContinents = profile.disabledContinents
+        self.blockedCQZones = profile.blockedCQZones
+        self.blockedITUZones = profile.blockedITUZones
+        
+        // Apply Special Rules
+        self.isOnlyMostWantedFilterEnabled = profile.isOnlyMostWantedFilterEnabled
+        self.maxMostWantedRank = profile.maxMostWantedRank
+        self.isWorkedBeforeFilterEnabled = profile.isWorkedBeforeFilterEnabled
+        self.workedBeforeDuration = profile.workedBeforeDuration
+        self.workedBeforeUnit = WorkedBeforeUnit(rawValue: profile.workedBeforeUnit) ?? .months
+        self.isNew4CharGridOnlyFilterEnabled = profile.isNew4CharGridOnlyFilterEnabled
+        self.isNew6CharGridOnlyFilterEnabled = profile.isNew6CharGridOnlyFilterEnabled
+        self.isWsjtSpecialFilterEnabled = profile.isWsjtSpecialFilterEnabled
+        self.isDuplicateFilterEnabled = profile.isDuplicateFilterEnabled
+        self.duplicateSpotWindowMinutes = profile.duplicateSpotWindowMinutes
+        self.duplicateSpotFrequencyTolerance = profile.duplicateSpotFrequencyTolerance
+        
+        // Apply Pipeline Order
+        let parsed = profile.filterOrder.compactMap { DXFilterSectionId(rawValue: $0) }
+        var completeOrder = parsed
+        for s in DXFilterSectionId.defaultOrder {
+            if !completeOrder.contains(s) {
+                completeOrder.append(s)
+            }
+        }
+        self.customFilterOrder = completeOrder
+        self.activeFilterOrderMode = .custom
+        
+        self.saveFilters()
+        self.isFilterProfileModified = false
+        self.clearBlockedDecodes()
+    }
+    
+    func saveCurrentSettingsToActiveProfile() {
+        guard let current = activeFilterProfile else { return }
+        
+        if current.isSystem {
+            // Cannot overwrite read-only system profile; create a user copy
+            let newName = "\(current.name) (Kopie)"
+            saveCurrentSettingsAsNewProfile(name: newName, iconName: current.iconName)
+            return
+        }
+        
+        var updated = current
+        updated.updatedAt = Date()
+        populateProfileFields(into: &updated)
+        
+        DatabaseManager.shared.saveFilterProfile(updated)
+        
+        if let idx = filterProfiles.firstIndex(where: { $0.id == updated.id }) {
+            filterProfiles[idx] = updated
+        }
+        self.isFilterProfileModified = false
+    }
+    
+    func saveCurrentSettingsAsNewProfile(name: String, iconName: String = "bookmark.fill", autoBand: String? = nil, autoMode: String? = nil) {
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanName.isEmpty else { return }
+        
+        var newProfile = FilterProfile(
+            id: UUID().uuidString,
+            name: cleanName,
+            isSystem: false,
+            iconName: iconName,
+            autoBand: autoBand,
+            autoMode: autoMode,
+            updatedAt: Date()
+        )
+        populateProfileFields(into: &newProfile)
+        
+        DatabaseManager.shared.saveFilterProfile(newProfile)
+        self.filterProfiles.append(newProfile)
+        self.activeFilterProfileId = newProfile.id
+        UserDefaults.standard.set(newProfile.id, forKey: "activeFilterProfileId")
+        self.isFilterProfileModified = false
+    }
+    
+    func resetActiveProfileToOriginal() {
+        guard let original = activeFilterProfile else { return }
+        applyFilterProfile(original)
+    }
+    
+    func deleteFilterProfile(id: String) {
+        guard let p = filterProfiles.first(where: { $0.id == id }), !p.isSystem else { return }
+        DatabaseManager.shared.deleteFilterProfile(id: id)
+        filterProfiles.removeAll(where: { $0.id == id })
+        
+        if activeFilterProfileId == id {
+            applyFilterProfile(id: "system_allround")
+        }
+    }
+    
+    private func populateProfileFields(into profile: inout FilterProfile) {
+        profile.allowedDXCallsigns = self.allowedDXCallsigns
+        profile.allowedGrids = self.allowedGrids
+        profile.allowedCountries = self.allowedCountries
+        profile.allowedSpotterCountries = self.allowedSpotterCountries
+        profile.allowedSpotterCallsigns = self.allowedSpotterCallsigns
+        
+        profile.isMessageFilterEnabled = self.isMessageFilterEnabled
+        profile.messageFilterQuery = self.messageFilterQuery
+        
+        profile.blockedCountries = self.blockedCountries
+        profile.disabledContinents = self.disabledContinents
+        profile.blockedCQZones = self.blockedCQZones
+        profile.blockedITUZones = self.blockedITUZones
+        
+        profile.isOnlyMostWantedFilterEnabled = self.isOnlyMostWantedFilterEnabled
+        profile.maxMostWantedRank = self.maxMostWantedRank
+        profile.isWorkedBeforeFilterEnabled = self.isWorkedBeforeFilterEnabled
+        profile.workedBeforeDuration = self.workedBeforeDuration
+        profile.workedBeforeUnit = self.workedBeforeUnit.rawValue
+        profile.isNew4CharGridOnlyFilterEnabled = self.isNew4CharGridOnlyFilterEnabled
+        profile.isNew6CharGridOnlyFilterEnabled = self.isNew6CharGridOnlyFilterEnabled
+        profile.isWsjtSpecialFilterEnabled = self.isWsjtSpecialFilterEnabled
+        profile.isDuplicateFilterEnabled = self.isDuplicateFilterEnabled
+        profile.duplicateSpotWindowMinutes = self.duplicateSpotWindowMinutes
+        profile.duplicateSpotFrequencyTolerance = self.duplicateSpotFrequencyTolerance
+        profile.filterOrder = self.activeFilterOrder.map { $0.rawValue }
+    }
+    
+    func checkIsFilterProfileModified() -> Bool {
+        guard let original = activeFilterProfile else { return false }
+        
+        if original.allowedDXCallsigns != self.allowedDXCallsigns { return true }
+        if original.allowedGrids != self.allowedGrids { return true }
+        if original.allowedCountries != self.allowedCountries { return true }
+        if original.allowedSpotterCountries != self.allowedSpotterCountries { return true }
+        if original.allowedSpotterCallsigns != self.allowedSpotterCallsigns { return true }
+        
+        if original.isMessageFilterEnabled != self.isMessageFilterEnabled { return true }
+        if original.messageFilterQuery != self.messageFilterQuery { return true }
+        
+        if original.blockedCountries != self.blockedCountries { return true }
+        if original.disabledContinents != self.disabledContinents { return true }
+        if original.blockedCQZones != self.blockedCQZones { return true }
+        if original.blockedITUZones != self.blockedITUZones { return true }
+        
+        if original.isOnlyMostWantedFilterEnabled != self.isOnlyMostWantedFilterEnabled { return true }
+        if original.maxMostWantedRank != self.maxMostWantedRank { return true }
+        if original.isWorkedBeforeFilterEnabled != self.isWorkedBeforeFilterEnabled { return true }
+        if original.workedBeforeDuration != self.workedBeforeDuration { return true }
+        if original.workedBeforeUnit != self.workedBeforeUnit.rawValue { return true }
+        if original.isNew4CharGridOnlyFilterEnabled != self.isNew4CharGridOnlyFilterEnabled { return true }
+        if original.isNew6CharGridOnlyFilterEnabled != self.isNew6CharGridOnlyFilterEnabled { return true }
+        if original.isWsjtSpecialFilterEnabled != self.isWsjtSpecialFilterEnabled { return true }
+        if original.isDuplicateFilterEnabled != self.isDuplicateFilterEnabled { return true }
+        
+        let currentOrderStrs = self.activeFilterOrder.map { $0.rawValue }
+        if original.filterOrder != currentOrderStrs { return true }
+        
+        return false
+    }
+    
+    func checkAutoProfileSwitch(band: String, mode: String) {
+        let cleanBand = band.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let cleanMode = mode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        
+        guard let matching = filterProfiles.first(where: { profile in
+            if let b = profile.autoBand?.lowercased(), !b.isEmpty, b == cleanBand {
+                return true
+            }
+            if let m = profile.autoMode?.uppercased(), !m.isEmpty, m == cleanMode {
+                return true
+            }
+            return false
+        }) else { return }
+        
+        if matching.id != activeFilterProfileId {
+            print("Auto-Switching filter profile to: \(matching.name) (triggered by Band: \(band), Mode: \(mode))")
+            applyFilterProfile(matching)
+        }
+    }
+
 
     private var lastLoggedFilterMessages: [String: Date] = [:]
     
@@ -1609,6 +1841,14 @@ class DecodeViewModel {
                         let g4 = String(g.prefix(4)).uppercased()
                         if shouldLog { logFilterDecision("[Filter ✅ PASS] \(call) (Grid \(g4)) passiert via Pos. \(pos) (Erlaubte Grids)") }
                         return true // Whitelist-Treffer -> Sofort-Pass (Bypass / Ausnahme)
+                    }
+                }
+                
+            case .messageFilter:
+                if isMessageFilterEnabled && !messageFilterQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    if !MessageFilterEvaluator.evaluate(message: comment, query: messageFilterQuery) {
+                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Nachricht \"\(comment)\" entspricht nicht: \(messageFilterQuery))") }
+                        return false
                     }
                 }
                 

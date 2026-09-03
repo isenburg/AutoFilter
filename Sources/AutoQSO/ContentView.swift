@@ -82,6 +82,10 @@ struct ContentView: View {
     @AppStorage("isBlockedCountriesExpanded") private var isBlockedCountriesExpanded = true
     @AppStorage("isAllowedDXCountriesExpanded") private var isAllowedDXCountriesExpanded = true
     @AppStorage("isContinentFilterExpanded") private var isContinentFilterExpanded = true
+    @AppStorage("isMessageFilterExpanded") private var isMessageFilterExpanded = true
+    @State private var isShowingProfileManagerSheet = false
+    @State private var isShowingNewProfileAlert = false
+    @State private var newProfileName = ""
     @AppStorage("isBlockedCQZonesExpanded") private var isBlockedCQZonesExpanded = true
     @AppStorage("isBlockedITUZonesExpanded") private var isBlockedITUZonesExpanded = true
     @AppStorage("isWsjtSpecialFilterExpanded") private var isWsjtSpecialFilterExpanded = true
@@ -552,6 +556,12 @@ struct ContentView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResizeNotification), perform: handleWindowResize)
+        .sheet(isPresented: $isShowingProfileManagerSheet) {
+            FilterProfileManagerSheet(viewModel: viewModel)
+        }
+        .sheet(isPresented: $isShowingNewProfileAlert) {
+            SaveNewProfileSheet(viewModel: viewModel)
+        }
     }
 
     private func handleOnAppear() {
@@ -1503,6 +1513,149 @@ struct ContentView: View {
                 .padding(.bottom, 4)
                 .controlSize(.small)
                 
+                if rightSidebarTab == 0 {
+                    HStack(spacing: 6) {
+                        Menu {
+                            // System Presets
+                            Section(isDe ? "System-Vorlagen" : "System Presets") {
+                                ForEach(viewModel.filterProfiles.filter { $0.isSystem }) { profile in
+                                    Button {
+                                        viewModel.applyFilterProfile(profile)
+                                    } label: {
+                                        HStack {
+                                            Label(profile.name, systemImage: profile.iconName)
+                                            if profile.id == viewModel.activeFilterProfileId {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // User Custom Profiles
+                            let customProfiles = viewModel.filterProfiles.filter { !$0.isSystem }
+                            if !customProfiles.isEmpty {
+                                Section(isDe ? "Eigene Profile" : "Custom Profiles") {
+                                    ForEach(customProfiles) { profile in
+                                        Button {
+                                            viewModel.applyFilterProfile(profile)
+                                        } label: {
+                                            HStack {
+                                                Label(profile.name, systemImage: profile.iconName)
+                                                if profile.id == viewModel.activeFilterProfileId {
+                                                    Image(systemName: "checkmark")
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            Divider()
+                            
+                            // Actions
+                            if viewModel.isFilterProfileModified {
+                                Button {
+                                    viewModel.saveCurrentSettingsToActiveProfile()
+                                } label: {
+                                    Label(
+                                        isDe ? "Änderungen in '\(viewModel.activeFilterProfile?.name ?? "Profil")' speichern" : "Save Changes to '\(viewModel.activeFilterProfile?.name ?? "Profile")'",
+                                        systemImage: "square.and.arrow.down"
+                                    )
+                                }
+                                
+                                Button {
+                                    viewModel.resetActiveProfileToOriginal()
+                                } label: {
+                                    Label(isDe ? "Auf Originalzustand zurücksetzen" : "Reset to Original", systemImage: "arrow.counterclockwise")
+                                }
+                                
+                                Divider()
+                            }
+                            
+                            Button {
+                                newProfileName = (viewModel.activeFilterProfile?.name ?? "Profil") + (isDe ? " (Kopie)" : " (Copy)")
+                                isShowingNewProfileAlert = true
+                            } label: {
+                                Label(isDe ? "Als neues Profil speichern..." : "Save as New Profile...", systemImage: "plus.square")
+                            }
+                            
+                            Button {
+                                isShowingProfileManagerSheet = true
+                            } label: {
+                                Label(isDe ? "Profile verwalten..." : "Manage Profiles...", systemImage: "slider.horizontal.2.square")
+                            }
+                        } label: {
+                            HStack(spacing: 5) {
+                                Image(systemName: viewModel.activeFilterProfile?.iconName ?? "bookmark.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.blue)
+                                
+                                Text(viewModel.activeFilterProfile?.name ?? "Allround")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .lineLimit(1)
+                                
+                                if viewModel.isFilterProfileModified {
+                                    Text("*")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundStyle(.orange)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.system(size: 8))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color(NSColor.controlBackgroundColor))
+                            .clipShape(.rect(cornerRadius: 6))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(viewModel.isFilterProfileModified ? Color.orange.opacity(0.6) : Color.secondary.opacity(0.2), lineWidth: 1)
+                            )
+                        }
+                        .menuStyle(.borderlessButton)
+                        .help(isDe ? "Aktives Filter-Profil wählen oder anpassen" : "Select or manage active filter profile")
+                        
+                        Button {
+                            newProfileName = (viewModel.activeFilterProfile?.name ?? "Profil") + (isDe ? " (Kopie)" : " (Copy)")
+                            isShowingNewProfileAlert = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 10, weight: .bold))
+                                .padding(5)
+                                .background(Color(NSColor.controlBackgroundColor))
+                                .clipShape(.rect(cornerRadius: 6))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .help(isDe ? "Aktuelle Einstellungen als neues Profil speichern" : "Save current settings as new profile")
+                        
+                        Button {
+                            isShowingProfileManagerSheet = true
+                        } label: {
+                            Image(systemName: "gearshape")
+                                .font(.system(size: 10))
+                                .padding(5)
+                                .background(Color(NSColor.controlBackgroundColor))
+                                .clipShape(.rect(cornerRadius: 6))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .help(isDe ? "Profile verwalten (Umbenennen, Duplizieren, Export/Import)" : "Manage Profiles (Rename, Duplicate, Export/Import)")
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 4)
+                }
+                
                 Divider()
             }
 
@@ -1516,52 +1669,7 @@ struct ContentView: View {
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
 
-            if rightSidebarTab == 0 {
-                VStack(spacing: 4) {
-                    Divider()
-                    HStack(spacing: 8) {
-                        Button {
-                            viewModel.setFilterOrderMode(.defaultOrder)
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "globe")
-                                    .font(.system(size: 9))
-                                Text(L("filter.order.default"))
-                                    .font(.system(size: 10, weight: viewModel.activeFilterOrderMode == .defaultOrder ? .bold : .medium))
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 4)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(viewModel.activeFilterOrderMode == .defaultOrder ? Color.blue : Color.secondary.opacity(0.18))
-                        .foregroundStyle(viewModel.activeFilterOrderMode == .defaultOrder ? .white : .primary)
-                        .controlSize(.small)
-                        .help(L("filter.order.tooltip.default"))
-                        
-                        Button {
-                            viewModel.setFilterOrderMode(.custom)
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "slider.horizontal.3")
-                                    .font(.system(size: 9))
-                                Text(L("filter.order.custom"))
-                                    .font(.system(size: 10, weight: viewModel.activeFilterOrderMode == .custom ? .bold : .medium))
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 4)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(viewModel.activeFilterOrderMode == .custom ? Color.blue : Color.secondary.opacity(0.18))
-                        .foregroundStyle(viewModel.activeFilterOrderMode == .custom ? .white : .primary)
-                        .controlSize(.small)
-                        .help(L("filter.order.tooltip.custom"))
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.top, 2)
-                    .padding(.bottom, 6)
-                }
-                .background(Color(NSColor.controlBackgroundColor))
-            }
+
         }
     }
 
@@ -1634,6 +1742,68 @@ struct ContentView: View {
     @ViewBuilder
     private func filterSectionView(for sectionId: DXFilterSectionId, index: Int) -> some View {
         switch sectionId {
+        case .messageFilter:
+            Section(isExpanded: $isMessageFilterExpanded) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle(isOn: Binding(
+                        get: { viewModel.isMessageFilterEnabled },
+                        set: { viewModel.isMessageFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                    )) {
+                        Text(isDe ? "Nachrichten-Inhalt filtern" : "Filter Message Content")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                    
+                    Text(isDe ? "Filtert Spots nach Text im Nachrichten-/Kommentarfeld (Groß-/Kleinschreibung egal). Unterstützt boolesche Logik: AND, OR, () und Phrasen in \"\" (z. B. \"5 up\")." : "Filters spots by text in message/comment field (case-insensitive). Supports boolean logic: AND, OR, () and quoted phrases (e.g. \"5 up\").")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                        .italic()
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                    
+                    HStack {
+                        Image(systemName: "text.magnifyingglass")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                        
+                        TextField(isDe ? "z. B. SSB OR RTTY OR \"5 up\"" : "e.g. SSB OR RTTY OR \"5 up\"", text: Binding(
+                            get: { viewModel.messageFilterQuery },
+                            set: { viewModel.messageFilterQuery = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
+                        ))
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 11, design: .monospaced))
+                        
+                        if !viewModel.messageFilterQuery.isEmpty {
+                            Button(action: {
+                                viewModel.messageFilterQuery = ""
+                                viewModel.saveFilters()
+                                viewModel.clearBlockedDecodes()
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                                    .font(.system(size: 10))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(5)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .clipShape(.rect(cornerRadius: 5))
+                }
+                .padding(6)
+                .background(Color.blue.opacity(0.04))
+                .clipShape(.rect(cornerRadius: 6))
+            } header: {
+                let sectionTitle = "\(index + 1). \(L("filter.section.messageFilter"))"
+                sidebarHeader(
+                    sectionTitle,
+                    isExpanded: $isMessageFilterExpanded,
+                    activeCount: (viewModel.isMessageFilterEnabled && !viewModel.messageFilterQuery.trimmingCharacters(in: .whitespaces).isEmpty) ? 1 : 0,
+                    sectionId: sectionId
+                )
+            }
+
         case .continents:
             Section(isExpanded: $isContinentFilterExpanded) {
                 VStack(alignment: .leading, spacing: 4) {

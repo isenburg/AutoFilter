@@ -132,6 +132,17 @@ class DatabaseManager {
             updated_at TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(key);
+        
+        CREATE TABLE IF NOT EXISTS filter_profiles (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            is_system INTEGER NOT NULL,
+            auto_band TEXT,
+            auto_mode TEXT,
+            data_json TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_filter_profiles_id ON filter_profiles(id);
         """
         
         var errMsg: UnsafeMutablePointer<CChar>?
@@ -831,5 +842,87 @@ class DatabaseManager {
         debounceWorkItem = workItem
         DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.15, execute: workItem)
     }
-}
 
+    // MARK: - Filter Profiles
+    
+    /// Lädt alle Filter-Profile aus der SQLite-Datenbank
+    func loadFilterProfiles() -> [FilterProfile] {
+        var profiles: [FilterProfile] = []
+        dbQueue.sync {
+            let querySQL = "SELECT data_json FROM filter_profiles ORDER BY is_system DESC, name ASC;"
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(db, querySQL, -1, &statement, nil) == SQLITE_OK {
+                while sqlite3_step(statement) == SQLITE_ROW {
+                    if let text = sqlite3_column_text(statement, 0) {
+                        let jsonStr = String(cString: text)
+                        if let data = jsonStr.data(using: .utf8),
+                           let profile = try? JSONDecoder().decode(FilterProfile.self, from: data) {
+                            profiles.append(profile)
+                        }
+                    }
+                }
+                sqlite3_finalize(statement)
+            }
+        }
+        
+        // Wenn noch keine Profile existieren, initialisiere die Standard-Vorlagen
+        if profiles.isEmpty {
+            for template in FilterProfile.systemTemplates {
+                saveFilterProfile(template)
+                profiles.append(template)
+            }
+        }
+        
+        return profiles
+    }
+    
+    /// Speichert ein Filter-Profil in der SQLite-Datenbank
+    func saveFilterProfile(_ profile: FilterProfile) {
+        guard let data = try? JSONEncoder().encode(profile),
+              let jsonStr = String(data: data, encoding: .utf8) else { return }
+        
+        let nowStr = ISO8601DateFormatter().string(from: profile.updatedAt)
+        let isSystemInt = profile.isSystem ? 1 : 0
+        
+        dbQueue.sync {
+            let insertSQL = """
+            INSERT OR REPLACE INTO filter_profiles (id, name, is_system, auto_band, auto_mode, data_json, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?);
+            """
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(db, insertSQL, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, (profile.id as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(statement, 2, (profile.name as NSString).utf8String, -1, nil)
+                sqlite3_bind_int(statement, 3, Int32(isSystemInt))
+                if let band = profile.autoBand {
+                    sqlite3_bind_text(statement, 4, (band as NSString).utf8String, -1, nil)
+                } else {
+                    sqlite3_bind_null(statement, 4)
+                }
+                if let mode = profile.autoMode {
+                    sqlite3_bind_text(statement, 5, (mode as NSString).utf8String, -1, nil)
+                } else {
+                    sqlite3_bind_null(statement, 5)
+                }
+                sqlite3_bind_text(statement, 6, (jsonStr as NSString).utf8String, -1, nil)
+                sqlite3_bind_text(statement, 7, (nowStr as NSString).utf8String, -1, nil)
+                
+                sqlite3_step(statement)
+                sqlite3_finalize(statement)
+            }
+        }
+    }
+    
+    /// Löscht ein Profil aus der Datenbank (System-Profile sind geschützt)
+    func deleteFilterProfile(id: String) {
+        dbQueue.sync {
+            let deleteSQL = "DELETE FROM filter_profiles WHERE id = ? AND is_system = 0;"
+            var statement: OpaquePointer?
+            if sqlite3_prepare_v2(db, deleteSQL, -1, &statement, nil) == SQLITE_OK {
+                sqlite3_bind_text(statement, 1, (id as NSString).utf8String, -1, nil)
+                sqlite3_step(statement)
+                sqlite3_finalize(statement)
+            }
+        }
+    }
+}

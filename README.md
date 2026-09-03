@@ -89,7 +89,15 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 
 ## 📝 Changelog
 
+### Version 4.5.0
+- **Intelligent Filter Profiles & Presets**: Complete snapshot recall and storage of all 13 filter rules and pipeline sequence. Includes 5 built-in system presets (*Allround*, *DXpedition & Rare DXCC*, *Contest / High-Rate*, *Grid Hunting WAS*, *Phone / SSB Only*), custom user profiles with individual icons and names, dynamic dirty state indicator (`*`), optional automatic band/mode recall (Smart Recall), and standard JSON file export/import (`.autoqso-filter.json`).
+- **Streamlined Sidebar Layout**: Cleaned up the filter sidebar by removing redundant bottom `Default`/`Custom` order buttons.
+
+### Version 4.4.0
+- **Message Content Filter**: Filter incoming spots and decodes by text in the message / comment field using case-insensitive Boolean logic (`AND`, `OR`, `( )`, and quoted phrases like `"5 up"` or `"SSB"`).
+
 ### Version 4.3.2
+- **Performance and Bug Fixes**: Comprehensive performance optimizations, responsive 120 FPS map interaction with 6-digit Maidenhead zoom resolution, memorized console split divider positions, and Swift 5.9 / macOS 14 @Observable modernization.
 - **Performance Improvements**: Optimized UI rendering and debounced log ingestion to prevent sluggishness during high-volume periods (e.g., heavy DX cluster traffic or WSJT-X decoding). The interface now remains buttery smooth even when flooded with new spots and logs.
 
 ### Version 4.3.1

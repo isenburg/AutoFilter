@@ -131,6 +131,7 @@ public struct LocalizationDictionary {
         "filter.section.duplicates": "Doubletten-Filter",
         "filter.section.spotterCountries": "Erlaubte Spotter-Länder",
         "filter.section.allowedGrids": "VIP: Erlaubte Maidenhead-Grids",
+        "filter.section.messageFilter": "Nachrichten- / Text-Filter",
         
         // Filter-Reihenfolge & Pipeline
         "filter.order.header": "Filter-Reihenfolge",
@@ -456,6 +457,7 @@ public struct LocalizationDictionary {
         "filter.section.duplicates": "Duplicate Filter",
         "filter.section.spotterCountries": "Allowed Spotter Countries",
         "filter.section.allowedGrids": "VIP: Allowed Maidenhead Grids",
+        "filter.section.messageFilter": "Message Content Filter",
         
         // Filter Pipeline Order
         "filter.order.header": "Filter Pipeline Order",

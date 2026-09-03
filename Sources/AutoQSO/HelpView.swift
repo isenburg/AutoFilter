@@ -7,6 +7,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
     case toolbar = "Toolbar & Bedienung"
     case wsjtx = "WSJT-X Setup"
     case triggers = "Auto QSO Triggers"
+    case filterProfiles = "Filter-Profile & Presets"
     case filterLogic = "Filter-Logik & Pipeline"
     case cluster = "DX Cluster"
     case telnet = "Telnet Server"
@@ -30,6 +31,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
         case .toolbar: return isDe ? "Toolbar & Bedienung" : "Toolbar & Controls"
         case .wsjtx: return "WSJT-X Setup"
         case .triggers: return "Auto QSO Triggers"
+        case .filterProfiles: return isDe ? "Filter-Profile & Presets" : "Filter Profiles & Presets"
         case .filterLogic: return isDe ? "Filter-Logik & Pipeline" : "Filter Logic & Pipeline"
         case .cluster: return "DX Cluster"
         case .telnet: return "Telnet Server"
@@ -52,6 +54,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
         case .toolbar: return "command"
         case .wsjtx: return "antenna.radiowaves.left.and.right"
         case .triggers: return "bolt.horizontal"
+        case .filterProfiles: return "bookmark.circle.fill"
         case .filterLogic: return "slider.horizontal.3"
         case .cluster: return "list.bullet.rectangle.portrait"
         case .telnet: return "terminal"
@@ -80,8 +83,10 @@ enum HelpSection: String, CaseIterable, Identifiable {
             return ["wsjt-x", "wsjtx", "setup", "konfiguration", "reporting", "udp server", "224.0.0.1", "2237", "multicast", "unicast", "127.0.0.1", "accept udp requests", "prompt me to log", "bandwechsel", "ft8", "ft4", "rig", "audio", "ports", "ip-adresse", "bridge"]
         case .triggers:
             return ["triggers", "auto qso triggers", "auslöser", "cq anruf", "73", "rr73", "rrr", "auto-antwort", "tx cycle", "sendezyklus", "timeout", "cooldown", "priorität", "priority", "most wanted trigger", "sende-engine", "transmit", "automatisierung"]
+        case .filterProfiles:
+            return ["filter-profile", "filter profiles", "presets", "profile", "vorlagen", "system-vorlagen", "smart recall", "allround", "dxpedition", "contest", "grid hunting", "phone", "ssb", "dirty indicator", "auto-band", "auto-mode", "export", "import"]
         case .filterLogic:
-            return ["filter-logik", "filter logic", "pipeline", "first-match", "whitelist", "blacklist", "vip pass", "ausnahmen", "exceptions", "presets", "reorder", "sortierbar", "bandfilter", "modusfilter", "kontinente", "continents", "dxcc", "spotter", "cq-zone", "itu-zone", "snr", "signal-to-noise", "entfernungsfilter", "azimut", "bearing", "peilung", "lotw-user", "worked before", "gearbeitet"]
+            return ["filter-logik", "filter logic", "nachrichten-filter", "message filter", "boolean", "boolesch", "textfilter", "pipeline", "first-match", "whitelist", "blacklist", "vip pass", "ausnahmen", "exceptions", "presets", "reorder", "sortierbar", "bandfilter", "modusfilter", "kontinente", "continents", "dxcc", "spotter", "cq-zone", "itu-zone", "snr", "signal-to-noise", "entfernungsfilter", "azimut", "bearing", "peilung", "lotw-user", "worked before", "gearbeitet"]
         case .cluster:
             return ["cluster", "dx cluster", "upstream", "c1", "c2", "c3", "telnet", "reversebeacon", "rbn", "ve7cc", "k3lr", "spots", "dx spots", "reconnect", "status", "clustermanager", "sh/dx", "dx cluster server", "login"]
         case .telnet:
@@ -648,6 +653,167 @@ struct HelpView: View {
                 .cornerRadius(8)
             }
             
+        case .filterProfiles:
+            VStack(alignment: .leading, spacing: 14) {
+                Text(isDe ? "Intelligente Filter-Profile & Presets" : "Intelligent Filter Profiles & Presets")
+                    .font(.title2)
+                    .bold()
+                
+                Text(isDe ? 
+                    "AutoQSO ermöglicht das Speichern und blitzschnelle Wiederaufrufen vollständiger Filter-Snapshots. Statt nur zwischen zwei starren Reihenfolgen zu wechseln, umfasst jedes Profil den Gesamtzustand aller 13 Filterregeln, Suchbegriffe und die individuelle Pipeline-Sortierung." : 
+                    "AutoQSO allows you to save and instantly recall complete filter snapshots. Instead of switching between just two static orders, each profile captures the entire state of all 13 filter rules, search queries, and custom pipeline sequencing.")
+                    .font(.body)
+                
+                // 1. Die 5 System-Vorlagen
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(isDe ? "🌟 Die 5 vorkonfigurierten System-Vorlagen:" : "🌟 The 5 Built-in System Presets:")
+                        .font(.headline)
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "globe.europe.africa.fill")
+                                .font(.title3)
+                                .foregroundStyle(.blue)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(isDe ? "**Allround (Standard)**" : "**Allround (Standard)**")
+                                    .font(.system(size: 12, weight: .bold))
+                                Text(isDe ? "Ausgewogener Alltagsbetrieb über alle Bänder mit Standard-Filterreihenfolge und 1-Minuten-Doublettenfilter. Ideal für den regulären Funkbetrieb." : "Balanced everyday operation across all bands with default filter ordering and 1-minute duplicate filter. Ideal for daily QSOs.")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        Divider()
+                        
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "bolt.fill")
+                                .font(.title3)
+                                .foregroundStyle(.yellow)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(isDe ? "**DXpedition & Seltene DXCC**" : "**DXpedition & Rare DXCC**")
+                                    .font(.system(size: 12, weight: .bold))
+                                Text(isDe ? "Fokussiert auf seltene Stationen (Top 50 Most Wanted). Der Nachrichten-Filter sucht automatisch nach \"split\" OR \"up\". Die Worked-Before-Sperre ist deaktiviert, damit Expeditionsstationen auf verschiedenen Bändern immer angezeigt werden." : "Focused on rare stations (Top 50 Most Wanted). Message filter searches for \"split\" OR \"up\". Worked-before suppression is disabled to spot expeditions across all bands.")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        Divider()
+                        
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "trophy.fill")
+                                .font(.title3)
+                                .foregroundStyle(.orange)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(isDe ? "**Contest / High-Rate**" : "**Contest / High-Rate**")
+                                    .font(.system(size: 12, weight: .bold))
+                                Text(isDe ? "Maximale Durchlassrate für Wettbewerbe. Länder- und Kontinentsperren sowie Worked-Before sind abgeschaltet. Nur echte Doubletten werden innerhalb von 60 Sekunden gefiltert." : "Maximum decode pass-through for contests. Country/continent blocks and worked-before are disabled; only duplicate transmissions within 60s are suppressed.")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        Divider()
+                        
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "map.fill")
+                                .font(.title3)
+                                .foregroundStyle(.green)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(isDe ? "**Grid Hunting (WAS / Neuland)**" : "**Grid Hunting (WAS / Unworked)**")
+                                    .font(.system(size: 12, weight: .bold))
+                                Text(isDe ? "Ideal für das Sammeln von Planquadraten (z. B. WAS-Diplom). Lässt nur ungearbeitete 4-Stellen-Grids passieren und setzt den Grid-Filter an Position 1 der Pipeline." : "Ideal for locator hunting (e.g. WAS award). Lets through only unworked 4-digit grids with the Maidenhead grid filter prioritized at Position 1.")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        Divider()
+                        
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "mic.fill")
+                                .font(.title3)
+                                .foregroundStyle(.purple)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(isDe ? "**Phone / SSB Only**" : "**Phone / SSB Only**")
+                                    .font(.system(size: 12, weight: .bold))
+                                Text(isDe ? "Filtert gezielt Sprechfunk-Spots aus dem DX-Cluster. Der Nachrichtenfilter ist auf \"SSB\" OR \"USB\" OR \"LSB\" OR \"phone\" vorkonfiguriert." : "Filters specifically for phone/voice spots from DX clusters. Pre-configured with message filter query \"SSB\" OR \"USB\" OR \"LSB\" OR \"phone\".")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .background(Color.secondary.opacity(0.06))
+                    .cornerRadius(8)
+                }
+                
+                // 2. Bedienung & Modifiziert-Indikator
+                Text(isDe ? "Bedienung der Profil-Leiste:" : "Sidebar Profile Controls:")
+                    .font(.headline)
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet(isDe ? 
+                        "**Profil-Dropdown (`▾`)**: Klicke auf das Profil-Menü oben in der rechten Seitenleiste, um mit einem Klick zwischen System-Vorlagen und deinen eigenen Profilen zu wechseln." : 
+                        "**Profile Dropdown (`▾`)**: Click the profile button at the top of the right sidebar to switch between system presets and custom user profiles instantly.")
+                    
+                    bullet(isDe ? 
+                        "**Der Modifiziert-Indikator (`*`)**: Wenn du spontan eine Filter-Einstellung änderst (z. B. einen Kontinent deaktivierst oder einen Suchtext eingibst), erscheint neben dem Profil-Namen ein oranger Stern (`*`). Das Menü bietet dir dann folgende Aktionen:\n• **Änderungen in 'Profil' speichern**: Übernimmt deine Anpassungen dauerhaft in das Profil.\n• **Auf Originalzustand zurücksetzen**: Verwirft alle spontanen Tweaks und stellt das gespeicherte Profil exakt wieder her.\n• **Als neues Profil speichern...**: Erzeugt ein eigenständiges neues Benutzer-Profil mit deinen Änderungen." : 
+                        "**The Dirty Indicator (`*`)**: If you tweak any filter parameter (e.g. disable a continent or change a search term), an orange asterisk (`*`) appears. The menu then offers:\n• **Save Changes to 'Profile'**: Permanently updates the profile with your tweaks.\n• **Reset to Original**: Instantly discards changes and restores the saved profile.\n• **Save as New Profile...**: Creates a brand new custom profile from the current state.")
+                    
+                    bullet(isDe ? 
+                        "**Schnell-Taste `[ + ]`**: Öffnet direkt den Dialog zum Anlegen eines neuen Profils aus den aktuellen Filtereinstellungen." : 
+                        "**Quick Add `[ + ]`**: Opens the modal dialog to save the current filter setup as a new custom profile.")
+                    
+                    bullet(isDe ? 
+                        "**Verwaltungs-Taste `[ ⚙️ ]`**: Öffnet das Profil-Verwaltungsfenster." : 
+                        "**Manage Button `[ ⚙️ ]`**: Opens the dedicated Profile Manager sheet.")
+                }
+                .padding()
+                .background(Color.blue.opacity(0.06))
+                .cornerRadius(8)
+                
+                // 3. Smart Recall (Auto-Band & Auto-Mode)
+                Text(isDe ? "Smart Recall (Automatische Band- & Mode-Aktivierung):" : "Smart Recall (Automatic Band & Mode Activation):")
+                    .font(.headline)
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet(isDe ? 
+                        "Im Verwaltungs-Sheet kannst du jedem eigenen Profil optional ein **Auto-Band** (z. B. `6m`, `10m`) oder einen **Auto-Mode** (z. B. `FT8`, `SSB`) zuweisen." : 
+                        "In the Profile Manager sheet, you can optionally assign an **Auto-Band** (e.g. `6m`, `10m`) or **Auto-Mode** (e.g. `FT8`, `SSB`) to any custom profile.")
+                    
+                    bullet(isDe ? 
+                        "Sobald du in WSJT-X oder über deine Transceiver-CAT-Steuerung das Band wechselst, erkennt AutoQSO den Frequenzwechsel und **aktiviert vollautomatisch das passende Profil** (z. B. automatische Umschaltung auf '6m Magic Band' beim Wechsel auf 50 MHz)." : 
+                        "Whenever you change bands in WSJT-X or via radio CAT control, AutoQSO detects the frequency and **automatically switches to the matching profile** (e.g. activates '6m Magic Band' upon tuning to 50 MHz).")
+                }
+                .padding()
+                .background(Color.green.opacity(0.06))
+                .cornerRadius(8)
+                
+                // 4. Export & Import
+                Text(isDe ? "Sichern & Teilen (Export / Import):" : "Backup & Sharing (Export / Import):")
+                    .font(.headline)
+                VStack(alignment: .leading, spacing: 8) {
+                    bullet(isDe ? 
+                        "**Dateiformat (`.autoqso-filter.json`)**: Profile können über den Button *Als Datei exportieren...* als standardisierte JSON-Datei gesichert werden." : 
+                        "**File Format (`.autoqso-filter.json`)**: Profiles can be saved as standard JSON files via *Export to File...*.")
+                    
+                    bullet(isDe ? 
+                        "**Importieren**: Über *Importieren...* können Filterkonfigurationen von Vereinskollegen, Contest-Teams oder aus Online-Foren direkt geladen werden." : 
+                        "**Importing**: Via *Import...*, you can load filter configurations shared by club members, contest teams, or online communities.")
+                    
+                    bullet(isDe ? 
+                        "**iCloud- & SQLite-Sicherheit**: Alle Profile werden in der zentralen Datenbank (`autoqso_log.sqlite`) gespeichert und bleiben bei Software-Updates oder Neustarts dauerhaft erhalten." : 
+                        "**iCloud & SQLite Persistence**: All profiles reside in the local SQLite database (`autoqso_log.sqlite`) and persist permanently across app updates.")
+                }
+                .padding()
+                .background(Color.indigo.opacity(0.06))
+                .cornerRadius(8)
+            }
+
         case .filterLogic:
             VStack(alignment: .leading, spacing: 14) {
                 Text(isDe ? "DX Filter-Logik & Pipeline-Auswertung" : "DX Filter Logic & Pipeline Evaluation")
@@ -1059,6 +1225,59 @@ struct HelpView: View {
                 Text(isDe ? "Versionshistorie (Changelog)" : "Version History (Changelog)")
                     .font(.title2)
                     .bold()
+                
+                // Version 4.5.0
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 4.5.0")
+                            .font(.headline)
+                            .bold()
+                        Text("(Build \(APP_BUILD_NUMBER))")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Text(isDe ? "AKTUELL" : "CURRENT")
+                            .font(.system(size: 10, weight: .bold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.green.opacity(0.2))
+                            .foregroundStyle(.green)
+                            .clipShape(Capsule())
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
+                            .font(.subheadline)
+                            .bold()
+                        bullet(isDe ? "Intelligente Filter-Profile & Presets: Speichern und Wiederaufrufen vollständiger Filter-Snapshots (Whitelists, Blacklists, Spezialfilter, Textfilter und Pipeline-Sortierung). Enthält 5 System-Vorlagen (Allround, DXpedition, Contest, Grid Hunting, Phone/SSB), eigene Benutzer-Profile, Modifiziert-Indikator (*), optionale automatische Band-/Mode-Aktivierung und JSON-Export/Import." : "Intelligent Filter Profiles & Presets: Save and recall complete filter snapshots (Whitelists, Blacklists, Special rules, Message filter, and pipeline ordering). Includes 5 system presets (Allround, DXpedition, Contest, Grid Hunting, Phone/SSB), custom user profiles, dirty indicator (*), optional automatic band/mode recall, and JSON export/import.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Aufgeräumte Seitenleiste: Entfernen der alten redundanten Default/Custom-Buttons am unteren Rand für mehr vertikalen Platz und klare Profil-Steuerung oben." : "Streamlined Sidebar: Removed legacy redundant Default/Custom order buttons at the bottom for more vertical space and centralized profile management.", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+                
+                // Version 4.4.0
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 4.4.0")
+                            .font(.headline)
+                            .bold()
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "✨ Neue Funktionen" : "✨ New Features")
+                            .font(.subheadline)
+                            .bold()
+                        bullet(isDe ? "Neuer Nachrichten-Filter (Message Content Filter): Durchsucht das Kommentarfeld nach frei definierbaren Begriffen mit boolescher Logik (AND, OR, Phrasen in Anführungszeichen wie \"5 up\"). Lässt nur passende Signale passieren." : "New Message Content Filter: Searches the message/comment field using case-insensitive Boolean logic (AND, OR, quoted phrases like \"5 up\"). Lets only matching spots pass through.", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.secondary.opacity(0.06))
+                .cornerRadius(8)
                 
                 // Version 4.3.2
                 VStack(alignment: .leading, spacing: 8) {
