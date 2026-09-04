@@ -1251,10 +1251,10 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                // Version 4.5.0
+                // Version 4.5.1
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 4.5.0")
+                        Text("Version 4.5.1")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -1273,6 +1273,32 @@ struct HelpView: View {
                         Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
+                        bullet(isDe ? "Einstellbare Band-Punktgröße: Die Punktgröße der farbigen Markierungen für gearbeitete Länder auf der Ausbreitungskarte (2D & 3D Globus) sowie der Grid-Map ist nun von 6 bis 24 pt frei konfigurierbar (Standard: 12 pt, vergrößert für optimale Lesbarkeit)." : "Configurable Band Point Size: The diameter of the colored dots representing worked countries on the propagation map (2D & 3D globe) and grid map is now customizable from 6 to 24 pt (default: 12 pt, enlarged for optimal visibility).", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Direkte Steuerung auf der Karte: Live-Anpassung der Punktgröße über den Stepper in der linken Status-Box sowie Schnellwahltasten ([-] ● Xpt [+]) in der unteren Band-Leiste ohne Öffnen der Einstellungen." : "On-Map Live Controls: Real-time point size adjustments via the top-left status stepper and quick buttons ([-] ● Xpt [+]) in the bottom band strip without opening Settings.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Erweiterte Landkarten-Einstellungen: Neuer Schieberegler unter Einstellungen → Ansicht → Landkarten-Ansicht inklusive Rücksetzfunktion auf den Standardwert." : "Enhanced Map Settings: New dedicated slider in Settings → Appearance → Map View with 1-click restore to defaults.", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+
+                // Version 4.5.0
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 4.5.0")
+                            .font(.headline)
+                            .bold()
+                        Text("(Build 604)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
+                            .font(.subheadline)
+                            .bold()
                         bullet(isDe ? "Intelligente Filter-Profile & Presets: Speichern und Wiederaufrufen vollständiger Filter-Snapshots (Whitelists, Blacklists, Spezialfilter, Textfilter und Pipeline-Sortierung). Enthält 5 System-Vorlagen (Allround, DXpedition, Contest, Grid Hunting, Phone/SSB), eigene Benutzer-Profile, Modifiziert-Indikator (*), optionale automatische Band-/Mode-Aktivierung und JSON-Export/Import." : "Intelligent Filter Profiles & Presets: Save and recall complete filter snapshots (Whitelists, Blacklists, Special rules, Message filter, and pipeline ordering). Includes 5 system presets (Allround, DXpedition, Contest, Grid Hunting, Phone/SSB), custom user profiles, dirty indicator (*), optional automatic band/mode recall, and JSON export/import.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Aufgeräumte Seitenleiste: Entfernen der alten redundanten Default/Custom-Buttons am unteren Rand für mehr vertikalen Platz und klare Profil-Steuerung oben." : "Streamlined Sidebar: Removed legacy redundant Default/Custom order buttons at the bottom for more vertical space and centralized profile management.", font: .subheadline, color: .secondary)
                     }
@@ -1280,7 +1306,7 @@ struct HelpView: View {
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.green.opacity(0.08))
+                .background(Color.secondary.opacity(0.08))
                 .cornerRadius(8)
                 
                 // Version 4.4.0
@@ -1310,16 +1336,9 @@ struct HelpView: View {
                         Text("Version 4.3.2")
                             .font(.headline)
                             .bold()
-                        Text("(Build \(APP_BUILD_NUMBER))")
+                        Text("(Build 582)")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                        Text(isDe ? "AKTUELL" : "CURRENT")
-                            .font(.system(size: 10, weight: .bold))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.green.opacity(0.2))
-                            .foregroundStyle(.green)
-                            .clipShape(Capsule())
                     }
                     
                     VStack(alignment: .leading, spacing: 6) {
@@ -1334,7 +1353,7 @@ struct HelpView: View {
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.green.opacity(0.08))
+                .background(Color.secondary.opacity(0.06))
                 .cornerRadius(8)
                 
                 // Version 4.3.1

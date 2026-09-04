@@ -1487,10 +1487,40 @@ struct ContentView: View {
     @ViewBuilder
     private var rightSidebar: some View {
         VStack(spacing: 0) {
-            Text(L("sidebar.right.title"))
-                .font(.headline)
-                .padding(.top, 10)
-                .padding(.bottom, 6)
+            ZStack(alignment: .trailing) {
+                HStack {
+                    Spacer()
+                    Text(L("sidebar.right.title"))
+                        .font(.headline)
+                    Spacer()
+                }
+                
+                HStack(spacing: 8) {
+                    Button {
+                        newProfileName = (viewModel.activeFilterProfile?.name ?? "Profil") + (isDe ? " (Kopie)" : " (Copy)")
+                        isShowingNewProfileAlert = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(isDe ? "Aktuelle Einstellungen als neues Profil speichern" : "Save current settings as new profile")
+                    
+                    Button {
+                        isShowingProfileManagerSheet = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(isDe ? "Profile verwalten (Umbenennen, Duplizieren, Export/Import)" : "Manage Profiles (Rename, Duplicate, Export/Import)")
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 10)
+            .padding(.bottom, 6)
             
             VStack(spacing: 8) {
                 Toggle(isOn: $viewModel.isFiltersEnabled) {
@@ -1514,9 +1544,8 @@ struct ContentView: View {
                 .controlSize(.small)
                 
                 if rightSidebarTab == 0 {
-                    HStack(spacing: 6) {
-                        Menu {
-                            // System Presets
+                    Menu {
+                        // System Presets
                             Section(isDe ? "System-Vorlagen" : "System Presets") {
                                 ForEach(viewModel.filterProfiles.filter { $0.isSystem }) { profile in
                                     Button {
@@ -1616,43 +1645,9 @@ struct ContentView: View {
                             )
                         }
                         .menuStyle(.borderlessButton)
+                        .padding(.horizontal)
+                        .padding(.bottom, 4)
                         .help(isDe ? "Aktives Filter-Profil wählen oder anpassen" : "Select or manage active filter profile")
-                        
-                        Button {
-                            newProfileName = (viewModel.activeFilterProfile?.name ?? "Profil") + (isDe ? " (Kopie)" : " (Copy)")
-                            isShowingNewProfileAlert = true
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.system(size: 10, weight: .bold))
-                                .padding(5)
-                                .background(Color(NSColor.controlBackgroundColor))
-                                .clipShape(.rect(cornerRadius: 6))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .help(isDe ? "Aktuelle Einstellungen als neues Profil speichern" : "Save current settings as new profile")
-                        
-                        Button {
-                            isShowingProfileManagerSheet = true
-                        } label: {
-                            Image(systemName: "gearshape")
-                                .font(.system(size: 10))
-                                .padding(5)
-                                .background(Color(NSColor.controlBackgroundColor))
-                                .clipShape(.rect(cornerRadius: 6))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .help(isDe ? "Profile verwalten (Umbenennen, Duplizieren, Export/Import)" : "Manage Profiles (Rename, Duplicate, Export/Import)")
-                    }
-                    .padding(.horizontal)
-                    .padding(.bottom, 4)
                 }
                 
                 Divider()

@@ -95,6 +95,11 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 
 ## 📝 Changelog
 
+### Version 4.5.1 (Build 609)
+- **Configurable Map Spot Dot Size**: Easily adjust the diameter of the band dots representing worked countries on the propagation map (2D & 3D globe) and Maidenhead grid map from 6 to 24 pt (default: 12 pt, enlarged for crisp readability).
+- **On-Map Quick Steppers**: Real-time adjustment of spot dot size directly via the top-left status panel (`Punktgröße: X pt`) and on-map quick buttons (`[-] ● Xpt [+]`) in the bottom band legend strip without opening Settings.
+- **Enhanced Map Settings**: Added a new slider in *Settings → Appearance → Map View* with 1-click restore to defaults.
+
 ### Version 4.5.0
 - **Intelligent Filter Profiles & Presets**: Complete snapshot recall and storage of all 13 filter rules and pipeline sequence. Includes 5 built-in system presets (*Allround*, *DXpedition & Rare DXCC*, *Contest / High-Rate*, *Grid Hunting WAS*, *Phone / SSB Only*), custom user profiles with individual icons and names, dynamic dirty state indicator (`*`), optional automatic band/mode recall (Smart Recall), and standard JSON file export/import (`.autoqso-filter.json`).
 - **Streamlined Sidebar Layout**: Cleaned up the filter sidebar by removing redundant bottom `Default`/`Custom` order buttons.

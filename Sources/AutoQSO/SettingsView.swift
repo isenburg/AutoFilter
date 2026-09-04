@@ -134,6 +134,7 @@ struct SettingsView: View {
     @AppStorage("fontSizeLog") private var fontSizeLog = 11.0
     @AppStorage("gridOverlayFontSize") private var gridOverlayFontSize = 11.0
     @AppStorage("gridOverlayShowPill") private var gridOverlayShowPill = true
+    @AppStorage("mapSpotPointSize") private var mapSpotPointSize = 12.0
     
     // Aktive Upstream DX Clusters (1 - 3)
     @AppStorage("isCluster1Enabled") private var isCluster1Enabled = false
@@ -1261,7 +1262,7 @@ struct SettingsView: View {
                 
                 // 3. Landkarten-Ansicht (Maidenhead Grid-Overlay)
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(isDe ? "Landkarten-Ansicht (Maidenhead Grid-Overlay)" : "Map View (Maidenhead Grid Overlay)")
+                    Text(isDe ? "Landkarten-Ansicht (Karten & Maidenhead Grid)" : "Map View (Maps & Maidenhead Grid)")
                         .font(.title2)
                         .bold()
                     
@@ -1271,6 +1272,15 @@ struct SettingsView: View {
                         Slider(value: $gridOverlayFontSize, in: 8...22, step: 1) { Text("") }
                             .frame(width: 150)
                         Text("\(Int(gridOverlayFontSize)) pt")
+                            .foregroundColor(.secondary)
+                    }
+
+                    HStack {
+                        Text(isDe ? "Band-Punktgröße (Karte):" : "Band Point Size (Map):")
+                            .frame(width: 180, alignment: .leading)
+                        Slider(value: $mapSpotPointSize, in: 6...24, step: 1) { Text("") }
+                            .frame(width: 150)
+                        Text("\(Int(mapSpotPointSize)) pt")
                             .foregroundColor(.secondary)
                     }
                     
@@ -1303,6 +1313,8 @@ struct SettingsView: View {
                     Button(isDe ? "Karten-Ansicht auf Standard zurücksetzen" : "Reset Map View to Defaults") {
                         gridOverlayFontSize = 11.0
                         gridOverlayShowPill = true
+                        mapSpotPointSize = 12.0
+                        UserDefaults.standard.removeObject(forKey: "mapSpotPointSize")
                         UserDefaults.standard.removeObject(forKey: "gridOverlayTextColor")
                         UserDefaults.standard.removeObject(forKey: "gridOverlayLineColor")
                         UserDefaults.standard.removeObject(forKey: "gridOverlayBadgeColor")

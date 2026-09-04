@@ -137,6 +137,7 @@ final class GeometrySnapshot {
     let textColor: NSColor
     let lineColor: NSColor
     let badgeColor: NSColor
+    let spotPointSize: Double
     let signature: Int
 
     init(
@@ -150,7 +151,8 @@ final class GeometrySnapshot {
         shadeColor: NSColor = .systemOrange,
         textColor: NSColor = .systemYellow,
         lineColor: NSColor = .systemTeal,
-        badgeColor: NSColor = .black
+        badgeColor: NSColor = .black,
+        spotPointSize: Double = 12.0
     ) {
         self.workedGrids = workedGrids
         self.gridLines = gridLines
@@ -163,6 +165,7 @@ final class GeometrySnapshot {
         self.textColor = textColor
         self.lineColor = lineColor
         self.badgeColor = badgeColor
+        self.spotPointSize = spotPointSize
         
         var hasher = Hasher()
         hasher.combine(workedGrids.count)
@@ -176,6 +179,7 @@ final class GeometrySnapshot {
         hasher.combine(textColor)
         hasher.combine(lineColor)
         hasher.combine(badgeColor)
+        hasher.combine(spotPointSize)
         if let firstLabel = labels.first {
             hasher.combine(firstLabel.text)
         }
@@ -321,7 +325,8 @@ final class MaidenheadVectorOverlayRenderer: MKOverlayRenderer {
 
         // Layer 2: Vector Spots (Direct GPU Circle Drawing - 0 NSViews!)
         if !snap.spots.isEmpty {
-            let spotRadius = 4.5 / zoomScale
+            let pointDiameter = snap.spotPointSize > 0 ? snap.spotPointSize : 12.0
+            let spotRadius = (pointDiameter / 2.0) / zoomScale
             let spotDiameter = spotRadius * 2.0
             
             for spot in snap.spots {
@@ -353,6 +358,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
     var gridLineColor: String = ""
     var gridBadgeColor: String = ""
     var gridFontSize: Double = 11.0
+    var spotPointSize: Double = 12.0
     var spotItems: [GlobeSpotItem] = []
     var activeQSOPath: ActiveQSOPath? = nil
     var mapStyle: MapStyleOption = .globus
@@ -419,6 +425,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
             gridLineColor: gridLineColor,
             gridBadgeColor: gridBadgeColor,
             gridFontSize: gridFontSize,
+            spotPointSize: spotPointSize,
             spotItems: spotItems,
             activeQSOPath: activeQSOPath,
             region: startingRegion
@@ -455,6 +462,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
             || coord.lastGridLineColor != gridLineColor
             || coord.lastGridBadgeColor != gridBadgeColor
             || coord.lastGridFontSize != gridFontSize
+            || coord.lastSpotPointSize != spotPointSize
 
         if coord.isMapInteracting {
             // Map is moving or zooming: FREEZE live spot updates and buffer them
@@ -472,6 +480,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                     gridLineColor: gridLineColor,
                     gridBadgeColor: gridBadgeColor,
                     gridFontSize: gridFontSize,
+                    spotPointSize: spotPointSize,
                     spotItems: coord.lastSpotItems, // keep frozen spots
                     activeQSOPath: activeQSOPath,
                     region: mapView.region
@@ -491,6 +500,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                     gridLineColor: gridLineColor,
                     gridBadgeColor: gridBadgeColor,
                     gridFontSize: gridFontSize,
+                    spotPointSize: spotPointSize,
                     spotItems: spotsToApply,
                     activeQSOPath: activeQSOPath,
                     region: mapView.region
@@ -529,6 +539,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
         var lastGridLineColor: String = ""
         var lastGridBadgeColor: String = ""
         var lastGridFontSize: Double = 11.0
+        var lastSpotPointSize: Double = 12.0
         var lastSpotItems: [GlobeSpotItem] = []
         var lastActiveQSOPath: ActiveQSOPath? = nil
         var lastProgrammaticRegion: MKCoordinateRegion? = nil
@@ -561,10 +572,20 @@ struct GlobeMapViewContainer: NSViewRepresentable {
             gridLineColor: String = "",
             gridBadgeColor: String = "",
             gridFontSize: Double = 11.0,
+            spotPointSize: Double = 12.0,
             spotItems: [GlobeSpotItem] = [],
             activeQSOPath: ActiveQSOPath? = nil,
             region: MKCoordinateRegion
         ) {
+            let settingsChanged = self.lastSpotPointSize != spotPointSize
+                || self.lastGridFontSize != gridFontSize
+                || self.lastShowGrid != showGrid
+                || self.lastShowShading != showShading
+                || self.lastShowBadges != showBadges
+                || self.lastGridTextColor != gridTextColor
+                || self.lastGridLineColor != gridLineColor
+                || self.lastGridBadgeColor != gridBadgeColor
+
             self.lastShowGrid = showGrid
             self.lastShowShading = showShading
             self.lastWorkedGrids = workedGrids
@@ -573,6 +594,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
             self.lastGridLineColor = gridLineColor
             self.lastGridBadgeColor = gridBadgeColor
             self.lastGridFontSize = gridFontSize
+            self.lastSpotPointSize = spotPointSize
             self.lastSpotItems = spotItems
             self.lastActiveQSOPath = activeQSOPath
 
@@ -703,7 +725,8 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                     shadeColor: shadeColor,
                     textColor: textColor,
                     lineColor: lineColor,
-                    badgeColor: badgeColor
+                    badgeColor: badgeColor,
+                    spotPointSize: spotPointSize
                 )
 
                 // 5. Atomic pointer swap on MainActor with signature dirty-check
@@ -716,8 +739,8 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                     if changed {
                         self.lastSnapshotSignature = newSnapshot.signature
                         let now = Date()
-                        // Throttle full world tile cache invalidation to at most once per 3.0s
-                        if now.timeIntervalSince(self.lastFullInvalidationTime) > 3.0 {
+                        // Immediate redraw on settings change, or throttled to 3s for streaming spot changes
+                        if settingsChanged || now.timeIntervalSince(self.lastFullInvalidationTime) > 3.0 {
                             self.lastFullInvalidationTime = now
                             self.cachedVectorRenderer?.setNeedsDisplay()
                         }
@@ -790,6 +813,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                     gridLineColor: self.lastGridLineColor,
                     gridBadgeColor: self.lastGridBadgeColor,
                     gridFontSize: self.lastGridFontSize,
+                    spotPointSize: self.lastSpotPointSize,
                     spotItems: spotsToApply,
                     activeQSOPath: self.lastActiveQSOPath,
                     region: targetRegion

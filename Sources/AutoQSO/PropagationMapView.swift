@@ -11,6 +11,7 @@ struct PropagationMapView: View {
 
     @AppStorage("mapTimeWindow") private var mapTimeWindow = 30
     @AppStorage("mapCountWorkedBefore") private var mapCountWorkedBefore = false
+    @AppStorage("mapSpotPointSize") private var mapSpotPointSize = 12.0
     @AppStorage("fontSizeTable") private var fontSizeTable = 11.0
     @AppStorage("propagationMapStyle") private var selectedMapStyleRaw: String = MapStyleOption.standard.rawValue
 
@@ -186,6 +187,7 @@ struct PropagationMapView: View {
             gridLineColor: gridOverlayLineColor,
             gridBadgeColor: gridOverlayBadgeColor,
             gridFontSize: gridOverlayFontSize,
+            spotPointSize: mapSpotPointSize,
             spotItems: cachedGlobeSpotItems,
             activeQSOPath: viewModel.activeQSOPath,
             mapStyle: selectedMapStyle
@@ -248,6 +250,12 @@ struct PropagationMapView: View {
                                 .onChange(of: mapCountWorkedBefore) { _, _ in
                                     viewModel.updatePropagationClusters()
                                 }
+                            
+                            Rectangle().fill(.secondary.opacity(0.2)).frame(height: 1)
+
+                            Stepper(value: $mapSpotPointSize, in: 6...24, step: 1) {
+                                Text("Punktgröße: \(Int(mapSpotPointSize)) pt").font(.caption2).lineLimit(1)
+                            }
                             
                             Rectangle().fill(.secondary.opacity(0.2)).frame(height: 1)
                             
@@ -354,9 +362,28 @@ struct PropagationMapView: View {
                     HStack(spacing: 10) {
                         ForEach(allBands, id: \.name) { band in
                             HStack(spacing: 4) {
-                                Circle().fill(band.color).frame(width: 8, height: 8)
+                                Circle().fill(band.color).frame(width: max(6, min(14, mapSpotPointSize * 0.7)), height: max(6, min(14, mapSpotPointSize * 0.7)))
                                 Text(band.name).font(.system(size: 9, weight: .medium))
                             }
+                        }
+
+                        Divider().frame(height: 12)
+
+                        HStack(spacing: 4) {
+                            Button(action: { if mapSpotPointSize > 6 { mapSpotPointSize -= 1 } }) {
+                                Image(systemName: "minus.circle").font(.system(size: 10, weight: .bold))
+                            }
+                            .buttonStyle(.plain)
+                            .help("Band-Punktgröße verkleinern")
+
+                            Text("● \(Int(mapSpotPointSize))pt")
+                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+
+                            Button(action: { if mapSpotPointSize < 24 { mapSpotPointSize += 1 } }) {
+                                Image(systemName: "plus.circle").font(.system(size: 10, weight: .bold))
+                            }
+                            .buttonStyle(.plain)
+                            .help("Band-Punktgröße vergrößern")
                         }
                     }
                     .padding(6)
