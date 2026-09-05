@@ -1251,10 +1251,10 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                // Version 4.5.1
+                // Version 4.5.2
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 4.5.1")
+                        Text("Version 4.5.2")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -1273,6 +1273,32 @@ struct HelpView: View {
                         Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
+                        bullet(isDe ? "3D-Globus QSO-Anzeige korrigiert: Behebt ein Problem, bei dem die aktive QSO-Gegenstation auf dem 3D-Globus nicht markiert wurde und das Symbol der vorherigen Verbindung sichtbar blieb." : "3D Globe Map QSO Display Fix: Resolved an issue where the active QSO partner marker was not displayed on the 3D globe and the marker from the previous contact remained visible.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Vollständige Lokalisierung der Ausbreitungskarte: Alle Kartenelemente, Statusleisten, Gitterauflösungen, Diagramme und Tooltips schalten nun nahtlos und reaktiv zwischen Deutsch und Englisch um." : "Complete Propagation Map Localization: All map overlays, status bars, grid resolution selectors, charts, and tooltips now switch reactively and seamlessly between English and German.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Systemprotokolle in englischer Sprache: Sämtliche Systemlog-Meldungen (LoTW-, QRZ- und RUMlog-Sync, Filterentscheidungen, QSO-Abbrüche und Auswertungen) werden nun konsistent auf Englisch ausgegeben, wenn Englisch gewählt ist." : "System Logs English Localization: Fully localized all system log messages (LoTW, QRZ, and RUMlog synchronization, filter decision tracing, QSO aborts, and candidate evaluations) into English when English is selected.", font: .subheadline, color: .secondary)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
+                .padding()
+                .background(Color.green.opacity(0.08))
+                .cornerRadius(8)
+
+                // Version 4.5.1
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 4.5.1")
+                            .font(.headline)
+                            .bold()
+                        Text("(Build 609)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
+                            .font(.subheadline)
+                            .bold()
                         bullet(isDe ? "Einstellbare Band-Punktgröße: Die Punktgröße der farbigen Markierungen für gearbeitete Länder auf der Ausbreitungskarte (2D & 3D Globus) sowie der Grid-Map ist nun von 6 bis 24 pt frei konfigurierbar (Standard: 12 pt, vergrößert für optimale Lesbarkeit)." : "Configurable Band Point Size: The diameter of the colored dots representing worked countries on the propagation map (2D & 3D globe) and grid map is now customizable from 6 to 24 pt (default: 12 pt, enlarged for optimal visibility).", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Direkte Steuerung auf der Karte: Live-Anpassung der Punktgröße über den Stepper in der linken Status-Box sowie Schnellwahltasten ([-] ● Xpt [+]) in der unteren Band-Leiste ohne Öffnen der Einstellungen." : "On-Map Live Controls: Real-time point size adjustments via the top-left status stepper and quick buttons ([-] ● Xpt [+]) in the bottom band strip without opening Settings.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Erweiterte Landkarten-Einstellungen: Neuer Schieberegler unter Einstellungen → Ansicht → Landkarten-Ansicht inklusive Rücksetzfunktion auf den Standardwert." : "Enhanced Map Settings: New dedicated slider in Settings → Appearance → Map View with 1-click restore to defaults.", font: .subheadline, color: .secondary)
@@ -1281,7 +1307,7 @@ struct HelpView: View {
                     .foregroundStyle(.secondary)
                 }
                 .padding()
-                .background(Color.green.opacity(0.08))
+                .background(Color.secondary.opacity(0.08))
                 .cornerRadius(8)
 
                 // Version 4.5.0

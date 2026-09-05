@@ -427,10 +427,9 @@ struct GlobeMapViewContainer: NSViewRepresentable {
             gridFontSize: gridFontSize,
             spotPointSize: spotPointSize,
             spotItems: spotItems,
-            activeQSOPath: activeQSOPath,
             region: startingRegion
         )
-        context.coordinator.applyKeyAnnotations(mapView, activeQSOPath: activeQSOPath)
+        context.coordinator.updateActiveQSO(mapView, activeQSOPath: activeQSOPath)
         return mapView
     }
 
@@ -445,18 +444,20 @@ struct GlobeMapViewContainer: NSViewRepresentable {
             mapView.setRegion(prog, animated: true)
         }
 
-        // Auto-center on active QSO path when it starts or changes
-        if coord.lastActiveQSOPath != activeQSOPath, let path = activeQSOPath {
-            let qsoRegion = PropagationMapView.centerRegionForQSO(from: path.myCoordinate, to: path.targetCoordinate)
-            mapView.setRegion(qsoRegion, animated: true)
+        // Active QSO changes (auto-center, annotations, polyline)
+        if coord.lastActiveQSOPath != activeQSOPath {
+            coord.updateActiveQSO(mapView, activeQSOPath: activeQSOPath)
+            if let path = activeQSOPath {
+                let qsoRegion = PropagationMapView.centerRegionForQSO(from: path.myCoordinate, to: path.targetCoordinate)
+                mapView.setRegion(qsoRegion, animated: true)
+            }
         }
 
-        // Check what changed
+        // Check what changed for vector overlay
         let spotItemsChanged = coord.lastSpotItems != spotItems
         let settingsChanged = coord.lastShowGrid != showGridOverlay
             || coord.lastShowShading != showWorkedGridShading
             || coord.lastWorkedGrids != workedGrids
-            || coord.lastActiveQSOPath != activeQSOPath
             || coord.lastShowBadges != showBadges
             || coord.lastGridTextColor != gridTextColor
             || coord.lastGridLineColor != gridLineColor
@@ -482,7 +483,6 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                     gridFontSize: gridFontSize,
                     spotPointSize: spotPointSize,
                     spotItems: coord.lastSpotItems, // keep frozen spots
-                    activeQSOPath: activeQSOPath,
                     region: mapView.region
                 )
             }
@@ -502,15 +502,9 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                     gridFontSize: gridFontSize,
                     spotPointSize: spotPointSize,
                     spotItems: spotsToApply,
-                    activeQSOPath: activeQSOPath,
                     region: mapView.region
                 )
             }
-        }
-
-        // Only update key foreground annotations (🏠 MY QTH, ⚡ ACTIVE QSO)
-        if coord.lastActiveQSOPath != activeQSOPath {
-            coord.applyKeyAnnotations(mapView, activeQSOPath: activeQSOPath)
         }
     }
 
@@ -574,7 +568,6 @@ struct GlobeMapViewContainer: NSViewRepresentable {
             gridFontSize: Double = 11.0,
             spotPointSize: Double = 12.0,
             spotItems: [GlobeSpotItem] = [],
-            activeQSOPath: ActiveQSOPath? = nil,
             region: MKCoordinateRegion
         ) {
             let settingsChanged = self.lastSpotPointSize != spotPointSize
@@ -596,7 +589,6 @@ struct GlobeMapViewContainer: NSViewRepresentable {
             self.lastGridFontSize = gridFontSize
             self.lastSpotPointSize = spotPointSize
             self.lastSpotItems = spotItems
-            self.lastActiveQSOPath = activeQSOPath
 
             let shadeColor = resolveShadeColor()
             let textColor = parseNSColor(hexString: gridTextColor, defaultColor: NSColor.systemYellow)
@@ -745,48 +737,52 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                             self.cachedVectorRenderer?.setNeedsDisplay()
                         }
                     }
-
-                    // Handle active QSO polyline
-                    if let mapView = self.currentMapView {
-                        if let oldPath = self.activeQSOPolyline {
-                            mapView.removeOverlay(oldPath)
-                            self.activeQSOPolyline = nil
-                        }
-                        if let path = activeQSOPath {
-                            let pathCoords = Maidenhead.greatCirclePath(from: path.myCoordinate, to: path.targetCoordinate, steps: 60)
-                            let polyline = MKPolyline(coordinates: pathCoords, count: pathCoords.count)
-                            polyline.title = "ActiveQSOPath"
-                            mapView.addOverlay(polyline, level: .aboveLabels)
-                            self.activeQSOPolyline = polyline
-                        }
-                    }
                 }
             }
         }
 
-        func applyKeyAnnotations(_ mapView: MKMapView, activeQSOPath: ActiveQSOPath?) {
-            // Only maintain the 2 essential interactive pins: 🏠 MY QTH and ⚡ ACTIVE QSO
-            mapView.removeAnnotations(mapView.annotations)
-            guard let path = activeQSOPath else { return }
-            
-            let mySpot = GlobeSpotItem(
-                id: "MY_QTH",
-                title: "MY QTH",
-                subtitle: path.myGrid,
-                latitude: path.myCoordinate.latitude,
-                longitude: path.myCoordinate.longitude,
-                bandName: "MY_QTH"
-            )
-            let targetSubtitle = path.targetGrid ?? path.targetCountry ?? ""
-            let targetSpot = GlobeSpotItem(
-                id: "TARGET_\(path.targetCall)",
-                title: path.targetCall,
-                subtitle: targetSubtitle,
-                latitude: path.targetCoordinate.latitude,
-                longitude: path.targetCoordinate.longitude,
-                bandName: "ACTIVE_QSO"
-            )
-            mapView.addAnnotations([GlobeSpotAnnotation(item: mySpot), GlobeSpotAnnotation(item: targetSpot)])
+        func updateActiveQSO(_ mapView: MKMapView, activeQSOPath: ActiveQSOPath?) {
+            self.lastActiveQSOPath = activeQSOPath
+
+            // 1. Synchronously update interactive annotations (🏠 MY QTH and ⚡ ACTIVE QSO)
+            let existingKeyAnnotations = mapView.annotations.filter { $0 is GlobeSpotAnnotation }
+            if !existingKeyAnnotations.isEmpty {
+                mapView.removeAnnotations(existingKeyAnnotations)
+            }
+
+            if let path = activeQSOPath {
+                let mySpot = GlobeSpotItem(
+                    id: "MY_QTH",
+                    title: "MY QTH",
+                    subtitle: path.myGrid,
+                    latitude: path.myCoordinate.latitude,
+                    longitude: path.myCoordinate.longitude,
+                    bandName: "MY_QTH"
+                )
+                let targetSubtitle = path.targetGrid ?? path.targetCountry ?? ""
+                let targetSpot = GlobeSpotItem(
+                    id: "TARGET_\(path.targetCall)",
+                    title: path.targetCall,
+                    subtitle: targetSubtitle,
+                    latitude: path.targetCoordinate.latitude,
+                    longitude: path.targetCoordinate.longitude,
+                    bandName: "ACTIVE_QSO"
+                )
+                mapView.addAnnotations([GlobeSpotAnnotation(item: mySpot), GlobeSpotAnnotation(item: targetSpot)])
+            }
+
+            // 2. Synchronously update Active QSO Great Circle Polyline
+            if let oldPath = self.activeQSOPolyline {
+                mapView.removeOverlay(oldPath)
+                self.activeQSOPolyline = nil
+            }
+            if let path = activeQSOPath {
+                let pathCoords = Maidenhead.greatCirclePath(from: path.myCoordinate, to: path.targetCoordinate, steps: 60)
+                let polyline = MKPolyline(coordinates: pathCoords, count: pathCoords.count)
+                polyline.title = "ActiveQSOPath"
+                mapView.addOverlay(polyline, level: .aboveLabels)
+                self.activeQSOPolyline = polyline
+            }
         }
 
         func mapViewDidChangeVisibleRegion(_ mapView: MKMapView) {
@@ -815,7 +811,6 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                     gridFontSize: self.lastGridFontSize,
                     spotPointSize: self.lastSpotPointSize,
                     spotItems: spotsToApply,
-                    activeQSOPath: self.lastActiveQSOPath,
                     region: targetRegion
                 )
             }
@@ -927,7 +922,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
             guard let spot = annotation as? GlobeSpotAnnotation else { return nil }
-            let identifier = "GlobeKeyMarker"
+            let identifier = spot.bandName == "MY_QTH" ? "GlobeMyQTHMarker" : "GlobeActiveQSOMarker"
             var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView
             if annotationView == nil {
                 annotationView = MKMarkerAnnotationView(annotation: spot, reuseIdentifier: identifier)

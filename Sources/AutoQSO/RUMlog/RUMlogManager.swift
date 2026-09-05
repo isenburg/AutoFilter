@@ -10,7 +10,8 @@ class RUMlogManager {
     var logHistory: [String] = []
     
     private let userDefaultsLastSyncKey = "rumlogLastSyncTimestamp"
-    
+    private var isDe: Bool { LanguageManager.shared.isGerman }
+
     init() {}
     
     func addLog(_ message: String) {
@@ -35,11 +36,11 @@ class RUMlogManager {
         let sinceString: String
         if fullSync {
             sinceString = "1900-01-01 00:00:00"
-            addLog("Starte vollständigen RUMlogNG Sync ab 1900-01-01...")
+            addLog(isDe ? "Starte vollständigen RUMlogNG Sync ab 1900-01-01..." : "Starting full RUMlogNG sync from 1900-01-01...")
         } else {
             let saved = UserDefaults.standard.string(forKey: userDefaultsLastSyncKey)
             sinceString = saved ?? "1900-01-01 00:00:00"
-            addLog("Starte inkrementellen RUMlogNG Sync ab \(sinceString)...")
+            addLog(isDe ? "Starte inkrementellen RUMlogNG Sync ab \(sinceString)..." : "Starting incremental RUMlogNG sync from \(sinceString)...")
         }
         
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
@@ -55,9 +56,11 @@ class RUMlogManager {
                 if !anyRumlog {
                     DispatchQueue.main.async {
                         self.isDownloading = false
-                        let err = "RUMlogNG ist nicht gestartet. Bitte starte RUMlogNG und versuche es erneut."
+                        let err = self.isDe
+                            ? "RUMlogNG ist nicht gestartet. Bitte starte RUMlogNG und versuche es erneut."
+                            : "RUMlogNG is not running. Please start RUMlogNG and try again."
                         self.errorMessage = err
-                        self.addLog("Fehler: \(err)")
+                        self.addLog(self.isDe ? "Fehler: \(err)" : "Error: \(err)")
                     }
                     return
                 }
@@ -74,9 +77,9 @@ class RUMlogManager {
             guard let appleScript = NSAppleScript(source: scriptText) else {
                 DispatchQueue.main.async {
                     self.isDownloading = false
-                    let err = "Fehler beim Erstellen des AppleScripts für RUMlogNG."
+                    let err = self.isDe ? "Fehler beim Erstellen des AppleScripts für RUMlogNG." : "Error creating AppleScript for RUMlogNG."
                     self.errorMessage = err
-                    self.addLog("Fehler: \(err)")
+                    self.addLog(self.isDe ? "Fehler: \(err)" : "Error: \(err)")
                 }
                 return
             }
@@ -84,20 +87,22 @@ class RUMlogManager {
             let descriptor = appleScript.executeAndReturnError(&errorDict)
             
             if let error = errorDict {
-                let errDescription = error[NSAppleScript.errorMessage] as? String ?? "Unbekannter AppleScript Fehler"
+                let errDescription = error[NSAppleScript.errorMessage] as? String ?? (self.isDe ? "Unbekannter AppleScript Fehler" : "Unknown AppleScript error")
                 let errorNumber = error[NSAppleScript.errorNumber] as? Int ?? 0
                 
                 let err: String
                 if errorNumber == -1743 || errDescription.lowercased().contains("not authorized") {
-                    err = "Berechtigung fehlt: macOS blockiert Apple Events an RUMlogNG. Bitte öffne Systemeinstellungen ➔ Datenschutz & Sicherheit ➔ Automation und aktiviere 'RUMlogNG' unter 'AutoQSO'."
+                    err = self.isDe
+                        ? "Berechtigung fehlt: macOS blockiert Apple Events an RUMlogNG. Bitte öffne Systemeinstellungen ➔ Datenschutz & Sicherheit ➔ Automation und aktiviere 'RUMlogNG' unter 'AutoQSO'."
+                        : "Permission missing: macOS is blocking Apple Events to RUMlogNG. Please open System Settings ➔ Privacy & Security ➔ Automation and enable 'RUMlogNG' under 'AutoQSO'."
                 } else {
-                    err = "AppleScript Fehler bei RUMlogNG: \(errDescription)"
+                    err = self.isDe ? "AppleScript Fehler bei RUMlogNG: \(errDescription)" : "AppleScript error with RUMlogNG: \(errDescription)"
                 }
                 
                 DispatchQueue.main.async {
                     self.isDownloading = false
                     self.errorMessage = err
-                    self.addLog("Fehler: \(err)")
+                    self.addLog(self.isDe ? "Fehler: \(err)" : "Error: \(err)")
                 }
                 return
             }
@@ -105,13 +110,17 @@ class RUMlogManager {
             guard let adifOutput = descriptor.stringValue, !adifOutput.isEmpty else {
                 DispatchQueue.main.async {
                     self.isDownloading = false
-                    self.addLog("RUMlogNG hat keine Daten zurückgegeben (Logbuch möglicherweise leer).")
+                    self.addLog(self.isDe
+                        ? "RUMlogNG hat keine Daten zurückgegeben (Logbuch möglicherweise leer)."
+                        : "RUMlogNG returned no data (logbook may be empty).")
                     completion([])
                 }
                 return
             }
             
-            self.addLog("ADIF Daten von RUMlogNG empfangen (\(adifOutput.count / 1024) KB). Parse QSOs...")
+            self.addLog(self.isDe
+                ? "ADIF Daten von RUMlogNG empfangen (\(adifOutput.count / 1024) KB). Parse QSOs..."
+                : "ADIF data received from RUMlogNG (\(adifOutput.count / 1024) KB). Parsing QSOs...")
             
             let entries = ADIFParser.parseQSOs(from: adifOutput)
             
@@ -124,7 +133,9 @@ class RUMlogManager {
             
             DispatchQueue.main.async {
                 self.isDownloading = false
-                self.addLog("RUMlogNG Sync erfolgreich: \(entries.count) QSOs importiert.")
+                self.addLog(self.isDe
+                    ? "RUMlogNG Sync erfolgreich: \(entries.count) QSOs importiert."
+                    : "RUMlogNG sync successful: \(entries.count) QSOs imported.")
                 completion(entries)
             }
         }

@@ -34,11 +34,11 @@ struct LogsConsoleView: View {
     }
     
     private func logColor(for log: String) -> Color {
-        if log.contains("Fehler") || log.contains("⚠️") || log.contains("❌") {
+        if log.contains("Fehler") || log.contains("Error") || log.contains("⚠️") || log.contains("❌") {
             return .red
         } else if log.contains("🚀") || log.contains("✅") {
             return .green
-        } else if log.contains("Auswertung") {
+        } else if log.contains("Auswertung") || log.contains("Evaluation") {
             return .secondary
         } else {
             let hex = UserDefaults.standard.string(forKey: "colorLogSystem") ?? ""

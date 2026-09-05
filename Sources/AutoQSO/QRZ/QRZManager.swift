@@ -8,6 +8,8 @@ class QRZManager {
     var errorMessage: String?
     var logHistory: [String] = []
     
+    private var isDe: Bool { LanguageManager.shared.isGerman }
+
     private func addLog(_ message: String) {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss"
@@ -20,7 +22,7 @@ class QRZManager {
     func downloadQRZ(apiKey: String, fullSync: Bool = true, completion: @escaping ([QSOEntry]) -> Void) {
         let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedKey.isEmpty else {
-            addLog("Fehler: Kein QRZ API Key angegeben")
+            addLog(isDe ? "Fehler: Kein QRZ API Key angegeben" : "Error: No QRZ API key specified")
             return
         }
         
@@ -30,37 +32,40 @@ class QRZManager {
         let startDateStr = fullSync ? "1900-01-01" : getStartDateString()
         
         guard let url = URL(string: "https://logbook.qrz.com/api?KEY=\(safeKey)&ACTION=FETCH&OPTION=TYPE:ADIF,MODSINCE:\(startDateStr)") else {
-            addLog("Fehler: Ungültiger QRZ API Key")
+            addLog(isDe ? "Fehler: Ungültiger QRZ API Key" : "Error: Invalid QRZ API key")
             return
         }
         
         isDownloading = true
         errorMessage = nil
-        addLog("Starte QRZ.com Logbuch Sync (Vollständig ab \(startDateStr))...")
+        addLog(isDe
+            ? "Starte QRZ.com Logbuch Sync (Vollständig ab \(startDateStr))..."
+            : "Starting QRZ.com logbook sync (full since \(startDateStr))...")
         
         let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
             DispatchQueue.main.async {
-                self?.isDownloading = false
+                guard let self = self else { return }
+                self.isDownloading = false
                 if let error = error {
-                    self?.errorMessage = error.localizedDescription
-                    self?.addLog("QRZ Netzwerkfehler: \(error.localizedDescription)")
+                    self.errorMessage = error.localizedDescription
+                    self.addLog(self.isDe ? "QRZ Netzwerkfehler: \(error.localizedDescription)" : "QRZ network error: \(error.localizedDescription)")
                     return
                 }
                 
                 guard let data = data, let str = String(data: data, encoding: .utf8) else {
-                    self?.errorMessage = "Ungültige Daten von QRZ.com empfangen"
-                    self?.addLog("Fehler: Ungültige Antwort von QRZ.com")
+                    self.errorMessage = "Ungültige Daten von QRZ.com empfangen"
+                    self.addLog(self.isDe ? "Fehler: Ungültige Antwort von QRZ.com" : "Error: Invalid response from QRZ.com")
                     return
                 }
                 
                 if str.contains("RESULT=FAIL") || str.contains("RESULT=AUTH") {
-                    let reason = self?.extractParam("REASON", from: str) ?? "Authentifizierung fehlgeschlagen"
-                    self?.errorMessage = "QRZ Fehler: \(reason)"
-                    self?.addLog("QRZ Fehler: \(reason)")
+                    let reason = self.extractParam("REASON", from: str) ?? (self.isDe ? "Authentifizierung fehlgeschlagen" : "Authentication failed")
+                    self.errorMessage = "QRZ: \(reason)"
+                    self.addLog(self.isDe ? "QRZ Fehler: \(reason)" : "QRZ error: \(reason)")
                     return
                 }
                 
-                self?.addLog("QRZ Daten empfangen (\(data.count / 1024) KB). Parse ADIF...")
+                self.addLog(self.isDe ? "QRZ Daten empfangen (\(data.count / 1024) KB). Parse ADIF..." : "QRZ data received (\(data.count / 1024) KB). Parsing ADIF...")
                 
                 DispatchQueue.global(qos: .userInitiated).async {
                     var adifText = str
@@ -73,7 +78,9 @@ class QRZManager {
                     
                     let newEntries = ADIFParser.parseQSOs(from: adifText)
                     DispatchQueue.main.async {
-                        self?.addLog("QRZ Sync abgeschlossen: \(newEntries.count) QSOs aus QRZ.com geladen.")
+                        self.addLog(self.isDe
+                            ? "QRZ Sync abgeschlossen: \(newEntries.count) QSOs aus QRZ.com geladen."
+                            : "QRZ sync completed: \(newEntries.count) QSOs imported from QRZ.com.")
                         completion(newEntries)
                     }
                 }

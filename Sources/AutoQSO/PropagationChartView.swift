@@ -4,6 +4,7 @@ import Charts
 struct PropagationChartView: View {
     var viewModel: DecodeViewModel
     var mapState: PropagationMapState
+    private var isDe: Bool { LanguageManager.shared.isGerman }
     @State private var isStacked = false
     @State private var isInteracting = false
     @State private var frozenChartData: [PropagationChartItem] = []
@@ -20,13 +21,14 @@ struct PropagationChartView: View {
     }
 
     var body: some View {
+        let timeWindow = UserDefaults.standard.integer(forKey: "mapTimeWindow") == 0 ? 30 : UserDefaults.standard.integer(forKey: "mapTimeWindow")
         VStack(alignment: .leading, spacing: 10) {
             // Header with View Mode Toggle
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(isStacked ? "Propagation Density (Gestapelt)" : "Propagation by Continent")
+                    Text(isStacked ? (isDe ? "Ausbreitungsdichte (Gestapelt)" : "Propagation Density (Stacked)") : (isDe ? "Ausbreitung nach Kontinent" : "Propagation by Continent"))
                         .font(.headline)
-                    Text("Gefilterte Spots im \(UserDefaults.standard.integer(forKey: "mapTimeWindow") == 0 ? 30 : UserDefaults.standard.integer(forKey: "mapTimeWindow")) Min. Zeitfenster")
+                    Text(isDe ? "Gefilterte Spots im \(timeWindow) Min. Zeitfenster" : "Filtered spots in \(timeWindow) min time window")
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                 }
@@ -42,7 +44,7 @@ struct PropagationChartView: View {
                     .buttonStyle(.plain)
                     .padding(5)
                     .background(Circle().fill(Color.secondary.opacity(0.12)))
-                    .help(isStacked ? "Zur gruppierten Ansicht wechseln" : "Zur gestapelten Ansicht wechseln")
+                    .help(isStacked ? (isDe ? "Zur gruppierten Ansicht wechseln" : "Switch to grouped view") : (isDe ? "Zur gestapelten Ansicht wechseln" : "Switch to stacked view"))
 
                     // Refresh Button
                     Button(action: { viewModel.updatePropagationClusters() }) {
@@ -52,7 +54,7 @@ struct PropagationChartView: View {
                     .buttonStyle(.plain)
                     .padding(5)
                     .background(Circle().fill(Color.secondary.opacity(0.12)))
-                    .help("Aktualisieren")
+                    .help(isDe ? "Aktualisieren" : "Refresh")
                 }
             }
             .padding([.horizontal, .top], 12)
@@ -61,14 +63,14 @@ struct PropagationChartView: View {
                 ForEach(chartData) { item in
                     if isStacked {
                         BarMark(
-                            x: .value("Kontinent", item.continent),
+                            x: .value(isDe ? "Kontinent" : "Continent", item.continent),
                             y: .value("Spots", min(item.count, 200))
                         )
                         .foregroundStyle(by: .value("Band", item.band))
                         .clipShape(.rect(cornerRadius: 3))
                     } else {
                         BarMark(
-                            x: .value("Kontinent", item.continent),
+                            x: .value(isDe ? "Kontinent" : "Continent", item.continent),
                             y: .value("Spots", min(item.count, 200)),
                             width: .fixed(12)
                         )

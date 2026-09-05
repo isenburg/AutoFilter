@@ -3,11 +3,15 @@ import MapKit
 
 struct PropagationMapView: View {
     @Bindable var viewModel: DecodeViewModel
+    private var isDe: Bool { LanguageManager.shared.isGerman }
+
+    init(viewModel: DecodeViewModel) {
+        self.viewModel = viewModel
+    }
     @State private var now = Date()
     @State private var refreshTimer: Timer?
     @State private var sortMode = 0 // 0: Continent, 1: A–Z, 2: Spots
     @State private var showList = true
-    @State private var expandedContinents: Set<String> = ["EUROPE", "NORTH AMERICA", "ASIA", "SOUTH AMERICA", "AFRICA", "OCEANIA", "ANTARCTICA", "OTHER"]
 
     @AppStorage("mapTimeWindow") private var mapTimeWindow = 30
     @AppStorage("mapCountWorkedBefore") private var mapCountWorkedBefore = false
@@ -204,7 +208,7 @@ struct PropagationMapView: View {
                         }) {
                             HStack(spacing: 8) {
                                 Circle().fill(Color.orange).frame(width: 8, height: 8)
-                                Text("⚡ AKTIVES QSO:").font(.caption).bold().foregroundStyle(.orange)
+                                Text(isDe ? "⚡ AKTIVES QSO:" : "⚡ ACTIVE QSO:").font(.caption).bold().foregroundStyle(.orange)
                                 let locLabel = path.targetGrid ?? path.targetCountry ?? ""
                                 Text("\(path.myGrid) ➔ \(path.targetCall)\(!locLabel.isEmpty ? " (\(locLabel))" : "")")
                                     .font(.system(size: 11, weight: .black, design: .monospaced))
@@ -230,11 +234,11 @@ struct PropagationMapView: View {
                 .overlay(alignment: .topLeading) {
                     VStack(alignment: .leading, spacing: 8) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("\(displayClusters.count) Länder").font(.caption).bold().lineLimit(1)
+                            Text(isDe ? "\(displayClusters.count) Länder" : "\(displayClusters.count) Countries").font(.caption).bold().lineLimit(1)
                             Rectangle().fill(.secondary.opacity(0.2)).frame(height: 1)
                             
                             Stepper(value: $mapTimeWindow, in: 5...120, step: 5) {
-                                Text("Fenster: \(mapTimeWindow) Min.").font(.caption2).lineLimit(1)
+                                Text(isDe ? "Fenster: \(mapTimeWindow) Min." : "Window: \(mapTimeWindow) min.").font(.caption2).lineLimit(1)
                             }
                             .onChange(of: mapTimeWindow) { _, _ in
                                 viewModel.updatePropagationClusters()
@@ -242,7 +246,7 @@ struct PropagationMapView: View {
                             
                             Rectangle().fill(.secondary.opacity(0.2)).frame(height: 1)
                             
-                            Toggle("Gearbeitete mitzählen", isOn: $mapCountWorkedBefore)
+                            Toggle(isDe ? "Gearbeitete mitzählen" : "Include worked", isOn: $mapCountWorkedBefore)
                                 .font(.system(size: 9))
                                 .lineLimit(1)
                                 .toggleStyle(.checkbox)
@@ -254,13 +258,13 @@ struct PropagationMapView: View {
                             Rectangle().fill(.secondary.opacity(0.2)).frame(height: 1)
 
                             Stepper(value: $mapSpotPointSize, in: 6...24, step: 1) {
-                                Text("Punktgröße: \(Int(mapSpotPointSize)) pt").font(.caption2).lineLimit(1)
+                                Text(isDe ? "Punktgröße: \(Int(mapSpotPointSize)) pt" : "Dot size: \(Int(mapSpotPointSize)) pt").font(.caption2).lineLimit(1)
                             }
                             
                             Rectangle().fill(.secondary.opacity(0.2)).frame(height: 1)
                             
-                            StatRow(label: "Empf.", value: "\(viewModel.mapState.totalReceived)", rate: "\(spotsPerHour.received)/h")
-                            StatRow(label: "Durchg.", value: "\(viewModel.mapState.totalForwarded)", rate: "\(spotsPerHour.filtered)/h", color: .green)
+                            StatRow(label: isDe ? "Empf." : "Recv.", value: "\(viewModel.mapState.totalReceived)", rate: "\(spotsPerHour.received)/h")
+                            StatRow(label: isDe ? "Durchg." : "Pass", value: "\(viewModel.mapState.totalForwarded)", rate: "\(spotsPerHour.filtered)/h", color: .green)
                         }
                         .fixedSize()
                         .padding(10)
@@ -283,7 +287,7 @@ struct PropagationMapView: View {
                                     selectedMapStyleRaw = style.rawValue
                                 }) {
                                     HStack {
-                                        Text(style.rawValue)
+                                        Text(style.title)
                                         if selectedMapStyleRaw == style.rawValue {
                                             Image(systemName: "checkmark")
                                         }
@@ -292,7 +296,7 @@ struct PropagationMapView: View {
                             }
                         } label: {
                             HStack(spacing: 4) {
-                                Text(MapStyleOption(rawValue: selectedMapStyleRaw)?.rawValue ?? "Standard")
+                                Text(selectedMapStyle.title)
                                     .font(.system(size: 12, weight: .medium))
                                 Image(systemName: "chevron.up.chevron.down")
                                     .font(.system(size: 9, weight: .bold))
@@ -304,7 +308,7 @@ struct PropagationMapView: View {
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.1), lineWidth: 1))
                         }
                         .menuStyle(.borderlessButton)
-                        .help("Kartenstil auswählen")
+                        .help(isDe ? "Kartenstil auswählen" : "Select map style")
 
                         Button(action: {
                             withAnimation {
@@ -319,7 +323,7 @@ struct PropagationMapView: View {
                                 .foregroundStyle(showPropagationChart ? .orange : .primary)
                         }
                         .buttonStyle(.plain)
-                        .help("Ausbreitungsdiagramm (Propagation Chart) ein/ausblenden")
+                        .help(isDe ? "Ausbreitungsdiagramm ein/ausblenden" : "Toggle propagation chart")
 
                         Button(action: {
                             withAnimation {
@@ -334,7 +338,7 @@ struct PropagationMapView: View {
                                 .foregroundStyle(showMaidenheadOverlay ? .blue : .primary)
                         }
                         .buttonStyle(.plain)
-                        .help("Maidenhead Grid-Gitter ein/ausblenden (bis 8-Stellen Resolution)")
+                        .help(isDe ? "Maidenhead Grid-Gitter ein/ausblenden (bis 8-Stellen Resolution)" : "Toggle Maidenhead grid overlay (up to 8-digit resolution)")
 
                         if !showList {
                             Button(action: { withAnimation { showList = true } }) {
@@ -345,7 +349,7 @@ struct PropagationMapView: View {
                                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.1), lineWidth: 1))
                             }
                             .buttonStyle(.plain)
-                            .help("Liste einblenden")
+                            .help(isDe ? "Liste einblenden" : "Show sidebar")
                         }
                     }
                     .padding(4)
@@ -374,7 +378,7 @@ struct PropagationMapView: View {
                                 Image(systemName: "minus.circle").font(.system(size: 10, weight: .bold))
                             }
                             .buttonStyle(.plain)
-                            .help("Band-Punktgröße verkleinern")
+                            .help(isDe ? "Band-Punktgröße verkleinern" : "Decrease spot dot size")
 
                             Text("● \(Int(mapSpotPointSize))pt")
                                 .font(.system(size: 9, weight: .bold, design: .monospaced))
@@ -383,7 +387,7 @@ struct PropagationMapView: View {
                                 Image(systemName: "plus.circle").font(.system(size: 10, weight: .bold))
                             }
                             .buttonStyle(.plain)
-                            .help("Band-Punktgröße vergrößern")
+                            .help(isDe ? "Band-Punktgröße vergrößern" : "Increase spot dot size")
                         }
                     }
                     .padding(6)
@@ -402,8 +406,10 @@ private struct PropagationSidebarView: View, Equatable {
     let continentNameProvider: (String) -> String
     let onClose: () -> Void
 
+    private var isDe: Bool { LanguageManager.shared.isGerman }
+
     @State private var sortMode = 0 // 0: Continent, 1: A–Z, 2: Spots
-    @State private var expandedContinents: Set<String> = ["EUROPE", "NORTH AMERICA", "ASIA", "SOUTH AMERICA", "AFRICA", "OCEANIA", "ANTARCTICA", "OTHER"]
+    @State private var collapsedContinents: Set<String> = []
 
     static func == (lhs: PropagationSidebarView, rhs: PropagationSidebarView) -> Bool {
         return lhs.clusters == rhs.clusters && lhs.fontSizeTable == rhs.fontSizeTable
@@ -427,8 +433,10 @@ private struct PropagationSidebarView: View, Equatable {
         let grouped = Dictionary(grouping: sortedClusters) { continentNameProvider($0.continent) }
         return grouped.map { (continent: $0.key, clusters: $0.value) }
             .sorted { a, b in
-                if a.continent == "OTHER" { return false }
-                if b.continent == "OTHER" { return true }
+                let otherDe = "ANDERE"
+                let otherEn = "OTHER"
+                if a.continent == otherDe || a.continent == otherEn { return false }
+                if b.continent == otherDe || b.continent == otherEn { return true }
                 return a.continent < b.continent
             }
     }
@@ -436,20 +444,20 @@ private struct PropagationSidebarView: View, Equatable {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Aktive Länder").font(.headline)
+                Text(isDe ? "Aktive Länder" : "Active Countries").font(.headline)
                 Spacer()
                 Button(action: onClose) {
                     Image(systemName: "sidebar.trailing")
                 }
                 .buttonStyle(.plain)
-                .help("Liste ausblenden")
+                .help(isDe ? "Liste ausblenden" : "Hide sidebar")
             }
             .padding(.horizontal, 8)
             .padding(.top, 8)
             .padding(.bottom, 4)
             
-            Picker("Sortierung", selection: $sortMode) {
-                Label("Kontinent", systemImage: "globe.americas").tag(0)
+            Picker(isDe ? "Sortierung" : "Sort", selection: $sortMode) {
+                Label(isDe ? "Kontinent" : "Continent", systemImage: "globe.americas").tag(0)
                 Label("A–Z", systemImage: "textformat.abc").tag(1)
                 Label("Spots", systemImage: "number").tag(2)
             }
@@ -461,19 +469,19 @@ private struct PropagationSidebarView: View, Equatable {
 
             if clusters.isEmpty {
                 Spacer()
-                Text("Noch keine Spots").foregroundStyle(.secondary)
+                Text(isDe ? "Noch keine Spots" : "No spots yet").foregroundStyle(.secondary)
                 Spacer()
             } else {
                 List {
                     if sortMode == 0 {
                         ForEach(clustersByContinent, id: \.continent) { group in
-                            let isExpanded = expandedContinents.contains(group.continent)
+                            let isExpanded = !collapsedContinents.contains(group.continent)
                             Section(header: 
                                 Button(action: {
                                     if isExpanded {
-                                        expandedContinents.remove(group.continent)
+                                        collapsedContinents.insert(group.continent)
                                     } else {
-                                        expandedContinents.insert(group.continent)
+                                        collapsedContinents.remove(group.continent)
                                     }
                                 }) {
                                     HStack {

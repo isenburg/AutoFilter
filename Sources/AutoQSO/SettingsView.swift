@@ -779,7 +779,7 @@ struct SettingsView: View {
                 Button(isDe ? "Löschen" : "Delete", role: .destructive) {
                     let count = DatabaseManager.shared.clearAllQSOs()
                     viewModel.lotwManager.loadLog()
-                    viewModel.lotwManager.addLog("Lokales Logbuch manuell gelöscht (\(count) Einträge entfernt).")
+                    viewModel.lotwManager.addLog(isDe ? "Lokales Logbuch manuell gelöscht (\(count) Einträge entfernt)." : "Local logbook manually cleared (\(count) entries removed).")
                 }
             } message: {
                 Text(isDe ? "Alle lokal gespeicherten QSOs werden unwiderruflich gelöscht. Dies betrifft nicht deine Logbücher auf LoTW oder QRZ.com." : "All locally stored QSOs will be deleted permanently. This does not affect your online logbooks on LoTW or QRZ.com.")
@@ -1421,18 +1421,24 @@ struct SettingsView: View {
                 let inserted = DatabaseManager.shared.insertQSOs(entries)
                 viewModel.lotwManager.loadLog()
                 
-                viewModel.lotwManager.addLog("ADIF Import: \(inserted) von \(entries.count) QSOs erfolgreich importiert.")
+                let isDe = langManager.isGerman
+                viewModel.lotwManager.addLog(isDe
+                    ? "ADIF Import: \(inserted) von \(entries.count) QSOs erfolgreich importiert."
+                    : "ADIF Import: \(inserted) of \(entries.count) QSOs successfully imported.")
                 
                 let alert = NSAlert()
-                alert.messageText = "ADIF Import erfolgreich"
-                alert.informativeText = "\(inserted) von \(entries.count) QSOs wurden erfolgreich in das lokale Logbuch importiert."
+                alert.messageText = isDe ? "ADIF Import erfolgreich" : "ADIF Import Successful"
+                alert.informativeText = isDe
+                    ? "\(inserted) von \(entries.count) QSOs wurden erfolgreich in das lokale Logbuch importiert."
+                    : "\(inserted) of \(entries.count) QSOs successfully imported into local logbook."
                 alert.alertStyle = .informational
                 alert.addButton(withTitle: "OK")
                 alert.runModal()
                 
             } catch {
                 let alert = NSAlert()
-                alert.messageText = "Fehler beim Lesen der Datei"
+                let isDe = langManager.isGerman
+                alert.messageText = isDe ? "Fehler beim Lesen der Datei" : "Error Reading File"
                 alert.informativeText = error.localizedDescription
                 alert.alertStyle = .critical
                 alert.addButton(withTitle: "OK")

@@ -235,19 +235,21 @@ public class MaidenheadGridGenerator {
         let pxHeight6 = (size.height / latDelta) * (1.0 / 24.0)
         let pxHeight4 = (size.height / latDelta) * 1.0
         
+        let isDe = LanguageManager.shared.isGerman
         if pxHeight8 >= 40 {
-            return "8-Stellen (Extended)"
+            return isDe ? "8-Stellen (Extended)" : "8-digit (Extended)"
         } else if pxHeight6 >= 40 {
-            return "6-Stellen (Subsquare)"
+            return isDe ? "6-Stellen (Subsquare)" : "6-digit (Subsquare)"
         } else if pxHeight4 >= 35 {
-            return "4-Stellen (Square)"
+            return isDe ? "4-Stellen (Square)" : "4-digit (Square)"
         } else {
-            return "2-Stellen (Field)"
+            return isDe ? "2-Stellen (Field)" : "2-digit (Field)"
         }
     }
 }
 
 public struct GridOverlaySettingsBar: View {
+    private var isDe: Bool { LanguageManager.shared.isGerman }
     @AppStorage("gridOverlayFontSize") private var gridOverlayFontSize = 11.0
     @AppStorage("gridOverlayShowPill") private var gridOverlayShowPill = true
 
@@ -316,7 +318,7 @@ public struct GridOverlaySettingsBar: View {
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(.cyan)
 
-                Text("Gitter:")
+                Text(isDe ? "Gitter:" : "Grid:")
                     .font(.system(size: 10, weight: .bold))
             }
 
@@ -345,7 +347,7 @@ public struct GridOverlaySettingsBar: View {
                 .font(.system(size: 10, weight: .medium))
 
             // Line color picker
-            ColorPicker("Linie", selection: gridLineColorBinding)
+            ColorPicker(isDe ? "Linie" : "Line", selection: gridLineColorBinding)
                 .font(.system(size: 10, weight: .medium))
 
             // Badge color picker & toggle
@@ -354,7 +356,7 @@ public struct GridOverlaySettingsBar: View {
                     .font(.system(size: 10, weight: .medium))
             }
 
-            ColorPicker("Gearbeitet", selection: workedGridShadeColorBinding)
+            ColorPicker(isDe ? "Gearbeitet" : "Worked", selection: workedGridShadeColorBinding)
                 .font(.system(size: 10, weight: .medium))
 
             Toggle("Badges", isOn: $gridOverlayShowPill)

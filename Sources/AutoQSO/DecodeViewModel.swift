@@ -210,7 +210,9 @@ class DecodeViewModel {
                 
                 if !isCQ && !isForMe {
                     let otherCall = recipient
-                    let msg = "QSO abgebrochen: \(targetUpper) antwortet \(otherCall) (Kein Cooldown, bereit für nächsten Trigger)."
+                    let msg = self.isDe
+                        ? "QSO abgebrochen: \(targetUpper) antwortet \(otherCall) (Kein Cooldown, bereit für nächsten Trigger)."
+                        : "QSO aborted: \(targetUpper) replied to \(otherCall) (No cooldown, ready for next trigger)."
                     self.currentQSOStatus = msg
                     self.addLog("ℹ️ \(msg)")
                     
@@ -246,15 +248,16 @@ class DecodeViewModel {
     private var needsRecalculation = false
     private var isRecalculating = false
     private let recalcQueue = DispatchQueue(label: "com.autoqso.recalc", qos: .userInitiated)
+    private var isDe: Bool { LanguageManager.shared.isGerman }
     var isAutoModeEnabled: Bool = false {
         didSet {
             if !isAutoModeEnabled {
                 currentTargetCall = ""
                 qsoStartTime = nil
-                currentQSOStatus = "Bereit"
-                addLog("Auto Mode deaktiviert. Aktiver Anruf zurückgesetzt.")
+                currentQSOStatus = isDe ? "Bereit" : "Ready"
+                addLog(isDe ? "Auto Mode deaktiviert. Aktiver Anruf zurückgesetzt." : "Auto mode disabled. Active call reset.")
             } else {
-                addLog("Auto Mode aktiviert.")
+                addLog(isDe ? "Auto Mode aktiviert." : "Auto mode enabled.")
             }
         }
     }
@@ -480,6 +483,7 @@ class DecodeViewModel {
     private var cancellables = Set<AnyCancellable>()
     
     init() {
+        self.currentQSOStatus = LanguageManager.shared.isGerman ? "Bereit" : "Ready"
         loadAvailableClusters()
         
         // Load filter settings from UserDefaults
@@ -571,7 +575,9 @@ class DecodeViewModel {
                 let callUpper = entry.callsign.uppercased()
                 self.blacklistedCalls[callUpper] = Date()
                 if callUpper == self.currentTargetCall.uppercased() || self.currentTargetCall.isEmpty {
-                    self.currentQSOStatus = "QSO mit \(entry.callsign) erfolgreich beendet!"
+                    self.currentQSOStatus = self.isDe
+                        ? "QSO mit \(entry.callsign) erfolgreich beendet!"
+                        : "QSO with \(entry.callsign) successfully completed!"
                     self.currentTargetCall = ""
                     self.qsoStartTime = nil
                     self.txEnabledStartTime = nil
@@ -607,7 +613,9 @@ class DecodeViewModel {
             if !self.currentTargetCall.isEmpty {
                 let call = self.currentTargetCall
                 self.blacklistedCalls[call.uppercased()] = Date()
-                self.currentQSOStatus = "QSO mit \(call) abgebrochen. Gesperrt für \(self.retryCooldownMinutes) Min."
+                self.currentQSOStatus = self.isDe
+                    ? "QSO mit \(call) abgebrochen. Gesperrt für \(self.retryCooldownMinutes) Min."
+                    : "QSO with \(call) aborted. Blocked for \(self.retryCooldownMinutes) min."
                 self.currentTargetCall = ""
                 self.qsoStartTime = nil
                 self.txEnabledStartTime = nil
@@ -706,7 +714,7 @@ class DecodeViewModel {
             if hasWSJTXAccepted {
                 // Trigger war erfolgreich! Wiederholungs-Versuche zurücksetzen und deaktivieren.
                 if txTriggerAttempts > 0 {
-                    addLog("✅ WSJT-X Sende-Bereitschaft (TX BEREIT) erfolgreich erkannt.")
+                    addLog(isDe ? "✅ WSJT-X Sende-Bereitschaft (TX BEREIT) erfolgreich erkannt." : "✅ WSJT-X transmit readiness (TX READY) successfully detected.")
                 }
                 if txEnabledStartTime == nil {
                     txEnabledStartTime = Date()
@@ -721,8 +729,10 @@ class DecodeViewModel {
                         if txTriggerAttempts >= 3 {
                             let failedCall = currentTargetCall
                             blacklistedCalls[failedCall.uppercased()] = Date()
-                            let msg = "WSJT-X hat den Anruf auf \(failedCall) nach 3 Versuchen nicht gestartet (Verbindung prüfen)."
-                            currentQSOStatus = "Anruf-Trigger fehlgeschlagen."
+                            let msg = isDe
+                                ? "WSJT-X hat den Anruf auf \(failedCall) nach 3 Versuchen nicht gestartet (Verbindung prüfen)."
+                                : "WSJT-X did not start call to \(failedCall) after 3 attempts (check connection)."
+                            currentQSOStatus = isDe ? "Anruf-Trigger fehlgeschlagen." : "Call trigger failed."
                             addLog("⚠️ \(msg)")
                             
                             // Reset state
@@ -736,7 +746,9 @@ class DecodeViewModel {
                         } else {
                             txTriggerAttempts += 1
                             lastTxTriggerTime = Date()
-                            addLog("🔁 WSJT-X hat noch nicht gesendet. Erneuter Anruf-Versuch (\(txTriggerAttempts)/3) für \(currentTargetCall)...")
+                            addLog(isDe
+                                ? "🔁 WSJT-X hat noch nicht gesendet. Erneuter Anruf-Versuch (\(txTriggerAttempts)/3) für \(currentTargetCall)..."
+                                : "🔁 WSJT-X has not transmitted yet. Retrying call (\(txTriggerAttempts)/3) for \(currentTargetCall)...")
                             if let target = lastTriggeredTarget {
                                 sendReply(for: target)
                             }
@@ -750,13 +762,17 @@ class DecodeViewModel {
                     
                     // "wenn tx bereits nach einem zyklus wieder aus ist, dann hat wsjtx das senden abgebrochen. Dann die Station nicht in Quarantäne nehmen und mit der nächsten weitermachen."
                     if elapsed <= 25.0 {
-                        let msg = "QSO mit \(failedCall) nach nur einem Sende-Zyklus (\(Int(elapsed))s) abgebrochen (Keine Quarantäne)."
+                        let msg = isDe
+                            ? "QSO mit \(failedCall) nach nur einem Sende-Zyklus (\(Int(elapsed))s) abgebrochen (Keine Quarantäne)."
+                            : "QSO with \(failedCall) aborted after single transmit cycle (\(Int(elapsed))s) (No quarantine)."
                         currentQSOStatus = msg
                         addLog("ℹ️ \(msg)")
                     } else {
                         // "Wenn 'TX Bereit' danach wieder aus ist ohne das ein QSO geloggt wurde, Call in Cooldown nehmen."
                         blacklistedCalls[failedCall.uppercased()] = Date()
-                        let msg = "QSO mit \(failedCall) nach \(Int(elapsed))s erfolglos beendet (TX Bereit aus). Gesperrt für \(retryCooldownMinutes) Min."
+                        let msg = isDe
+                            ? "QSO mit \(failedCall) nach \(Int(elapsed))s erfolglos beendet (TX Bereit aus). Gesperrt für \(retryCooldownMinutes) Min."
+                            : "QSO with \(failedCall) ended unsuccessfully after \(Int(elapsed))s (TX Ready off). Blocked for \(retryCooldownMinutes) min."
                         currentQSOStatus = msg
                         addLog("⚠️ \(msg)")
                     }
@@ -816,14 +832,16 @@ class DecodeViewModel {
                 
                 // DX Filter Check
                 if !shouldAccept(decode: decode) {
-                    skippedCounts["Durch DX-Filter blockiert"] = (skippedCounts["Durch DX-Filter blockiert"] ?? 0) + 1
+                    let key = isDe ? "Durch DX-Filter blockiert" : "Blocked by DX filter"
+                    skippedCounts[key] = (skippedCounts[key] ?? 0) + 1
                     continue
                 }
                 
                 // Strikter DXCC / Most Wanted Filter wenn nur Most Wanted erlaubt
                 if onlyMW {
                     guard MostWantedManager.shared.isMostWanted(callsign: call, maxRank: maxRank) else {
-                        skippedCounts["Nicht in Most Wanted (\(maxRank))"] = (skippedCounts["Nicht in Most Wanted (\(maxRank))"] ?? 0) + 1
+                        let key = isDe ? "Nicht in Most Wanted (\(maxRank))" : "Not in Most Wanted (\(maxRank))"
+                        skippedCounts[key] = (skippedCounts[key] ?? 0) + 1
                         continue
                     }
                 }
@@ -842,11 +860,14 @@ class DecodeViewModel {
                         if isInbound {
                             // Station is actively calling us! Lift quarantine cooldown immediately.
                             blacklistedCalls.removeValue(forKey: call)
-                            addLog("ℹ️ Eingehender Anruf von \(call): Sperrzeit aufgehoben, da Station uns aktiv anruft.")
+                            addLog(isDe
+                                ? "ℹ️ Eingehender Anruf von \(call): Sperrzeit aufgehoben, da Station uns aktiv anruft."
+                                : "ℹ️ Incoming call from \(call): Quarantine lifted because station is calling us directly.")
                         } else {
                             let elapsedMinutes = Date().timeIntervalSince(blacklistedAt) / 60.0
                             if elapsedMinutes < Double(retryCooldownMinutes) {
-                                skippedCounts["In Sperrzeit (\(Int(Double(retryCooldownMinutes) - elapsedMinutes) + 1) Min.)"] = (skippedCounts["In Sperrzeit (\(Int(Double(retryCooldownMinutes) - elapsedMinutes) + 1) Min.)"] ?? 0) + 1
+                                let key = isDe ? "In Sperrzeit (\(Int(Double(retryCooldownMinutes) - elapsedMinutes) + 1) Min.)" : "In quarantine (\(Int(Double(retryCooldownMinutes) - elapsedMinutes) + 1) min.)"
+                                skippedCounts[key] = (skippedCounts[key] ?? 0) + 1
                                 continue // Still in retry cooldown
                             } else {
                                 blacklistedCalls.removeValue(forKey: call) // Cooldown expired
@@ -855,7 +876,12 @@ class DecodeViewModel {
                     }
                     candidates.append(decode)
                 } else {
-                    let msg = isWorkedBeforeFilterEnabled ? "Vor kurzem auf \(decode.band) gearbeitet" : "Bereits auf \(decode.band) gearbeitet"
+                    let msg: String
+                    if isDe {
+                        msg = isWorkedBeforeFilterEnabled ? "Vor kurzem auf \(decode.band) gearbeitet" : "Bereits auf \(decode.band) gearbeitet"
+                    } else {
+                        msg = isWorkedBeforeFilterEnabled ? "Recently worked on \(decode.band)" : "Already worked on \(decode.band)"
+                    }
                     skippedCounts[msg] = (skippedCounts[msg] ?? 0) + 1
                 }
             }
@@ -865,7 +891,10 @@ class DecodeViewModel {
             if totalCQsOr73s > 0 {
                 let reasons = skippedCounts.map { "\($0.key): \($0.value)" }.joined(separator: ", ")
                 let targetType = isAutoModeOnlyCQEnabled ? "CQs" : "CQs/73s"
-                logFilterDecision("Auswertung: Keine Anruf-Kandidaten unter \(totalCQsOr73s) \(targetType) gefunden (\(reasons))")
+                let evalMsg = isDe
+                    ? "Auswertung: Keine Anruf-Kandidaten unter \(totalCQsOr73s) \(targetType) gefunden (\(reasons))"
+                    : "Evaluation: No calling candidates among \(totalCQsOr73s) \(targetType) found (\(reasons))"
+                logFilterDecision(evalMsg)
             }
             return
         }
@@ -930,8 +959,12 @@ class DecodeViewModel {
             distInfo = ""
         }
         
-        currentQSOStatus = "AutoQSO: Rufe \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo)..."
-        addLog("🚀 Rufe \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo) [Msg: \(bestTarget.message)]")
+        currentQSOStatus = isDe
+            ? "AutoQSO: Rufe \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo)..."
+            : "AutoQSO: Calling \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo)..."
+        addLog(isDe
+            ? "🚀 Rufe \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo) [Msg: \(bestTarget.message)]"
+            : "🚀 Calling \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo) [Msg: \(bestTarget.message)]")
         
         print("AutoQSO Engine: Starte Anruf -> \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo) [Msg: \(bestTarget.message)]")
         sendReply(for: bestTarget)
@@ -995,7 +1028,7 @@ class DecodeViewModel {
                let content = try? String(contentsOf: cacheURL, encoding: .utf8) {
                 self.matcher.parseCtyDat(content)
                 self.matcher.lastUpdate = savedDate
-                self.addLog("CTY.DAT erfolgreich im Hintergrund geladen.")
+                self.addLog(self.isDe ? "CTY.DAT erfolgreich im Hintergrund geladen." : "CTY.DAT successfully loaded in background.")
                 if abs(savedDate.timeIntervalSinceNow) > 1209600 {
                     self.updateCtyData()
                 }
@@ -1441,7 +1474,7 @@ class DecodeViewModel {
                 UserDefaults.standard.set(now, forKey: "cty_cache_date")
                 self.matcher.parseCtyDat(content)
                 self.matcher.lastUpdate = now
-                self.addLog("CTY.DAT erfolgreich im Hintergrund aktualisiert.")
+                self.addLog(self.isDe ? "CTY.DAT erfolgreich im Hintergrund aktualisiert." : "CTY.DAT successfully updated in background.")
             }
         }.resume()
     }
@@ -1810,7 +1843,11 @@ class DecodeViewModel {
         if decode.isClusterSpot {
             let spotter = decode.spotter
             if isSpotterBlocked(spotter) {
-                if shouldLog { logFilterDecision("[Filter ❌ DROP] Spot \(call) verworfen: Spotter \(spotter) gesperrt") }
+                if shouldLog {
+                    logFilterDecision(isDe
+                        ? "[Filter ❌ DROP] Spot \(call) verworfen: Spotter \(spotter) gesperrt"
+                        : "[Filter ❌ DROP] Spot \(call) dropped: Spotter \(spotter) blocked")
+                }
                 return false
             }
         }
@@ -1822,7 +1859,11 @@ class DecodeViewModel {
             case .allowedCallsigns:
                 if !allowedDXCallsigns.isEmpty {
                     if callsignMatches(call, in: allowedDXCallsigns) {
-                        if shouldLog { logFilterDecision("[Filter ✅ PASS] \(call) (\(country)) passiert via Pos. \(pos) (Erlaubte DX-Rufzeichen)") }
+                        if shouldLog {
+                            logFilterDecision(isDe
+                                ? "[Filter ✅ PASS] \(call) (\(country)) passiert via Pos. \(pos) (Erlaubte DX-Rufzeichen)"
+                                : "[Filter ✅ PASS] \(call) (\(country)) passed via pos. \(pos) (Allowed DX callsigns)")
+                        }
                         return true // Whitelist-Treffer -> Sofort-Pass (Bypass / Ausnahme)
                     }
                 }
@@ -1830,7 +1871,11 @@ class DecodeViewModel {
             case .allowedCountries:
                 if !allowedCountries.isEmpty {
                     if countryMatches(country, in: allowedCountries) {
-                        if shouldLog { logFilterDecision("[Filter ✅ PASS] \(call) (\(country)) passiert via Pos. \(pos) (Erlaubte DX-Länder: \(country))") }
+                        if shouldLog {
+                            logFilterDecision(isDe
+                                ? "[Filter ✅ PASS] \(call) (\(country)) passiert via Pos. \(pos) (Erlaubte DX-Länder: \(country))"
+                                : "[Filter ✅ PASS] \(call) (\(country)) passed via pos. \(pos) (Allowed DX countries: \(country))")
+                        }
                         return true // Whitelist-Treffer -> Sofort-Pass (Bypass / Ausnahme)
                     }
                 }
@@ -1839,7 +1884,11 @@ class DecodeViewModel {
                 if !allowedGrids.isEmpty {
                     if let g = decode.grid, gridMatches(g, in: allowedGrids) {
                         let g4 = String(g.prefix(4)).uppercased()
-                        if shouldLog { logFilterDecision("[Filter ✅ PASS] \(call) (Grid \(g4)) passiert via Pos. \(pos) (Erlaubte Grids)") }
+                        if shouldLog {
+                            logFilterDecision(isDe
+                                ? "[Filter ✅ PASS] \(call) (Grid \(g4)) passiert via Pos. \(pos) (Erlaubte Grids)"
+                                : "[Filter ✅ PASS] \(call) (Grid \(g4)) passed via pos. \(pos) (Allowed grids)")
+                        }
                         return true // Whitelist-Treffer -> Sofort-Pass (Bypass / Ausnahme)
                     }
                 }
@@ -1847,39 +1896,63 @@ class DecodeViewModel {
             case .messageFilter:
                 if isMessageFilterEnabled && !messageFilterQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     if !MessageFilterEvaluator.evaluate(message: comment, query: messageFilterQuery) {
-                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Nachricht \"\(comment)\" entspricht nicht: \(messageFilterQuery))") }
+                        if shouldLog {
+                            logFilterDecision(isDe
+                                ? "[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Nachricht \"\(comment)\" entspricht nicht: \(messageFilterQuery))"
+                                : "[Filter ❌ DROP] \(call) dropped via pos. \(pos) (Message \"\(comment)\" does not match: \(messageFilterQuery))")
+                        }
                         return false
                     }
                 }
                 
             case .blockedCountries:
                 if isCountryBlocked(country) {
-                    if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Gesperrtes Land: \(country))") }
+                    if shouldLog {
+                        logFilterDecision(isDe
+                            ? "[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Gesperrtes Land: \(country))"
+                            : "[Filter ❌ DROP] \(call) dropped via pos. \(pos) (Blocked country: \(country))")
+                    }
                     return false
                 }
                 
             case .continents:
                 if !continent.isEmpty && disabledContinents.contains(continent) {
-                    if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Gesperrter Kontinent: \(continent))") }
+                    if shouldLog {
+                        logFilterDecision(isDe
+                            ? "[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Gesperrter Kontinent: \(continent))"
+                            : "[Filter ❌ DROP] \(call) dropped via pos. \(pos) (Blocked continent: \(continent))")
+                    }
                     return false
                 }
                 
             case .blockedCQZones:
                 if let cqVal = cq, blockedCQZones.contains(cqVal) {
-                    if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Gesperrte CQ-Zone: \(cqVal))") }
+                    if shouldLog {
+                        logFilterDecision(isDe
+                            ? "[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Gesperrte CQ-Zone: \(cqVal))"
+                            : "[Filter ❌ DROP] \(call) dropped via pos. \(pos) (Blocked CQ zone: \(cqVal))")
+                    }
                     return false
                 }
                 
             case .blockedITUZones:
                 if let ituVal = itu, blockedITUZones.contains(ituVal) {
-                    if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Gesperrte ITU-Zone: \(ituVal))") }
+                    if shouldLog {
+                        logFilterDecision(isDe
+                            ? "[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Gesperrte ITU-Zone: \(ituVal))"
+                            : "[Filter ❌ DROP] \(call) dropped via pos. \(pos) (Blocked ITU zone: \(ituVal))")
+                    }
                     return false
                 }
                 
             case .mostWantedOnly:
                 if isOnlyMostWantedFilterEnabled {
                     if !MostWantedManager.shared.isMostWanted(callsign: call, maxRank: maxMostWantedRank) {
-                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Nicht in Most-Wanted Top \(maxMostWantedRank))") }
+                        if shouldLog {
+                            logFilterDecision(isDe
+                                ? "[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Nicht in Most-Wanted Top \(maxMostWantedRank))"
+                                : "[Filter ❌ DROP] \(call) dropped via pos. \(pos) (Not in Most-Wanted top \(maxMostWantedRank))")
+                        }
                         return false
                     }
                 }
@@ -1887,7 +1960,11 @@ class DecodeViewModel {
             case .workedBefore:
                 if isWorkedBeforeFilterEnabled {
                     if lotwManager.hasWorkedRecently(callsign: call, band: decode.band, duration: workedBeforeDuration, unit: workedBeforeUnit) {
-                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Bereits auf \(decode.band) gearbeitet)") }
+                        if shouldLog {
+                            logFilterDecision(isDe
+                                ? "[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Bereits auf \(decode.band) gearbeitet)"
+                                : "[Filter ❌ DROP] \(call) dropped via pos. \(pos) (Already worked on \(decode.band))")
+                        }
                         return false
                     }
                 }
@@ -1895,23 +1972,39 @@ class DecodeViewModel {
             case .gridFilter:
                 if isNew4CharGridOnlyFilterEnabled {
                     guard let g = decode.grid, g.count >= 4 else {
-                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Kein 4-Stellen Grid)") }
+                        if shouldLog {
+                            logFilterDecision(isDe
+                                ? "[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Kein 4-Stellen Grid)"
+                                : "[Filter ❌ DROP] \(call) dropped via pos. \(pos) (No 4-char grid)")
+                        }
                         return false
                     }
                     let grid4 = String(g.prefix(4)).uppercased()
                     if lotwManager.hasWorkedGrid(grid4) {
-                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (4-Stellen Grid \(grid4) bereits gearbeitet)") }
+                        if shouldLog {
+                            logFilterDecision(isDe
+                                ? "[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (4-Stellen Grid \(grid4) bereits gearbeitet)"
+                                : "[Filter ❌ DROP] \(call) dropped via pos. \(pos) (4-char grid \(grid4) already worked)")
+                        }
                         return false
                     }
                 }
                 if isNew6CharGridOnlyFilterEnabled {
                     guard let g = decode.grid, g.count >= 6 else {
-                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Kein 6-Stellen Grid)") }
+                        if shouldLog {
+                            logFilterDecision(isDe
+                                ? "[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Kein 6-Stellen Grid)"
+                                : "[Filter ❌ DROP] \(call) dropped via pos. \(pos) (No 6-char grid)")
+                        }
                         return false
                     }
                     let grid6 = String(g.prefix(6)).uppercased()
                     if lotwManager.hasWorkedGrid6(grid6) {
-                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (6-Stellen Grid \(grid6) bereits gearbeitet)") }
+                        if shouldLog {
+                            logFilterDecision(isDe
+                                ? "[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (6-Stellen Grid \(grid6) bereits gearbeitet)"
+                                : "[Filter ❌ DROP] \(call) dropped via pos. \(pos) (6-char grid \(grid6) already worked)")
+                        }
                         return false
                     }
                 }
@@ -1928,7 +2021,11 @@ class DecodeViewModel {
                         }
                     }
                     if !passed {
-                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Kein CQ/73-Signal: \"\(comment)\")") }
+                        if shouldLog {
+                            logFilterDecision(isDe
+                                ? "[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Kein CQ/73-Signal: \"\(comment)\")"
+                                : "[Filter ❌ DROP] \(call) dropped via pos. \(pos) (No CQ/73 signal: \"\(comment)\")")
+                        }
                         return false
                     }
                 }
@@ -1938,7 +2035,11 @@ class DecodeViewModel {
                     let freqMhz = Double(decode.dialFrequency) / 1_000_000.0 + Double(decode.deltaFrequency) / 1_000_000.0
                     let freqKhz = freqMhz * 1000.0
                     if isDuplicateSpot(id: decode.id, call: call, freq: freqKhz, record: recordDuplicates) {
-                        if shouldLog { logFilterDecision("[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Doublette auf \(String(format: "%.1f", freqKhz)) kHz)") }
+                        if shouldLog {
+                            logFilterDecision(isDe
+                                ? "[Filter ❌ DROP] \(call) verworfen via Pos. \(pos) (Doublette auf \(String(format: "%.1f", freqKhz)) kHz)"
+                                : "[Filter ❌ DROP] \(call) dropped via pos. \(pos) (Duplicate on \(String(format: "%.1f", freqKhz)) kHz)")
+                        }
                         return false
                     }
                 }
@@ -1946,7 +2047,9 @@ class DecodeViewModel {
         }
         
         if shouldLog {
-            logFilterDecision("[Filter ✅ PASS] \(call) (\(country)) passiert alle Filter")
+            logFilterDecision(isDe
+                ? "[Filter ✅ PASS] \(call) (\(country)) passiert alle Filter"
+                : "[Filter ✅ PASS] \(call) (\(country)) passed all filters")
         }
         return true
     }
@@ -2332,7 +2435,7 @@ class DecodeViewModel {
     }
 
     func clearBlockedDecodes() {
-        DispatchQueue.main.async { [weak self] in
+        DispatchQueue.main.async {
             // Updated via @Observable
         }
     }
@@ -2657,13 +2760,13 @@ class DecodeViewModel {
         switch index {
         case 1:
             client1.send(text: text)
-            addLog("Gesendet an Cluster 1: \(text)")
+            addLog(isDe ? "Gesendet an Cluster 1: \(text)" : "Sent to Cluster 1: \(text)")
         case 2:
             client2.send(text: text)
-            addLog("Gesendet an Cluster 2: \(text)")
+            addLog(isDe ? "Gesendet an Cluster 2: \(text)" : "Sent to Cluster 2: \(text)")
         case 3:
             client3.send(text: text)
-            addLog("Gesendet an Cluster 3: \(text)")
+            addLog(isDe ? "Gesendet an Cluster 3: \(text)" : "Sent to Cluster 3: \(text)")
         default:
             break
         }

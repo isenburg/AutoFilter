@@ -95,6 +95,11 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 
 ## 📝 Changelog
 
+### Version 4.5.2
+- **3D Globe Map Active QSO Marker**: Fixed an issue where the active QSO partner marker was not displayed and the previous QSO marker remained visible on the globe map.
+- **Propagation Map Bilingual Localization**: Full native German and English localization for all propagation map overlays, status indicators, Maidenhead grid settings, chart titles, axis labels, and hover tooltips with reactive language switching.
+- **System Logs English Localization**: Complete English translation for all console messages in the *System Logs* tab, including LoTW, QRZ, and RUMlog synchronization reports, filter decision tracing, QSO timeout/aborts, and candidate evaluations.
+
 ### Version 4.5.1 (Build 609)
 - **Configurable Map Spot Dot Size**: Easily adjust the diameter of the band dots representing worked countries on the propagation map (2D & 3D globe) and Maidenhead grid map from 6 to 24 pt (default: 12 pt, enlarged for crisp readability).
 - **On-Map Quick Steppers**: Real-time adjustment of spot dot size directly via the top-left status panel (`Punktgröße: X pt`) and on-map quick buttons (`[-] ● Xpt [+]`) in the bottom band legend strip without opening Settings.

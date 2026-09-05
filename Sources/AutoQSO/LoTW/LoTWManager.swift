@@ -60,6 +60,10 @@ class LoTWManager {
         loadLog()
     }
     
+    private var isDe: Bool {
+        LanguageManager.shared.isGerman
+    }
+    
     func addLog(_ message: String) {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss"
@@ -113,7 +117,10 @@ class LoTWManager {
                 self?.workedGrids6Set = newGrids6
                 self?.latestQSOByCallBand = newLatestQSO
                 self?.qsosByGrid4 = newGrid4Dict
-                self?.addLog("SQLite Logbuch geladen: \(qsos.count) QSOs (\(newGrids.count) 4-Stellen Grids / \(newGrids6.count) 6-Stellen Grids).")
+                let msg = (self?.isDe == true)
+                    ? "SQLite Logbuch geladen: \(qsos.count) QSOs (\(newGrids.count) 4-Stellen Grids / \(newGrids6.count) 6-Stellen Grids)."
+                    : "SQLite logbook loaded: \(qsos.count) QSOs (\(newGrids.count) 4-digit grids / \(newGrids6.count) 6-digit grids)."
+                self?.addLog(msg)
             }
         }
     }
@@ -126,35 +133,37 @@ class LoTWManager {
         let startDateStr = fullSync ? "1900-01-01" : getStartDateString()
         
         guard let url = URL(string: "https://lotw.arrl.org/lotwuser/lotwreport.adi?login=\(safeUser)&password=\(safePass)&qso_query=1&qso_qsos=1&qso_startdate=\(startDateStr)") else {
-            addLog("Fehler: Ungültige Zugangsdaten für URL")
+            addLog(isDe ? "Fehler: Ungültige Zugangsdaten für URL" : "Error: Invalid credentials for URL")
             return
         }
         
         isDownloading = true
         errorMessage = nil
-        addLog("Starte LoTW Sync für User '\(username)' (Vollständig ab \(startDateStr))...")
+        addLog(isDe 
+            ? "Starte LoTW Sync für User '\(username)' (Vollständig ab \(startDateStr))..." 
+            : "Starting LoTW sync for user '\(username)' (full from \(startDateStr))...")
         
         let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
             DispatchQueue.main.async {
                 self?.isDownloading = false
                 if let error = error {
                     self?.errorMessage = error.localizedDescription
-                    self?.addLog("Netzwerkfehler: \(error.localizedDescription)")
+                    self?.addLog((self?.isDe == true) ? "Netzwerkfehler: \(error.localizedDescription)" : "Network error: \(error.localizedDescription)")
                     return
                 }
                 guard let data = data, let str = String(data: data, encoding: .utf8) else {
                     self?.errorMessage = "Invalid data received"
-                    self?.addLog("Fehler: Ungültige Daten empfangen")
+                    self?.addLog((self?.isDe == true) ? "Fehler: Ungültige Daten empfangen" : "Error: Invalid data received")
                     return
                 }
                 
                 if str.contains("Username/Password Incorrect") || str.contains("Error") {
                     self?.errorMessage = "LoTW Login Failed"
-                    self?.addLog("Fehler: Benutzername oder Passwort falsch")
+                    self?.addLog((self?.isDe == true) ? "Fehler: Benutzername oder Passwort falsch" : "Error: Invalid username or password")
                     return
                 }
                 
-                self?.addLog("Daten empfangen (\(data.count / 1024) KB). Parse ADIF...")
+                self?.addLog((self?.isDe == true) ? "Daten empfangen (\(data.count / 1024) KB). Parse ADIF..." : "Data received (\(data.count / 1024) KB). Parsing ADIF...")
                 
                 DispatchQueue.global(qos: .userInitiated).async {
                     let newEntries = ADIFParser.parseQSOs(from: str)
@@ -241,7 +250,10 @@ class LoTWManager {
                 self?.workedGrids6Set = newGrids6
                 self?.latestQSOByCallBand = newLatestQSO
                 self?.qsosByGrid4 = newGrid4Dict
-                self?.addLog("SQLite Logbuch aktualisiert: +\(addedCount) neue QSOs. Gesamt: \(updatedLog.count) QSOs (\(newGrids.count) 4-Stellen Grids / \(newGrids6.count) 6-Stellen Grids).")
+                let msg = (self?.isDe == true)
+                    ? "SQLite Logbuch aktualisiert: +\(addedCount) neue QSOs. Gesamt: \(updatedLog.count) QSOs (\(newGrids.count) 4-Stellen Grids / \(newGrids6.count) 6-Stellen Grids)."
+                    : "SQLite logbook updated: +\(addedCount) new QSOs. Total: \(updatedLog.count) QSOs (\(newGrids.count) 4-digit grids / \(newGrids6.count) 6-digit grids)."
+                self?.addLog(msg)
             }
         }
     }
@@ -302,14 +314,16 @@ class LoTWManager {
     
     func resetSyncDateTo1900() {
         UserDefaults.standard.set("1900-01-01", forKey: "overrideSyncStartDate")
-        addLog("Sync-Startdatum zurückgesetzt auf 1900-01-01.")
+        addLog(isDe ? "Sync-Startdatum zurückgesetzt auf 1900-01-01." : "Sync start date reset to 1900-01-01.")
     }
     
     func clearLogbookAndResetSync() {
         let deletedCount = DatabaseManager.shared.clearAllQSOs()
         UserDefaults.standard.set("1900-01-01", forKey: "overrideSyncStartDate")
         loadLog()
-        addLog("Logbuch zurückgesetzt (\(deletedCount) Einträge geleert). Sync-Startdatum auf 1900-01-01 gesetzt.")
+        addLog(isDe 
+            ? "Logbuch zurückgesetzt (\(deletedCount) Einträge geleert). Sync-Startdatum auf 1900-01-01 gesetzt." 
+            : "Logbook reset (\(deletedCount) entries cleared). Sync start date set to 1900-01-01.")
     }
     
     private func getStartDateString() -> String {
@@ -348,7 +362,7 @@ class LoTWManager {
             DispatchQueue.main.async {
                 self?.logbook = updatedLog
                 self?.workedSet = newSet
-                self?.addLog("Logbuch: \(deletedCount) Eintrag/Einträge gelöscht.")
+                self?.addLog((self?.isDe == true) ? "Logbuch: \(deletedCount) Eintrag/Einträge gelöscht." : "Logbook: \(deletedCount) entry/entries deleted.")
             }
         }
     }
