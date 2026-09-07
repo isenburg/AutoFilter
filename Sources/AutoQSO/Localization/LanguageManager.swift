@@ -4,7 +4,6 @@ import Combine
 
 /// Unterstützte Sprachen in AutoQSO
 public enum AppLanguage: String, CaseIterable, Identifiable {
-    case system = "system"
     case de = "de"
     case en = "en"
     
@@ -12,8 +11,6 @@ public enum AppLanguage: String, CaseIterable, Identifiable {
     
     public var title: String {
         switch self {
-        case .system:
-            return "🌐 System (Standard / Default)"
         case .de:
             return "🇩🇪 Deutsch"
         case .en:
@@ -35,15 +32,31 @@ public class LanguageManager {
         }
     }
     
+    private static func defaultLanguage() -> AppLanguage {
+        let preferred = Locale.preferredLanguages.first?.lowercased() ?? "en"
+        return preferred.hasPrefix("de") ? .de : .en
+    }
+    
     private init() {
-        let saved = UserDefaults.standard.string(forKey: userDefaultsKey) ?? AppLanguage.system.rawValue
-        self.selectedLanguage = AppLanguage(rawValue: saved) ?? .system
+        let saved = UserDefaults.standard.string(forKey: userDefaultsKey)
+        if let saved = saved, let lang = AppLanguage(rawValue: saved) {
+            self.selectedLanguage = lang
+        } else {
+            let def = LanguageManager.defaultLanguage()
+            self.selectedLanguage = def
+            UserDefaults.standard.set(def.rawValue, forKey: userDefaultsKey)
+        }
     }
     
     /// Lädt die Spracheinstellung bei Datenbank-Aktualisierungen neu aus UserDefaults
     public func reloadLanguageFromDefaults() {
-        let saved = UserDefaults.standard.string(forKey: userDefaultsKey) ?? AppLanguage.system.rawValue
-        let newLang = AppLanguage(rawValue: saved) ?? .system
+        let saved = UserDefaults.standard.string(forKey: userDefaultsKey)
+        let newLang: AppLanguage
+        if let saved = saved, let lang = AppLanguage(rawValue: saved) {
+            newLang = lang
+        } else {
+            newLang = LanguageManager.defaultLanguage()
+        }
         if selectedLanguage != newLang {
             selectedLanguage = newLang
         }
@@ -51,24 +64,12 @@ public class LanguageManager {
     
     /// Gibt die effektiv aktive Sprache (de oder en) zurück
     public var effectiveLanguage: AppLanguage {
-        switch selectedLanguage {
-        case .de:
-            return .de
-        case .en:
-            return .en
-        case .system:
-            let preferred = Locale.preferredLanguages.first?.lowercased() ?? "en"
-            if preferred.hasPrefix("de") {
-                return .de
-            } else {
-                return .en
-            }
-        }
+        selectedLanguage
     }
     
     /// Prüft, ob Deutsch aktuell aktiv ist
     public var isGerman: Bool {
-        effectiveLanguage == .de
+        selectedLanguage == .de
     }
     
     /// Übersetzt einen Schlüssel anhand des aktiven Wörterbuchs

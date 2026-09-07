@@ -40,7 +40,6 @@ struct ContentView: View {
     
     // Console Tabs: 0 = System, 1 = WSJT-X, 2 = Cluster-Spots
     @AppStorage("logConsoleTab") private var consoleTab = 0
-    @AppStorage("isLogConsoleDetached") private var isLogConsoleDetached = false
     @AppStorage("isNewestOnTop") private var isNewestOnTop = true
     @AppStorage("appColorScheme") private var appColorScheme = "system"
     @AppStorage("mainTab") private var mainTab = 0
@@ -109,6 +108,7 @@ struct ContentView: View {
     @State private var newAllowedSpotterCallsign = ""
     
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
     @AppStorage("isCompactMode") private var isCompactMode = false
     @AppStorage("normalWindowWidth") private var normalWindowWidth = 850.0
     @AppStorage("normalWindowHeight") private var normalWindowHeight = 600.0
@@ -131,7 +131,7 @@ struct ContentView: View {
     @AppStorage("showOnlyAcceptedSpots") private var showOnlyAcceptedSpots = false
     
     private var displayRows: [SpotRowData] {
-        let baseList = viewModel.displaySpots
+        let baseList = (viewModel.isMainTableScrollPaused ? viewModel.frozenDisplaySpots : nil) ?? viewModel.displaySpots
         let query = viewModel.mainTableSearchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         var filtered: [SpotRowData]
         
@@ -151,7 +151,22 @@ struct ContentView: View {
             }
         }
         
-        return isNewestOnTop ? filtered : filtered.reversed()
+        if isNewestOnTop {
+            filtered.sort {
+                if $0.receivedAt != $1.receivedAt {
+                    return $0.receivedAt > $1.receivedAt
+                }
+                return $0.rawDecode.time > $1.rawDecode.time
+            }
+        } else {
+            filtered.sort {
+                if $0.receivedAt != $1.receivedAt {
+                    return $0.receivedAt < $1.receivedAt
+                }
+                return $0.rawDecode.time < $1.rawDecode.time
+            }
+        }
+        return filtered
     }
     
     private var preferredScheme: ColorScheme? {
@@ -218,6 +233,7 @@ struct ContentView: View {
                 // Sort Order & Pause Section
                 Button(action: {
                     isNewestOnTop.toggle()
+                    NotificationCenter.default.post(name: NSNotification.Name("ScrollSpotsTableToActive"), object: isNewestOnTop)
                 }) {
                     Image(systemName: isNewestOnTop ? "arrow.up" : "arrow.down")
                 }
@@ -242,6 +258,7 @@ struct ContentView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.blue)
+                    .help(L("toolbar.filter.acceptedOnly.on"))
                 } else {
                     Button(action: {
                         showOnlyAcceptedSpots.toggle()
@@ -249,6 +266,7 @@ struct ContentView: View {
                         Image(systemName: "line.3.horizontal.decrease.circle")
                     }
                     .buttonStyle(.bordered)
+                    .help(L("toolbar.filter.acceptedOnly.off"))
                 }
 
                 // Search field
@@ -265,6 +283,7 @@ struct ContentView: View {
                                 .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
+                        .help(L("common.search.clear"))
                     }
                 }
                 .padding(.horizontal, 6)
@@ -273,6 +292,7 @@ struct ContentView: View {
                 .clipShape(.rect(cornerRadius: 6))
                 
                 Button(action: {
+                    tableSelection = nil
                     viewModel.clearTable()
                 }) {
                     Image(systemName: "trash")
@@ -540,6 +560,7 @@ struct ContentView: View {
             openWindow(id: "new_grid_map")
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenLogsRawWindow"))) { _ in
+            viewModel.isLogConsoleDetached = true
             openWindow(id: "logs_raw")
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ToggleCompactMode"))) { _ in
@@ -609,17 +630,19 @@ struct ContentView: View {
                 }
                 
                 VStack(spacing: 0) {
-                    if isLogConsoleDetached {
+                    if viewModel.isLogConsoleDetached {
                         HStack(spacing: 8) {
                             Text(L("logs.detached.banner"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             Spacer()
                             Button(L("logs.attach")) {
-                                isLogConsoleDetached = false
+                                viewModel.isLogConsoleDetached = false
+                                dismissWindow(id: "logs_raw")
                             }
                             .buttonStyle(.bordered)
                             .controlSize(.mini)
+                            .help(L("logs.attach"))
                         }
                         .padding(6)
                         .background(Color(NSColor.controlBackgroundColor))
@@ -737,6 +760,12 @@ struct ContentView: View {
             .width(min: 120, ideal: 260, max: 2000)
             .customizationID("message")
         }
+        .id(isNewestOnTop)
+        .background(TableAutoScroller(
+            isNewestOnTop: isNewestOnTop,
+            isPaused: viewModel.isMainTableScrollPaused,
+            rowCount: displayRows.count
+        ))
     }
 
     private var compactMainView: some View {
@@ -781,6 +810,12 @@ struct ContentView: View {
                     .width(min: 100, ideal: 200, max: 1000)
                     .customizationID("message")
                 }
+                .id(isNewestOnTop)
+                .background(TableAutoScroller(
+                    isNewestOnTop: isNewestOnTop,
+                    isPaused: viewModel.isMainTableScrollPaused,
+                    rowCount: displayRows.count
+                ))
                 .layoutPriority(1)
                 
                 compactMostWantedView
@@ -962,6 +997,7 @@ struct ContentView: View {
             // Sort Order
             Button(action: {
                 isNewestOnTop.toggle()
+                NotificationCenter.default.post(name: NSNotification.Name("ScrollSpotsTableToActive"), object: isNewestOnTop)
             }) {
                 Image(systemName: isNewestOnTop ? "arrow.up" : "arrow.down")
             }
@@ -1027,6 +1063,7 @@ struct ContentView: View {
             
             // Clear table
             Button(action: {
+                tableSelection = nil
                 viewModel.clearTable()
             }) {
                 Image(systemName: "trash")

@@ -9,6 +9,12 @@ class LogsViewModel {
     var wsjtxRawLogs: [WSJTXRawLogEntry] = []
     var clusterRawLogs: [ClusterRawLogEntry] = []
     
+    var isLogConsoleDetached: Bool = UserDefaults.standard.bool(forKey: "isLogConsoleDetached") {
+        didSet {
+            UserDefaults.standard.set(isLogConsoleDetached, forKey: "isLogConsoleDetached")
+        }
+    }
+    
     var isLogScrollPaused: Bool = false {
         didSet {
             if isLogScrollPaused {

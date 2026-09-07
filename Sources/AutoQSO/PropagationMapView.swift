@@ -122,13 +122,14 @@ struct PropagationMapView: View {
     }
 
     var body: some View {
-        HSplitView {
+        HStack(spacing: 0) {
             // Main Map Area
             mapSection
-                .frame(minWidth: 400, maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             // Sidebar Area
             if showList {
+                Divider()
                 PropagationSidebarView(
                     clusters: displayClusters,
                     fontSizeTable: fontSizeTable,
@@ -136,12 +137,11 @@ struct PropagationMapView: View {
                     onClose: { withAnimation { showList = false } }
                 )
                 .equatable()
-                .frame(minWidth: 200, idealWidth: 260, maxWidth: 320)
+                .frame(width: 240)
                 .transition(.move(edge: .trailing))
-            } else {
-                Color.clear.frame(width: 0.1)
             }
         }
+        .frame(minWidth: 840, minHeight: 380)
         .onAppear {
             refreshTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in 
                 now = Date() 

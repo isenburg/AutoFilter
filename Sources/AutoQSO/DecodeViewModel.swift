@@ -237,6 +237,10 @@ class DecodeViewModel {
     private let clusterIngestLock = NSLock()
 
     public let logsViewModel = LogsViewModel()
+    public var isLogConsoleDetached: Bool {
+        get { logsViewModel.isLogConsoleDetached }
+        set { logsViewModel.isLogConsoleDetached = newValue }
+    }
     public let mapState = PropagationMapState()
 
     var server = WSJTXServer()
@@ -442,8 +446,10 @@ class DecodeViewModel {
     var isMainTableScrollPaused: Bool = false {
         didSet {
             if isMainTableScrollPaused {
+                frozenDisplaySpots = displaySpots
                 frozenMainDecodes = server.decodes
             } else {
+                frozenDisplaySpots = nil
                 frozenMainDecodes = nil
             }
         }
@@ -463,6 +469,7 @@ class DecodeViewModel {
     }
     var mainTableSearchText: String = ""
     var logConsoleSearchText: String = ""
+    var frozenDisplaySpots: [SpotRowData]? = nil
     var frozenMainDecodes: [WSJTXDecode]? = nil
     var frozenSystemLogs: [String]? = nil
     var frozenWSJTXLogs: [WSJTXRawLogEntry]? = nil
@@ -2748,10 +2755,13 @@ class DecodeViewModel {
 
     func clearTable() {
         DispatchQueue.main.async {
+            self.displaySpots.removeAll()
+            self.frozenDisplaySpots = nil
             self.server.decodes.removeAll()
             self.clusterSpots.removeAll()
             self.mostWantedDecodes.removeAll()
             self.propagationClusters.removeAll()
+            self.newGridClusters.removeAll()
         }
     }
 

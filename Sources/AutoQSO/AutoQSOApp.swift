@@ -8,6 +8,10 @@ struct AutoQSOApp: App {
     @AppStorage("appColorScheme") private var appColorScheme = "system"
     
     init() {
+        UserDefaults.standard.register(defaults: [
+            "NSInitialToolTipDelay": 150
+        ])
+        UserDefaults.standard.set(150, forKey: "NSInitialToolTipDelay")
         _ = DatabaseManager.shared
     }
     
@@ -139,6 +143,7 @@ struct AutoQSOApp: App {
             PropagationMapView(viewModel: viewModel)
                 .preferredColorScheme(preferredScheme)
         }
+        .windowResizability(.contentSize)
 
         Window(isDe ? "Neue Maidenhead-Grids" : "New Maidenhead Grids", id: "new_grid_map") {
             NewGridMapView(viewModel: viewModel)
@@ -154,6 +159,10 @@ struct AutoQSOApp: App {
 
 // AppDelegate für native macOS About-Dialog
 class AppDelegate: NSObject, NSApplicationDelegate {
+    
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        UserDefaults.standard.set(150, forKey: "NSInitialToolTipDelay")
+    }
     
     static func showAboutPanel() {
         let copyrightStr = "Copyright © 2026 Georg Isenbürger · DJ6GI"

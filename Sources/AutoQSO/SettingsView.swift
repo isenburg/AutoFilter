@@ -1343,8 +1343,8 @@ struct SettingsView: View {
                                 Text(lang.title).tag(lang)
                             }
                         }
-                        .pickerStyle(.menu)
-                        .frame(width: 280)
+                        .pickerStyle(.segmented)
+                        .frame(width: 250)
                     }
                     
                     Text(L("settings.language.desc"))

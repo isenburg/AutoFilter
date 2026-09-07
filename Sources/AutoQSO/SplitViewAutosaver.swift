@@ -124,7 +124,7 @@ public struct SplitViewAutosaver: NSViewRepresentable {
         
         private func applyPosition(_ pos: Double, to splitView: NSSplitView) {
             guard splitView.subviews.count > 1 else { return }
-            let dividerPos = splitView.isFlipped ? CGFloat(pos) : max(80, splitView.bounds.height - CGFloat(pos))
+            let dividerPos = CGFloat(pos)
             splitView.setPosition(dividerPos, ofDividerAt: 0)
             splitView.layoutSubtreeIfNeeded()
         }

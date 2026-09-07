@@ -99,6 +99,8 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 - **3D Globe Map Active QSO Marker**: Fixed an issue where the active QSO partner marker was not displayed and the previous QSO marker remained visible on the globe map.
 - **Propagation Map Bilingual Localization**: Full native German and English localization for all propagation map overlays, status indicators, Maidenhead grid settings, chart titles, axis labels, and hover tooltips with reactive language switching.
 - **System Logs English Localization**: Complete English translation for all console messages in the *System Logs* tab, including LoTW, QRZ, and RUMlog synchronization reports, filter decision tracing, QSO timeout/aborts, and candidate evaluations.
+- **Direct Language Segmented Control**: Removed the obsolete "System" option; language selection now uses an instant, direct 2-segment control for German (`🇩🇪 Deutsch`) and English (`🇬🇧 English`).
+- **Propagation Map Fixed Sidebar & Minimum Size**: Replaced the variable split-pane with a fixed 240 pt right sidebar for active countries and enforced an 840 × 380 pt minimum window size to ensure overlays, active QSO badges, and buttons never overlap.
 
 ### Version 4.5.1 (Build 609)
 - **Configurable Map Spot Dot Size**: Easily adjust the diameter of the band dots representing worked countries on the propagation map (2D & 3D globe) and Maidenhead grid map from 6 to 24 pt (default: 12 pt, enlarged for crisp readability).

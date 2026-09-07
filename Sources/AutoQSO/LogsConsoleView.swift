@@ -13,10 +13,10 @@ struct LogsConsoleView: View {
     private var langManager = LanguageManager.shared
     private var isDe: Bool { langManager.isGerman }
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismissWindow) private var dismissWindow
     @Environment(\.openWindow) private var openWindow
     
     @AppStorage("logConsoleTab") private var consoleTab = 0
-    @AppStorage("isLogConsoleDetached") private var isLogConsoleDetached = false
     @AppStorage("wsjtxShowDecodes") private var wsjtxShowDecodes = true
     @AppStorage("wsjtxShowIncoming") private var wsjtxShowIncoming = true
     @AppStorage("wsjtxShowOutgoing") private var wsjtxShowOutgoing = true
@@ -68,33 +68,8 @@ struct LogsConsoleView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                if consoleTab == 0 {
-                    Toggle(L("logs.filter.tracing"), isOn: Binding(
-                        get: { viewModel.isFilterDebugLoggingEnabled },
-                        set: { viewModel.isFilterDebugLoggingEnabled = $0; viewModel.saveFilters() }
-                    ))
-                    .toggleStyle(.checkbox)
-                    .controlSize(.small)
-                    .help(L("logs.filter.tracing.help"))
-                } else if consoleTab == 1 {
-                    HStack(spacing: 8) {
-                        Toggle(L("logs.filter.decodes"), isOn: $wsjtxShowDecodes)
-                            .toggleStyle(.checkbox)
-                            .controlSize(.small)
-                        Toggle(L("logs.filter.in"), isOn: $wsjtxShowIncoming)
-                            .toggleStyle(.checkbox)
-                            .controlSize(.small)
-                        Toggle(L("logs.filter.out"), isOn: $wsjtxShowOutgoing)
-                            .toggleStyle(.checkbox)
-                            .controlSize(.small)
-                    }
-                } else {
-                    Spacer().frame(width: 1)
-                }
-                
-                Spacer()
-                
+            HStack(spacing: 10) {
+                // 1. Tab Selector (Links)
                 Picker("", selection: $consoleTab) {
                     Text(L("logs.tab.system")).tag(0)
                     Text(L("logs.tab.wsjtx")).tag(1)
@@ -102,41 +77,42 @@ struct LogsConsoleView: View {
                 }
                 .pickerStyle(.segmented)
                 .controlSize(.small)
-                .frame(width: 320)
+                .frame(maxWidth: 260)
+                .help(L("logs.tab.picker.help"))
                 
-                Spacer()
-                
-                Button(action: {
-                    logs.isLogScrollPaused.toggle()
-                }) {
-                    Image(systemName: logs.isLogScrollPaused ? "play.circle" : "pause.circle")
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .foregroundStyle(logs.isLogScrollPaused ? .orange : .primary)
-                .help(logs.isLogScrollPaused ? L("toolbar.freeze.tooltip.resume") : L("toolbar.freeze.tooltip.pause"))
-                
-                HStack(spacing: 4) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
-                    TextField(L("logs.search"), text: $logs.logConsoleSearchText)
-                        .font(.system(size: 11))
-                        .textFieldStyle(.plain)
-                        .frame(width: 150)
-                    if !logs.logConsoleSearchText.isEmpty {
-                        Button(action: { logs.logConsoleSearchText = "" }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
+                // 2. Kontext-Filter (Mitte)
+                if consoleTab == 0 {
+                    Toggle(L("logs.filter.tracing"), isOn: Binding(
+                        get: { viewModel.isFilterDebugLoggingEnabled },
+                        set: { viewModel.isFilterDebugLoggingEnabled = $0; viewModel.saveFilters() }
+                    ))
+                    .toggleStyle(.checkbox)
+                    .controlSize(.small)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .help(L("logs.filter.tracing.help"))
+                } else if consoleTab == 1 {
+                    HStack(spacing: 8) {
+                        Toggle(L("logs.filter.decodes"), isOn: $wsjtxShowDecodes)
+                            .toggleStyle(.checkbox)
+                            .controlSize(.small)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .help(L("logs.filter.decodes.help"))
+                        Toggle(L("logs.filter.in"), isOn: $wsjtxShowIncoming)
+                            .toggleStyle(.checkbox)
+                            .controlSize(.small)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .help(L("logs.filter.in.help"))
+                        Toggle(L("logs.filter.out"), isOn: $wsjtxShowOutgoing)
+                            .toggleStyle(.checkbox)
+                            .controlSize(.small)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .help(L("logs.filter.out.help"))
                     }
-                }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(Color(NSColor.textBackgroundColor))
-                .clipShape(.rect(cornerRadius: 6))
-                
-                if consoleTab == 2 {
+                } else if consoleTab == 2 {
                     Button(action: {
                         isClusterSendSheetPresented = true
                     }) {
@@ -147,48 +123,91 @@ struct LogsConsoleView: View {
                     .help(L("sidebar.left.sendSpot"))
                 }
                 
-                Button(action: {
-                    if consoleTab == 0 {
-                        logs.logHistory.removeAll()
-                        viewModel.lotwManager.logHistory.removeAll()
-                        viewModel.qrzManager.logHistory.removeAll()
-                        viewModel.rumlogManager.logHistory.removeAll()
-                    } else if consoleTab == 1 {
-                        logs.wsjtxRawLogs.removeAll()
-                    } else {
-                        logs.clusterRawLogs.removeAll()
-                    }
-                }) {
-                    Image(systemName: "trash")
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .help(L("logs.clear"))
+                Spacer(minLength: 8)
                 
-                if isEmbedded {
+                // 3. Aktionen (Rechts)
+                HStack(spacing: 6) {
+                    // Suchfeld
+                    HStack(spacing: 4) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(.secondary)
+                        TextField(L("logs.search"), text: $logs.logConsoleSearchText)
+                            .font(.system(size: 11))
+                            .textFieldStyle(.plain)
+                            .frame(minWidth: 80, idealWidth: 120, maxWidth: 160)
+                            .help(L("logs.search"))
+                        if !logs.logConsoleSearchText.isEmpty {
+                            Button(action: { logs.logConsoleSearchText = "" }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help(L("common.search.clear"))
+                        }
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .clipShape(.rect(cornerRadius: 6))
+                    
+                    // Pause
                     Button(action: {
-                        isLogConsoleDetached = true
-                        openWindow(id: "logs_raw")
+                        logs.isLogScrollPaused.toggle()
                     }) {
-                        Label(isDe ? "Konsole abdocken" : "Detach Console", systemImage: "arrow.up.right.square")
+                        Image(systemName: logs.isLogScrollPaused ? "play.circle" : "pause.circle")
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .padding(.trailing, 8)
-                } else {
+                    .foregroundStyle(logs.isLogScrollPaused ? .orange : .primary)
+                    .help(logs.isLogScrollPaused ? L("toolbar.freeze.tooltip.resume") : L("toolbar.freeze.tooltip.pause"))
+                    
+                    // Löschen
                     Button(action: {
-                        isLogConsoleDetached = false
-                        dismiss()
+                        if consoleTab == 0 {
+                            logs.logHistory.removeAll()
+                            viewModel.lotwManager.logHistory.removeAll()
+                            viewModel.qrzManager.logHistory.removeAll()
+                            viewModel.rumlogManager.logHistory.removeAll()
+                        } else if consoleTab == 1 {
+                            logs.wsjtxRawLogs.removeAll()
+                        } else {
+                            logs.clusterRawLogs.removeAll()
+                        }
                     }) {
-                        Label(isDe ? "Konsole andocken" : "Attach Console", systemImage: "arrow.down.left.square")
+                        Image(systemName: "trash")
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .padding(.trailing, 8)
+                    .help(L("logs.clear"))
+                    
+                    // Abdocken / Andocken
+                    if isEmbedded {
+                        Button(action: {
+                            viewModel.isLogConsoleDetached = true
+                            openWindow(id: "logs_raw")
+                        }) {
+                            Image(systemName: "arrow.up.right.square")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .help(L("logs.detach"))
+                    } else {
+                        Button(action: {
+                            viewModel.isLogConsoleDetached = false
+                            dismissWindow(id: "logs_raw")
+                        }) {
+                            Label(L("logs.attach"), systemImage: "arrow.down.left.square")
+                                .lineLimit(1)
+                                .fixedSize()
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .help(L("logs.attach"))
+                    }
                 }
             }
             .padding(.horizontal, 8)
-            .padding(.vertical, 8)
+            .padding(.vertical, 6)
             .background(Color(NSColor.controlBackgroundColor))
             
             Divider()
@@ -226,6 +245,11 @@ struct LogsConsoleView: View {
         .preferredColorScheme(preferredScheme)
         .sheet(isPresented: $isClusterSendSheetPresented) {
             ClusterSendDialog(viewModel: viewModel)
+        }
+        .onDisappear {
+            if !isEmbedded {
+                viewModel.isLogConsoleDetached = false
+            }
         }
     }
 
