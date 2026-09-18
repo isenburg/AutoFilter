@@ -354,7 +354,8 @@ git tag -a "$TAG" -m "$TITLE" 2>/dev/null || warn "Tag existiert bereits"
 
 REMOTE_URL=$(git config --get remote.origin.url 2>/dev/null || echo "")
 if [ -n "$REMOTE_URL" ]; then
-    git push origin main 2>/dev/null || warn "Push fehlgeschlagen"
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+    git push -u origin "$CURRENT_BRANCH" 2>/dev/null || warn "Push fehlgeschlagen"
     git push origin "$TAG" 2>/dev/null || warn "Tag-Push fehlgeschlagen"
     success "Code & Tag gepusht → GitHub"
 else
@@ -383,11 +384,11 @@ if command -v gh > /dev/null 2>&1 && gh auth status > /dev/null 2>&1; then
         --repo "$GITHUB_REPO" \
         --title "$TITLE" \
         --notes "$RELEASE_NOTES" \
-        --latest
+        --latest || warn "GitHub Release via gh CLI fehlgeschlagen"
     success "GitHub Release erstellt & DMG hochgeladen!"
     echo -e "  🌐 https://github.com/$GITHUB_REPO/releases/tag/$TAG"
 elif [ -n "$TOKEN" ]; then
-    github_release "$TOKEN" "$TAG" "$TITLE" "$RELEASE_NOTES" "$DMG_PATH" "$DMG_NAME"
+    github_release "$TOKEN" "$TAG" "$TITLE" "$RELEASE_NOTES" "$DMG_PATH" "$DMG_NAME" || warn "GitHub Release fehlgeschlagen"
 else
     warn "Kein GitHub Token verfügbar – Release übersprungen."
     warn "→ Installiere 'gh' und führe 'gh auth login' aus"
