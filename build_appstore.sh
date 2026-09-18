@@ -36,13 +36,20 @@ echo ""
 VERSION=$(cat "$PROJECT_DIR/.version" | tr -d ' \n\r')
 
 [ -f "$PROJECT_DIR/.build_number" ] || echo "0" > "$PROJECT_DIR/.build_number"
-BUILD=$(cat "$PROJECT_DIR/.build_number" | tr -d ' \n\r')
+BUILD=$(( $(cat "$PROJECT_DIR/.build_number") + 1 ))
+echo "$BUILD" > "$PROJECT_DIR/.build_number"
+
+cat > "$PROJECT_DIR/Sources/AutoFilter/BuildNumber.swift" <<EOF
+public let APP_VERSION = "$VERSION"
+public let APP_BUILD_NUMBER = $BUILD
+EOF
 
 success "Version: $VERSION  |  Build: $BUILD"
 
 # ── 2. Provisioning Profile prüfen ───────────────────────────
 [ -f "$PROFILE_SRC" ] || err "Provisioning Profile nicht gefunden: $PROFILE_SRC"
-success "Provisioning Profile gefunden: $(basename "$PROFILE_SRC")"
+xattr -rc "$PROFILE_SRC" 2>/dev/null || true
+success "Provisioning Profile gefunden & bereinigt: $(basename "$PROFILE_SRC")"
 
 # ── 3. Kompilieren (Universal Binary) ─────────────────────────
 info "Kompiliere Universal Binary (Apple Silicon + Intel)..."
@@ -98,7 +105,10 @@ PLIST
 
 # Provisioning Profile einbetten
 cp "$PROFILE_SRC" "$BUNDLE/Contents/embedded.provisionprofile"
-success "App-Bundle strukturiert & Provisioning Profile eingebettet"
+
+# Entferne alle Quarantäne- und Extended-Attribute (Apple ITMS-91109)
+xattr -rc "$BUNDLE"
+success "App-Bundle strukturiert & Quarantäne-Attribute entfernt"
 
 # ── 5. Code-Signierung für Mac App Store ─────────────────────
 info "Signiere $APP_NAME.app mit '$APP_CERT' & Sandbox-Entitlements..."
