@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Zwingende App Sandbox für Mac App Store -->
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+    
+    <!-- Ausgehende Netzwerkverbindungen: DX-Cluster, LoTW, HamQTH, QRZ, Reverse Beacon Network -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+    
+    <!-- Eingehende Netzwerkverbindungen: WSJT-X UDP-Listener (Port 2237) & lokaler Telnet-Server (Port 8000) -->
+    <key>com.apple.security.network.server</key>
+    <true/>
+    
+    <!-- Benutzerseitiger Dateizugriff für ADIF-Import/Export und Filter-Profil JSON-Dateien -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    
+    <!-- Apple Events Ausnahme für die Zwei-Wege-Synchronisation mit RUMlogNG -->
+    <key>com.apple.security.temporary-exception.apple-events</key>
+    <array>
+        <string>de.dl2rum.rumlogng</string>
+    </array>
+</dict>
+</plist>
