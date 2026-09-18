@@ -60,7 +60,7 @@ private final class TrialStateStorage: @unchecked Sendable {
 public final class StoreManager: ObservableObject {
     nonisolated public static let shared: StoreManager = MainActor.assumeIsolated { StoreManager() }
     
-    nonisolated public static let productID = "com.dj6gi.autofilter.pro"
+    nonisolated public static let productID = "com.gecando.autofilter.pro"
     nonisolated public static let defaultTrialDurationSeconds: Int = 3600 // 60 minutes
     
     private let storage = TrialStateStorage()

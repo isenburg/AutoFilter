@@ -79,7 +79,7 @@ cat > "$BUNDLE/Contents/Info.plist" <<PLIST
 <plist version="1.0"><dict>
     <key>CFBundleExecutable</key>              <string>$APP_NAME</string>
     <key>CFBundleIconFile</key>                <string>AppIcon</string>
-    <key>CFBundleIdentifier</key>              <string>com.dj6gi.autofilter</string>
+    <key>CFBundleIdentifier</key>              <string>com.gecando.autofilter</string>
     <key>CFBundleName</key>                    <string>$APP_NAME</string>
     <key>CFBundleVersion</key>                 <string>$BUILD</string>
     <key>CFBundleShortVersionString</key>      <string>$VERSION</string>
@@ -113,7 +113,7 @@ cat > "$INSTALLER_BUNDLE/Contents/Info.plist" <<PLIST
 <plist version="1.0"><dict>
     <key>CFBundleExecutable</key>              <string>$INSTALLER_NAME</string>
     <key>CFBundleIconFile</key>                <string>AppIcon</string>
-    <key>CFBundleIdentifier</key>              <string>com.dj6gi.autofilter.installer</string>
+    <key>CFBundleIdentifier</key>              <string>com.gecando.autofilter.installer</string>
     <key>CFBundleName</key>                    <string>$INSTALLER_NAME</string>
     <key>CFBundleVersion</key>                 <string>$BUILD</string>
     <key>CFBundleShortVersionString</key>      <string>$VERSION</string>

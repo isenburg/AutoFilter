@@ -1046,10 +1046,15 @@ class DecodeViewModel {
 
     private var ctyCacheURL: URL {
         let paths = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
-        let appSupport = paths[0].appendingPathComponent("com.dj6gi.AutoFilter", isDirectory: true)
-        let legacySupport = paths[0].appendingPathComponent("com.dj6gi.AutoQSO", isDirectory: true)
-        if !FileManager.default.fileExists(atPath: appSupport.path) && FileManager.default.fileExists(atPath: legacySupport.path) {
-            try? FileManager.default.copyItem(at: legacySupport, to: appSupport)
+        let appSupport = paths[0].appendingPathComponent("com.gecando.autofilter", isDirectory: true)
+        let legacyFilterSupport = paths[0].appendingPathComponent("com.dj6gi.AutoFilter", isDirectory: true)
+        let legacyQsoSupport = paths[0].appendingPathComponent("com.dj6gi.AutoQSO", isDirectory: true)
+        if !FileManager.default.fileExists(atPath: appSupport.path) {
+            if FileManager.default.fileExists(atPath: legacyFilterSupport.path) {
+                try? FileManager.default.copyItem(at: legacyFilterSupport, to: appSupport)
+            } else if FileManager.default.fileExists(atPath: legacyQsoSupport.path) {
+                try? FileManager.default.copyItem(at: legacyQsoSupport, to: appSupport)
+            }
         }
         try? FileManager.default.createDirectory(at: appSupport, withIntermediateDirectories: true)
         return appSupport.appendingPathComponent("cty_cache.dat")

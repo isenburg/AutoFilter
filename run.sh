@@ -60,7 +60,7 @@ if [ $? -eq 0 ]; then
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.dj6gi.autofilter</string>
+    <string>com.gecando.autofilter</string>
     <key>CFBundleName</key>
     <string>$APP_NAME</string>
     <key>CFBundleVersion</key>
