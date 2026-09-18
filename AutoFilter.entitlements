@@ -21,6 +21,7 @@
     <!-- Apple Events Ausnahme für die Zwei-Wege-Synchronisation mit RUMlogNG -->
     <key>com.apple.security.temporary-exception.apple-events</key>
     <array>
+        <string>de.dl2rum.RUMlogNG</string>
         <string>de.dl2rum.rumlogng</string>
     </array>
     

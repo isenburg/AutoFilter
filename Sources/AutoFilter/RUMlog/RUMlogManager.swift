@@ -67,7 +67,7 @@ class RUMlogManager {
             }
             
             let scriptText = """
-            tell application "RUMlogNG"
+            tell application id "de.dl2rum.RUMlogNG"
                 set adifText to ReadAdif ("\(sinceString)")
                 return adifText
             end tell
