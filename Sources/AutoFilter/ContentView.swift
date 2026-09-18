@@ -658,16 +658,17 @@ struct ContentView: View {
                                 .layoutPriority(0)
                         }
                         .id("main_vsplit_detached")
-                        .background(SplitViewAutosaver(name: "AutoQSO_Main_VSplit_Detached"))
+                        .background(SplitViewAutosaver(name: "AutoFilter_Main_VSplit_Detached"))
                     } else {
                         VSplitView {
-                            let initialH = UserDefaults.standard.double(forKey: "AutoQSO_SplitPos_AutoQSO_Main_VSplit_Docked")
+                            let savedH = UserDefaults.standard.double(forKey: "AutoFilter_SplitPos_AutoFilter_Main_VSplit_Docked")
+                            let initialH = savedH > 0 ? savedH : UserDefaults.standard.double(forKey: "AutoQSO_SplitPos_AutoQSO_Main_VSplit_Docked")
                             let targetH: CGFloat = initialH >= 70 ? CGFloat(initialH) : 180.0
                             
                             LogsConsoleView(viewModel: viewModel, isEmbedded: true)
                                 .frame(minHeight: 80, idealHeight: targetH, maxHeight: 450)
                                 .layoutPriority(0)
-                                .background(SplitViewAutosaver(name: "AutoQSO_Main_VSplit_Docked"))
+                                .background(SplitViewAutosaver(name: "AutoFilter_Main_VSplit_Docked"))
                             
                             mainFullTableView
                                 .frame(minHeight: 200, maxHeight: .infinity)
@@ -690,7 +691,7 @@ struct ContentView: View {
                         .layoutPriority(0)
                 }
             }
-            .background(SplitViewAutosaver(name: "AutoQSO_Main_HSplitView"))
+            .background(SplitViewAutosaver(name: "AutoFilter_Main_HSplitView"))
             .background(Color(NSColor.windowBackgroundColor))
             
             Divider()
@@ -822,7 +823,7 @@ struct ContentView: View {
                     .frame(minHeight: 40, idealHeight: CGFloat(compactMostWantedHeight), maxHeight: 150)
                     .layoutPriority(0)
             }
-            .background(SplitViewAutosaver(name: "AutoQSO_Compact_VSplitView"))
+            .background(SplitViewAutosaver(name: "AutoFilter_Compact_VSplitView"))
         }
     }
 

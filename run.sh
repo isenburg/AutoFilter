@@ -4,7 +4,7 @@
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_DIR" || exit 1
 
-APP_NAME="AutoQSO"
+APP_NAME="AutoFilter"
 
 echo "Beende $APP_NAME falls es läuft..."
 killall "$APP_NAME" 2>/dev/null
@@ -27,7 +27,7 @@ echo "$BUILD_NUM" > "$BUILD_FILE"
 echo "Neue Version: $VERSION_NUM (Build-Nummer: $BUILD_NUM)"
 
 # Speichere die Version & Build-Nummer im Swift Code
-cat > Sources/AutoQSO/BuildNumber.swift <<EOF
+cat > Sources/AutoFilter/BuildNumber.swift <<EOF
 public let APP_VERSION = "$VERSION_NUM"
 public let APP_BUILD_NUMBER = $BUILD_NUM
 EOF
@@ -60,7 +60,7 @@ if [ $? -eq 0 ]; then
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.dj6gi.autoqso</string>
+    <string>com.dj6gi.autofilter</string>
     <key>CFBundleName</key>
     <string>$APP_NAME</string>
     <key>CFBundleVersion</key>
@@ -72,7 +72,7 @@ if [ $? -eq 0 ]; then
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>NSAppleEventsUsageDescription</key>
-    <string>AutoQSO benötigt Zugriff auf RUMlogNG, um Logbuch-Einträge abzugleichen.</string>
+    <string>AutoFilter benötigt Zugriff auf RUMlogNG, um Logbuch-Einträge abzugleichen.</string>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2024–2026 Georg Isenbürger · DJ6GI</string>
 </dict>

@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct AutoQSOApp: App {
+struct AutoFilterApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var viewModel = DecodeViewModel()
     private var langManager = LanguageManager.shared
@@ -26,14 +26,14 @@ struct AutoQSOApp: App {
     }
     
     var body: some Scene {
-        WindowGroup("AutoQSO v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))") {
+        WindowGroup("AutoFilter v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))") {
             ContentView(viewModel: viewModel)
                 .preferredColorScheme(preferredScheme)
         }
         .commands {
-            // App-Menü: Über AutoQSO mit Copyright-Info
+            // App-Menü: Über AutoFilter mit Copyright-Info
             CommandGroup(replacing: .appInfo) {
-                Button(isDe ? "Über AutoQSO" : "About AutoQSO") {
+                Button(isDe ? "Über AutoFilter" : "About AutoFilter") {
                     AppDelegate.showAboutPanel()
                 }
             }
@@ -110,7 +110,7 @@ struct AutoQSOApp: App {
             
             // Hilfe-Menü: Standard-Help-Eintrag mit eigenem Hilfe-Fenster verbinden
             CommandGroup(replacing: .help) {
-                Button(isDe ? "AutoQSO Hilfe" : "AutoQSO Help") {
+                Button(isDe ? "AutoFilter Hilfe" : "AutoFilter Help") {
                     NotificationCenter.default.post(name: NSNotification.Name("OpenHelpWindow"), object: nil)
                 }
                 .keyboardShortcut("?", modifiers: .command)
@@ -167,7 +167,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     static func showAboutPanel() {
         let copyrightStr = "Copyright © 2026 Georg Isenbürger · DJ6GI"
         NSApp.orderFrontStandardAboutPanel(options: [
-            .applicationName: "AutoQSO",
+            .applicationName: "AutoFilter",
             .applicationVersion: "Version \(APP_VERSION)",
             .version: "Build \(APP_BUILD_NUMBER)",
             NSApplication.AboutPanelOptionKey(rawValue: "Copyright"): copyrightStr

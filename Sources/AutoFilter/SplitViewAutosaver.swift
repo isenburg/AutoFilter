@@ -85,8 +85,12 @@ public struct SplitViewAutosaver: NSViewRepresentable {
             splitView.autosaveName = nil
             
             // 1. Restore saved height immediately and after layout pass
-            let key = "AutoQSO_SplitPos_\(name)"
-            let saved = UserDefaults.standard.double(forKey: key)
+            let key = "AutoFilter_SplitPos_\(name)"
+            let legacyKey = "AutoQSO_SplitPos_\(name)"
+            var saved = UserDefaults.standard.double(forKey: key)
+            if saved <= 0 {
+                saved = UserDefaults.standard.double(forKey: legacyKey)
+            }
             let heightToRestore = saved > 60 ? saved : 180.0
             
             applyPosition(heightToRestore, to: splitView)

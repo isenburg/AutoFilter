@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 @main
-struct AutoQSOInstallerApp: App {
+struct AutoFilterInstallerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
@@ -134,7 +134,7 @@ struct InstallerContentView: View {
             }
             Button("Abbrechen", role: .cancel) { }
         } message: {
-            Text("In '\(targetDirectoryURL.path)' existiert bereits eine Version von AutoQSO. Möchtest du diese durch die neue Version ersetzen?")
+            Text("In '\(targetDirectoryURL.path)' existiert bereits eine Version von AutoFilter. Möchtest du diese durch die neue Version ersetzen?")
         }
     }
 
@@ -155,7 +155,7 @@ struct InstallerContentView: View {
             }
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("AutoQSO macOS Installer")
+                Text("AutoFilter macOS Installer")
                     .font(.title2)
                     .bold()
                 Text("1-Klick Installation & Gatekeeper Quarantäne-Fix")
@@ -172,7 +172,7 @@ struct InstallerContentView: View {
 
     private var readyView: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Wohin möchtest du AutoQSO installieren?")
+            Text("Wohin möchtest du AutoFilter installieren?")
                 .font(.headline)
 
             VStack(spacing: 8) {
@@ -231,7 +231,7 @@ struct InstallerContentView: View {
                     Text("Automatischer macOS Gatekeeper Fix")
                         .font(.system(size: 11, weight: .bold))
                 }
-                Text("Der Installer entfernt automatisch Quarantäne-Sperren (xattr -cr) und frischt die ad-hoc Code-Signatur auf, damit AutoQSO direkt ohne Warnungen startet.")
+                Text("Der Installer entfernt automatisch Quarantäne-Sperren (xattr -cr) und frischt die ad-hoc Code-Signatur auf, damit AutoFilter direkt ohne Warnungen startet.")
                     .font(.system(size: 10.5))
                     .foregroundColor(.secondary)
             }
@@ -247,7 +247,7 @@ struct InstallerContentView: View {
                 .font(.headline)
 
             VStack(alignment: .leading, spacing: 14) {
-                installStepRow(stepNumber: 1, currentStep: step, title: "AutoQSO.app in Zielordner kopieren")
+                installStepRow(stepNumber: 1, currentStep: step, title: "AutoFilter.app in Zielordner kopieren")
                 installStepRow(stepNumber: 2, currentStep: step, title: "macOS Gatekeeper Quarantäne entfernen (xattr -cr)")
                 installStepRow(stepNumber: 3, currentStep: step, title: "Ad-hoc Code-Signatur auffrischen (codesign)")
             }
@@ -302,7 +302,7 @@ struct InstallerContentView: View {
                     .font(.title2)
                     .bold()
 
-                Text("AutoQSO wurde erfolgreich installiert und für den sicheren Start auf deinem Mac vorbereitet.")
+                Text("AutoFilter wurde erfolgreich installiert und für den sicheren Start auf deinem Mac vorbereitet.")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -314,7 +314,7 @@ struct InstallerContentView: View {
                     .padding(.top, 4)
             }
 
-            Toggle("AutoQSO jetzt sofort starten", isOn: $launchAfterInstall)
+            Toggle("AutoFilter jetzt sofort starten", isOn: $launchAfterInstall)
                 .font(.system(size: 12, weight: .medium))
                 .padding(.top, 8)
 
@@ -370,7 +370,7 @@ struct InstallerContentView: View {
                 Button(action: startInstallation) {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.down.circle.fill")
-                        Text("AutoQSO Installieren")
+                        Text("AutoFilter Installieren")
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -412,14 +412,14 @@ struct InstallerContentView: View {
         let dir = mainBundleURL.deletingLastPathComponent()
 
         // 1. Next to installer bundle
-        let candidate1 = dir.appendingPathComponent("AutoQSO.app")
+        let candidate1 = dir.appendingPathComponent("AutoFilter.app")
         if fm.fileExists(atPath: candidate1.path) {
             sourceAppURL = candidate1
             return
         }
 
         // 2. Parent directory
-        let candidate2 = dir.deletingLastPathComponent().appendingPathComponent("AutoQSO.app")
+        let candidate2 = dir.deletingLastPathComponent().appendingPathComponent("AutoFilter.app")
         if fm.fileExists(atPath: candidate2.path) {
             sourceAppURL = candidate2
             return
@@ -428,7 +428,7 @@ struct InstallerContentView: View {
         // 3. Search /Volumes
         if let volumes = try? fm.contentsOfDirectory(at: URL(fileURLWithPath: "/Volumes"), includingPropertiesForKeys: nil) {
             for vol in volumes {
-                let candidate = vol.appendingPathComponent("AutoQSO.app")
+                let candidate = vol.appendingPathComponent("AutoFilter.app")
                 if fm.fileExists(atPath: candidate.path) {
                     sourceAppURL = candidate
                     return
@@ -443,7 +443,7 @@ struct InstallerContentView: View {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.prompt = "Zielordner wählen"
-        panel.title = "Zielordner für AutoQSO auswählen"
+        panel.title = "Zielordner für AutoFilter auswählen"
 
         if panel.runModal() == .OK, let url = panel.url {
             customFolderPath = url.path
@@ -453,12 +453,12 @@ struct InstallerContentView: View {
 
     private func startInstallation() {
         guard sourceAppURL != nil else {
-            installState = .failed(message: "Die Quelldatei 'AutoQSO.app' wurde im DMG oder Verzeichnis nicht gefunden.")
+            installState = .failed(message: "Die Quelldatei 'AutoFilter.app' wurde im DMG oder Verzeichnis nicht gefunden.")
             return
         }
 
         let targetDir = targetDirectoryURL
-        let destAppURL = targetDir.appendingPathComponent("AutoQSO.app")
+        let destAppURL = targetDir.appendingPathComponent("AutoFilter.app")
 
         if FileManager.default.fileExists(atPath: destAppURL.path) {
             pendingTargetURL = targetDir
@@ -471,9 +471,9 @@ struct InstallerContentView: View {
 
     private func executeInstallation(destinationDir: URL, overwrite: Bool) {
         guard let source = sourceAppURL else { return }
-        let destAppURL = destinationDir.appendingPathComponent("AutoQSO.app")
+        let destAppURL = destinationDir.appendingPathComponent("AutoFilter.app")
 
-        installState = .installing(step: 1, message: "Kopiere AutoQSO nach '\(destinationDir.path)'...")
+        installState = .installing(step: 1, message: "Kopiere AutoFilter nach '\(destinationDir.path)'...")
 
         DispatchQueue.global(qos: .userInitiated).async {
             let fm = FileManager.default

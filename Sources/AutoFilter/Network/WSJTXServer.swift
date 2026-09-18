@@ -14,7 +14,7 @@ class WSJTXServer: ObservableObject {
     var onDecodesBatchReceived: (([(WSJTXDecode, Data)]) -> Void)?
     var onRawLogReceived: ((WSJTXRawLogType, String) -> Void)?
     
-    private let queue = DispatchQueue(label: "com.autoqso.wsjtx", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "com.autofilter.wsjtx", qos: .userInitiated)
     private var wsjtSocketFd: Int32 = -1
     private var readSource: DispatchSourceRead?
     var wsjtxClientId: String = ""

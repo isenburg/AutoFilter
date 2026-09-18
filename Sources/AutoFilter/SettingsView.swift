@@ -66,7 +66,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .mostWanted:
             return ["most wanted", "priorität", "priority", "clublog", "dxcc", "top 100", "rank", "rang", "highlight", "hervorheben", "nur most wanted", "only most wanted", "flame", "feuer", "filter", "wpx", "rarität", "rare"]
         case .storage:
-            return ["storage", "speicherort", "icloud", "icloud drive", "database", "datenbank", "sqlite", "autoqso.sqlite", "pfad", "custom path", "default", "documents", "dokumente", "backup", "ordner", "folder", "location"]
+            return ["storage", "speicherort", "icloud", "icloud drive", "database", "datenbank", "sqlite", "autofilter.sqlite", "autoqso.sqlite", "pfad", "custom path", "default", "documents", "dokumente", "backup", "ordner", "folder", "location"]
         case .options:
             return ["options", "auto mode", "optionen", "auto transmit", "cq", "nur cq", "cq only", "cooldown", "retry", "pause", "timer", "antwort", "reply", "trigger", "auto qso", "sende-engine", "ft8", "ft4", "wiederholen"]
         case .appearance:
@@ -877,7 +877,7 @@ struct SettingsView: View {
                 Divider()
                 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(isDe ? "Verwendung in AutoQSO:" : "Usage in AutoQSO:")
+                    Text(isDe ? "Verwendung in AutoFilter:" : "Usage in AutoFilter:")
                         .font(.headline)
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(alignment: .top, spacing: 6) {
@@ -1013,7 +1013,7 @@ struct SettingsView: View {
                         .font(.headline)
                     
                     Picker("", selection: $storageLocationMode) {
-                        Text(isDe ? "Standard (~/Documents/AutoQSO)" : "Default (~/Documents/AutoQSO)").tag("default")
+                        Text(isDe ? "Standard (~/Documents/AutoFilter)" : "Default (~/Documents/AutoFilter)").tag("default")
                         Text(isDe ? "Benutzerdefinierter Ordner" : "Custom Folder").tag("custom")
                         Text(isDe ? "iCloud Drive (Synchronisiert)" : "iCloud Drive (Synchronized)").tag("icloud")
                     }

@@ -102,7 +102,7 @@ class DXClusterServer {
     }
     
     private func sendWelcome(to connection: NWConnection) {
-        let welcome = "Welcome to AutoQSO DX-Cluster Telnet Server\r\nCopyright 2026 by Georg Isenbuerger - DJ6GI\r\n\r\n"
+        let welcome = "Welcome to AutoFilter DX-Cluster Telnet Server\r\nCopyright 2026 by Georg Isenbuerger - DJ6GI\r\n\r\n"
         if let data = welcome.data(using: .utf8) {
             connection.send(content: data, completion: .contentProcessed({ error in
                 if let error = error {

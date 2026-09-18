@@ -6,11 +6,11 @@ public struct LocalizationDictionary {
     // MARK: - Deutsch (German)
     public static let german: [String: String] = [
         // App / Menü / Fenster
-        "app.name": "AutoQSO",
+        "app.name": "AutoFilter",
         "app.tagline": "DX-Filter & WSJT-X Auto Transmit Assistant",
-        "window.main": "AutoQSO – Live Decodes & DX Filter",
+        "window.main": "AutoFilter – Live Decodes & DX Filter",
         "window.settings": "Einstellungen",
-        "window.help": "AutoQSO Hilfe & Dokumentation",
+        "window.help": "AutoFilter Hilfe & Dokumentation",
         "window.propagationMap": "Ausbreitungskarte (Propagation Map)",
         "window.gridMap": "Grid-Map & Maidenhead-Inspector",
         "window.logbook": "Logbuch",
@@ -312,7 +312,7 @@ public struct LocalizationDictionary {
         "qthPicker.cancel": "Abbrechen",
         
         // Logbuch Viewer
-        "logbook.title": "AutoQSO Logbuch-Viewer",
+        "logbook.title": "AutoFilter Logbuch-Viewer",
         "logbook.search": "Rufzeichen, Band, Modus, Land, Grid...",
         "logbook.export": "ADIF Exportieren",
         "logbook.delete": "Eintrag löschen",
@@ -339,11 +339,11 @@ public struct LocalizationDictionary {
     // MARK: - Englisch (English)
     public static let english: [String: String] = [
         // App / Menu / Windows
-        "app.name": "AutoQSO",
+        "app.name": "AutoFilter",
         "app.tagline": "DX-Filter & WSJT-X Auto Transmit Assistant",
-        "window.main": "AutoQSO – Live Decodes & DX Filter",
+        "window.main": "AutoFilter – Live Decodes & DX Filter",
         "window.settings": "Settings",
-        "window.help": "AutoQSO Help & Documentation",
+        "window.help": "AutoFilter Help & Documentation",
         "window.propagationMap": "Propagation Map",
         "window.gridMap": "Grid Map & Maidenhead Inspector",
         "window.logbook": "Logbook",
@@ -645,7 +645,7 @@ public struct LocalizationDictionary {
         "qthPicker.cancel": "Cancel",
         
         // Logbook Viewer
-        "logbook.title": "AutoQSO Logbook Viewer",
+        "logbook.title": "AutoFilter Logbook Viewer",
         "logbook.search": "Callsign, band, mode, country, grid...",
         "logbook.export": "Export ADIF",
         "logbook.delete": "Delete Entry",

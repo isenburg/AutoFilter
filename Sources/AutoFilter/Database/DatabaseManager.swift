@@ -5,7 +5,7 @@ class DatabaseManager {
     static let shared = DatabaseManager()
     
     private var db: OpaquePointer?
-    private let dbQueue = DispatchQueue(label: "com.autoqso.database", qos: .userInitiated)
+    private let dbQueue = DispatchQueue(label: "com.autofilter.database", qos: .userInitiated)
     
     private(set) var currentDbPath: String = ""
     
@@ -18,17 +18,27 @@ class DatabaseManager {
         
         var targetURL: URL
         if mode == "icloud" {
-            if let ubiquityURL = FileManager.default.url(forUbiquityContainerIdentifier: nil)?.appendingPathComponent("Documents/AutoQSO") {
+            if let ubiquityURL = FileManager.default.url(forUbiquityContainerIdentifier: nil)?.appendingPathComponent("Documents/AutoFilter") {
                 targetURL = ubiquityURL
             } else {
                 let home = FileManager.default.homeDirectoryForCurrentUser
-                targetURL = home.appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs/AutoQSO")
+                let icloudFilter = home.appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs/AutoFilter")
+                let icloudLegacy = home.appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs/AutoQSO")
+                if !FileManager.default.fileExists(atPath: icloudFilter.path) && FileManager.default.fileExists(atPath: icloudLegacy.path) {
+                    try? FileManager.default.copyItem(at: icloudLegacy, to: icloudFilter)
+                }
+                targetURL = icloudFilter
             }
         } else if mode == "custom", let customPath = UserDefaults.standard.string(forKey: "customStoragePath"), !customPath.isEmpty {
             targetURL = URL(fileURLWithPath: customPath)
         } else {
             let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            targetURL = docs.appendingPathComponent("AutoQSO")
+            let newDocsDir = docs.appendingPathComponent("AutoFilter")
+            let legacyDocsDir = docs.appendingPathComponent("AutoQSO")
+            if !FileManager.default.fileExists(atPath: newDocsDir.path) && FileManager.default.fileExists(atPath: legacyDocsDir.path) {
+                try? FileManager.default.copyItem(at: legacyDocsDir, to: newDocsDir)
+            }
+            targetURL = newDocsDir
         }
         
         try? FileManager.default.createDirectory(at: targetURL, withIntermediateDirectories: true, attributes: nil)
@@ -37,7 +47,12 @@ class DatabaseManager {
     
     init() {
         let targetDir = DatabaseManager.getStorageDirectory()
-        currentDbPath = targetDir.appendingPathComponent("autoqso_log.sqlite").path
+        let primaryDb = targetDir.appendingPathComponent("autofilter_log.sqlite")
+        let legacyDb = targetDir.appendingPathComponent("autoqso_log.sqlite")
+        if !FileManager.default.fileExists(atPath: primaryDb.path) && FileManager.default.fileExists(atPath: legacyDb.path) {
+            try? FileManager.default.copyItem(at: legacyDb, to: primaryDb)
+        }
+        currentDbPath = primaryDb.path
         openDatabase(at: currentDbPath)
         createTables()
         migrateJSONIfNeeded()
@@ -73,7 +88,7 @@ class DatabaseManager {
     
     func switchStorageLocation() {
         let newDir = DatabaseManager.getStorageDirectory()
-        let newPath = newDir.appendingPathComponent("autoqso_log.sqlite").path
+        let newPath = newDir.appendingPathComponent("autofilter_log.sqlite").path
         
         guard newPath != currentDbPath else { return }
         
@@ -89,6 +104,11 @@ class DatabaseManager {
             if FileManager.default.fileExists(atPath: oldPath) && !FileManager.default.fileExists(atPath: newPath) {
                 try? FileManager.default.copyItem(atPath: oldPath, toPath: newPath)
                 print("SQLite Datenbank kopiert von \(oldPath) nach: \(newPath)")
+            } else if !FileManager.default.fileExists(atPath: newPath) {
+                let legacyPath = newDir.appendingPathComponent("autoqso_log.sqlite").path
+                if FileManager.default.fileExists(atPath: legacyPath) {
+                    try? FileManager.default.copyItem(atPath: legacyPath, toPath: newPath)
+                }
             }
             
             currentDbPath = newPath
@@ -157,7 +177,10 @@ class DatabaseManager {
     }
     
     private func migrateJSONIfNeeded() {
-        let jsonURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("autoqso_log.json")
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let jsonFilter = docs.appendingPathComponent("autofilter_log.json")
+        let jsonLegacy = docs.appendingPathComponent("autoqso_log.json")
+        let jsonURL = FileManager.default.fileExists(atPath: jsonFilter.path) ? jsonFilter : jsonLegacy
         guard FileManager.default.fileExists(atPath: jsonURL.path) else { return }
         
         print("Starte JSON-zu-SQLite Migration...")
@@ -406,7 +429,7 @@ class DatabaseManager {
             }
             
             sqlite3_exec(db, "COMMIT;", nil, nil, nil)
-            print("AutoQSO Bereinigung: \(removedCount) doppelte QSOs dedupliziert.")
+            print("AutoFilter Bereinigung: \(removedCount) doppelte QSOs dedupliziert.")
         }
         return removedCount
     }
@@ -562,7 +585,7 @@ class DatabaseManager {
     
     // MARK: - Einstellungen & Konfiguration (Settings in SQLite)
     
-    /// Prüft, ob ein UserDefaults-Schlüssel zu den anwendungsrelevanten Einstellungen von AutoQSO gehört
+    /// Prüft, ob ein UserDefaults-Schlüssel zu den anwendungsrelevanten Einstellungen von AutoFilter gehört
     static func isAppSettingKey(_ key: String) -> Bool {
         if key.hasPrefix("NS") ||
            key.hasPrefix("Apple") ||

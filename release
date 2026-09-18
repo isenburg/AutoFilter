@@ -4,7 +4,7 @@
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_DIR" || exit 1
 
-APP_NAME="AutoQSO"
+APP_NAME="AutoFilter"
 
 echo "=== 1. Beende $APP_NAME falls es läuft ==="
 killall "$APP_NAME" 2>/dev/null
@@ -28,7 +28,7 @@ echo "$BUILD_NUM" > "$BUILD_FILE"
 echo "Release Version: $VERSION_NUM (Build-Nummer: $BUILD_NUM)"
 
 # Speichere die Version & Build-Nummer im Swift Code
-cat > Sources/AutoQSO/BuildNumber.swift <<EOF
+cat > Sources/AutoFilter/BuildNumber.swift <<EOF
 public let APP_VERSION = "$VERSION_NUM"
 public let APP_BUILD_NUMBER = $BUILD_NUM
 EOF
@@ -65,7 +65,7 @@ cat > "$CONTENTS_DIR/Info.plist" <<EOF
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.autoqso.app</string>
+    <string>com.dj6gi.autofilter</string>
     <key>CFBundleName</key>
     <string>$APP_NAME</string>
     <key>CFBundleVersion</key>
@@ -95,7 +95,7 @@ ln -s /Applications "$STAGING_DIR/Applications"
 hdiutil create -volname "${APP_NAME} v${VERSION_NUM} (b${BUILD_NUM})" -srcfolder "$STAGING_DIR" -ov -format UDZO "$DMG_PATH"
 rm -rf "$STAGING_DIR"
 
-# Erstelle auch einen festen AutoQSO.dmg Link/Kopie im Projektverzeichnis
+# Erstelle auch einen festen AutoFilter.dmg Link/Kopie im Projektverzeichnis
 cp "$DMG_PATH" "$DMG_LINK_PATH"
 
 echo "DMG erfolgreich erstellt: $DMG_PATH"
@@ -116,7 +116,7 @@ REMOTE_URL=$(git config --get remote.origin.url 2>/dev/null || echo "")
 
 if command -v gh >/dev/null 2>&1; then
     echo "Lade Release auf GitHub hoch mit gh CLI..."
-    gh release create "$TAG_NAME" "$DMG_PATH" --draft --title "AutoQSO v${VERSION_NUM} Build ${BUILD_NUM}" --notes "AutoQSO Release v${VERSION_NUM} (Build ${BUILD_NUM})"
+    gh release create "$TAG_NAME" "$DMG_PATH" --draft --title "AutoFilter v${VERSION_NUM} Build ${BUILD_NUM}" --notes "AutoFilter Release v${VERSION_NUM} (Build ${BUILD_NUM})"
 elif [ -n "$GITHUB_TOKEN" ] || [ -n "$GH_TOKEN" ]; then
     TOKEN="${GITHUB_TOKEN:-$GH_TOKEN}"
     echo "Lade Release auf GitHub hoch via GitHub REST API..."
@@ -133,7 +133,7 @@ elif [ -n "$GITHUB_TOKEN" ] || [ -n "$GH_TOKEN" ]; then
         RELEASE_RESP=$(curl -s -X POST -H "Authorization: token $TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/$REPO_PATH/releases" \
-            -d "{\"tag_name\":\"$TAG_NAME\",\"name\":\"AutoQSO v$VERSION_NUM Build $BUILD_NUM\",\"body\":\"AutoQSO Release v$VERSION_NUM Build $BUILD_NUM\",\"draft\":true}")
+            -d "{\"tag_name\":\"$TAG_NAME\",\"name\":\"AutoFilter v$VERSION_NUM Build $BUILD_NUM\",\"body\":\"AutoFilter Release v$VERSION_NUM Build $BUILD_NUM\",\"draft\":true}")
             
         UPLOAD_URL=$(echo "$RELEASE_RESP" | grep -o 'https://uploads.github.com/[^"{]*' | head -n 1 | sed 's/{?name,label}//')
         

@@ -2,7 +2,7 @@ import Observation
 import SwiftUI
 import Combine
 
-/// Unterstützte Sprachen in AutoQSO
+/// Unterstützte Sprachen in AutoFilter
 public enum AppLanguage: String, CaseIterable, Identifiable {
     case de = "de"
     case en = "en"
@@ -19,7 +19,7 @@ public enum AppLanguage: String, CaseIterable, Identifiable {
     }
 }
 
-/// Zentraler Manager für die Mehrsprachigkeit (Deutsch & Englisch) in AutoQSO
+/// Zentraler Manager für die Mehrsprachigkeit (Deutsch & Englisch) in AutoFilter
 @Observable
 public class LanguageManager {
     public static let shared = LanguageManager()

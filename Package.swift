@@ -2,22 +2,22 @@
 import PackageDescription
 
 let package = Package(
-    name: "AutoQSO",
+    name: "AutoFilter",
     platforms: [
         .macOS(.v14), .iOS(.v17)
     ],
     products: [
-        .executable(name: "AutoQSO", targets: ["AutoQSO"]),
-        .executable(name: "AutoQSOInstaller", targets: ["AutoQSOInstaller"])
+        .executable(name: "AutoFilter", targets: ["AutoFilter"]),
+        .executable(name: "AutoFilterInstaller", targets: ["AutoFilterInstaller"])
     ],
     targets: [
         .executableTarget(
-            name: "AutoQSO",
-            path: "Sources/AutoQSO"
+            name: "AutoFilter",
+            path: "Sources/AutoFilter"
         ),
         .executableTarget(
-            name: "AutoQSOInstaller",
-            path: "Sources/AutoQSOInstaller"
+            name: "AutoFilterInstaller",
+            path: "Sources/AutoFilterInstaller"
         )
     ]
 )

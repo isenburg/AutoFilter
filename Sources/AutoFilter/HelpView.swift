@@ -216,7 +216,7 @@ struct HelpView: View {
                 
                 // Footer in Sidebar
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("AutoQSO v\(APP_VERSION)")
+                    Text("AutoFilter v\(APP_VERSION)")
                         .font(.caption)
                         .fontWeight(.semibold)
                     Text("Build \(APP_BUILD_NUMBER)")
@@ -305,8 +305,8 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 Text(isDe ? 
-                    "AutoQSO ist eine macOS-Anwendung für Funkamateure. Die **Hauptfunktion ist der DX-Filter** zur intelligenten Auswertung, Klassifizierung und Filterung von Spots und Dekodierungen. **Für WSJT-X steht die automatisierte Auto QSO Sende-Engine** zur Verfügung." :
-                    "AutoQSO is a macOS application for amateur radio operators. The **main feature is the DX Filter** for intelligent evaluation, classification, and filtering of spots and decodes. **For WSJT-X, the automated Auto QSO Transmit Engine** is available.")
+                    "AutoFilter ist eine macOS-Anwendung für Funkamateure. Die **Hauptfunktion ist der DX-Filter** zur intelligenten Auswertung, Klassifizierung und Filterung von Spots und Dekodierungen. **Für WSJT-X steht die automatisierte Auto QSO Sende-Engine** zur Verfügung." :
+                    "AutoFilter is a macOS application for amateur radio operators. The **main feature is the DX Filter** for intelligent evaluation, classification, and filtering of spots and decodes. **For WSJT-X, the automated Auto QSO Transmit Engine** is available.")
                     .font(.body)
                 
                 // Quickstart Callout
@@ -315,7 +315,7 @@ struct HelpView: View {
                         .font(.title)
                         .foregroundColor(.accentColor)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(isDe ? "Neu bei AutoQSO? Schnellstart in 4 Schritten:" : "New to AutoQSO? Quickstart in 4 steps:")
+                        Text(isDe ? "Neu bei AutoFilter? Schnellstart in 4 Schritten:" : "New to AutoFilter? Quickstart in 4 steps:")
                             .font(.headline)
                         Text(isDe ? "Erfahre, welche Mindesteinstellungen (Rufzeichen, QTH, WSJT-X, Logbuch) du für den Betrieb benötigst." : "Learn what minimum settings (callsign, QTH, WSJT-X, logbook) you need for operation.")
                             .font(.caption)
@@ -344,8 +344,8 @@ struct HelpView: View {
                     }
                     
                     Text(isDe ? 
-                        "AutoQSO sitzt als Inline-Filter zwischen bis zu drei DX-Clustern, WSJT-X und einer Logging-App wie beispielsweise **RUMlogNG**:" : 
-                        "AutoQSO operates as an inline filter between up to three DX clusters, WSJT-X, and a logging application such as **RUMlogNG**:")
+                        "AutoFilter sitzt als Inline-Filter zwischen bis zu drei DX-Clustern, WSJT-X und einer Logging-App wie beispielsweise **RUMlogNG**:" : 
+                        "AutoFilter operates as an inline filter between up to three DX clusters, WSJT-X, and a logging application such as **RUMlogNG**:")
                         .font(.subheadline)
                     
                     VStack(alignment: .leading, spacing: 6) {
@@ -385,7 +385,7 @@ struct HelpView: View {
                         Text(isDe ? "Quickstart – Mindesteinstellungen" : "Quickstart – Minimum Setup")
                             .font(.title2)
                             .bold()
-                        Text(isDe ? "Vier grundlegende Schritte zum sofortigen Funkbetrieb mit AutoQSO." : "Four basic steps for immediate radio operation with AutoQSO.")
+                        Text(isDe ? "Vier grundlegende Schritte zum sofortigen Funkbetrieb mit AutoFilter." : "Four basic steps for immediate radio operation with AutoFilter.")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -558,7 +558,7 @@ struct HelpView: View {
                 Text(isDe ? "Toolbar & Bedienung" : "Toolbar & Controls")
                     .font(.title2)
                     .bold()
-                Text(isDe ? "Hier findest du eine Übersicht über alle Steuerungselemente und Interaktionen in AutoQSO." : "Here you will find an overview of all controls and interactions in AutoQSO.")
+                Text(isDe ? "Hier findest du eine Übersicht über alle Steuerungselemente und Interaktionen in AutoFilter." : "Here you will find an overview of all controls and interactions in AutoFilter.")
                     .font(.body)
                 
                 toolbarIllustrationCard(isDe: isDe)
@@ -587,7 +587,7 @@ struct HelpView: View {
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
                     bullet(isDe ? "**Einfacher Klick**: Wählt eine Station in der Tabelle aus. Dies lädt ihre Details in den Detail-Banner, aktualisiert die QRZ/LoTW-Daten und hebt das Rufzeichen hervor." : "**Single Click**: Selects a station in the table. Loads details into the detail banner, updates QRZ/LoTW info, and highlights the callsign.")
-                    bullet(isDe ? "**Doppelklick**: Löst die manuelle Antwort (**Manual Reply**) aus. AutoQSO sendet ein UDP-Reply-Kommando an WSJT-X, wodurch WSJT-X sofort auf die entsprechende Frequenz springt und den Sendezyklus startet." : "**Double Click**: Triggers **Manual Reply**. AutoQSO sends a UDP reply command to WSJT-X, making WSJT-X tune immediately and initiate transmission.")
+                    bullet(isDe ? "**Doppelklick**: Löst die manuelle Antwort (**Manual Reply**) aus. AutoFilter sendet ein UDP-Reply-Kommando an WSJT-X, wodurch WSJT-X sofort auf die entsprechende Frequenz springt und den Sendezyklus startet." : "**Double Click**: Triggers **Manual Reply**. AutoFilter sends a UDP reply command to WSJT-X, making WSJT-X tune immediately and initiate transmission.")
                 }
             }
             
@@ -615,7 +615,7 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                Text(isDe ? "Im automatischen QSO-Modus (Auto Mode) analysiert AutoQSO nach jedem 15-Sekunden-Empfangsfenster alle eintreffenden WSJT-X Dekodierungen, bewertet potenzielle Anruf-Kandidaten und steuert WSJT-X vollautomatisch an." : "In Auto Mode, AutoQSO evaluates all incoming WSJT-X decodes after every 15-second reception window, scores eligible targets, and controls WSJT-X automatically.")
+                Text(isDe ? "Im automatischen QSO-Modus (Auto Mode) analysiert AutoFilter nach jedem 15-Sekunden-Empfangsfenster alle eintreffenden WSJT-X Dekodierungen, bewertet potenzielle Anruf-Kandidaten und steuert WSJT-X vollautomatisch an." : "In Auto Mode, AutoFilter evaluates all incoming WSJT-X decodes after every 15-second reception window, scores eligible targets, and controls WSJT-X automatically.")
                     .font(.body)
                 
                 // 1. Erkannte Nachrichtentypen & Signal-Trigger
@@ -663,7 +663,7 @@ struct HelpView: View {
                     numberedItem("2.", isDe ? "**Priorisierung**: 1. Direkte eingehende Anrufer (höchste Priorität) → 2. Most-Wanted-Rang (seltenste DXCCs zuerst) → 3. Größte Großkreis-Entfernung (km) → 4. Signalstärke (SNR)." : "**Target Ranking**: 1. Direct Inbound Callers (highest priority) → 2. Most Wanted Rank (rarest entity first) → 3. Furthest Great Circle distance (km) → 4. Signal-to-noise ratio (SNR).")
                     numberedItem("3.", isDe ? "**WSJT-X Steuerung**: Sendet das `Reply`-Kommando an WSJT-X und überwacht die Aktivierung der Sende-Bereitschaft (`TX BEREIT`)." : "**WSJT-X Control**: Dispatches the `Reply` UDP command to WSJT-X and monitors transmit readiness (`TX ENABLED`).")
                     numberedItem("4.", isDe ? "**Intelligenter Sende-Schutz**: Bricht WSJT-X nach nur einem Sende-Zyklus ab, greift keine Quarantäne; nach längerer Nicht-Antwort wird die Station für die eingestellte Cooldown-Dauer gesperrt." : "**Smart Retry Protection**: If WSJT-X halts after a single cycle, no cooldown is applied; extended non-responses enter the configured cooldown.")
-                    numberedItem("5.", isDe ? "**Sofort-Abbruch ohne Cooldown (HaltTx)**: Antwortet die angerufene Zielstation einer anderen Station, stoppt AutoQSO das Senden sofort per `HaltTx`, verhängt **keine** Cooldown-Sperre und steht direkt für den nächsten Trigger bereit." : "**Instant Abort without Cooldown (HaltTx)**: If the called target station answers another party, AutoQSO immediately halts transmission via `HaltTx`, applies **no** cooldown quarantine, and is instantly ready for the next trigger.")
+                    numberedItem("5.", isDe ? "**Sofort-Abbruch ohne Cooldown (HaltTx)**: Antwortet die angerufene Zielstation einer anderen Station, stoppt AutoFilter das Senden sofort per `HaltTx`, verhängt **keine** Cooldown-Sperre und steht direkt für den nächsten Trigger bereit." : "**Instant Abort without Cooldown (HaltTx)**: If the called target station answers another party, AutoFilter immediately halts transmission via `HaltTx`, applies **no** cooldown quarantine, and is instantly ready for the next trigger.")
                 }
                 
                 // 4. Sortierbare Filter-Pipeline & First-Match-Prinzip
@@ -685,8 +685,8 @@ struct HelpView: View {
                     .bold()
                 
                 Text(isDe ? 
-                    "AutoQSO ermöglicht das Speichern und blitzschnelle Wiederaufrufen vollständiger Filter-Snapshots. Statt nur zwischen zwei starren Reihenfolgen zu wechseln, umfasst jedes Profil den Gesamtzustand aller 13 Filterregeln, Suchbegriffe und die individuelle Pipeline-Sortierung." : 
-                    "AutoQSO allows you to save and instantly recall complete filter snapshots. Instead of switching between just two static orders, each profile captures the entire state of all 13 filter rules, search queries, and custom pipeline sequencing.")
+                    "AutoFilter ermöglicht das Speichern und blitzschnelle Wiederaufrufen vollständiger Filter-Snapshots. Statt nur zwischen zwei starren Reihenfolgen zu wechseln, umfasst jedes Profil den Gesamtzustand aller 13 Filterregeln, Suchbegriffe und die individuelle Pipeline-Sortierung." : 
+                    "AutoFilter allows you to save and instantly recall complete filter snapshots. Instead of switching between just two static orders, each profile captures the entire state of all 13 filter rules, search queries, and custom pipeline sequencing.")
                     .font(.body)
                 
                 // 1. Die 5 System-Vorlagen
@@ -811,8 +811,8 @@ struct HelpView: View {
                         "In the Profile Manager sheet, you can optionally assign an **Auto-Band** (e.g. `6m`, `10m`) or **Auto-Mode** (e.g. `FT8`, `SSB`) to any custom profile.")
                     
                     bullet(isDe ? 
-                        "Sobald du in WSJT-X oder über deine Transceiver-CAT-Steuerung das Band wechselst, erkennt AutoQSO den Frequenzwechsel und **aktiviert vollautomatisch das passende Profil** (z. B. automatische Umschaltung auf '6m Magic Band' beim Wechsel auf 50 MHz)." : 
-                        "Whenever you change bands in WSJT-X or via radio CAT control, AutoQSO detects the frequency and **automatically switches to the matching profile** (e.g. activates '6m Magic Band' upon tuning to 50 MHz).")
+                        "Sobald du in WSJT-X oder über deine Transceiver-CAT-Steuerung das Band wechselst, erkennt AutoFilter den Frequenzwechsel und **aktiviert vollautomatisch das passende Profil** (z. B. automatische Umschaltung auf '6m Magic Band' beim Wechsel auf 50 MHz)." : 
+                        "Whenever you change bands in WSJT-X or via radio CAT control, AutoFilter detects the frequency and **automatically switches to the matching profile** (e.g. activates '6m Magic Band' upon tuning to 50 MHz).")
                 }
                 .padding()
                 .background(Color.green.opacity(0.06))
@@ -831,8 +831,8 @@ struct HelpView: View {
                         "**Importing**: Via *Import...*, you can load filter configurations shared by club members, contest teams, or online communities.")
                     
                     bullet(isDe ? 
-                        "**iCloud- & SQLite-Sicherheit**: Alle Profile werden in der zentralen Datenbank (`autoqso_log.sqlite`) gespeichert und bleiben bei Software-Updates oder Neustarts dauerhaft erhalten." : 
-                        "**iCloud & SQLite Persistence**: All profiles reside in the local SQLite database (`autoqso_log.sqlite`) and persist permanently across app updates.")
+                        "**iCloud- & SQLite-Sicherheit**: Alle Profile werden in der zentralen Datenbank (`autofilter_log.sqlite`) gespeichert und bleiben bei Software-Updates oder Neustarts dauerhaft erhalten." : 
+                        "**iCloud & SQLite Persistence**: All profiles reside in the local SQLite database (`autofilter_log.sqlite`) and persist permanently across app updates.")
                 }
                 .padding()
                 .background(Color.indigo.opacity(0.06))
@@ -845,8 +845,8 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 Text(isDe ? 
-                    "AutoQSO verfügt über eine frei sortierbare First-Match Filter-Pipeline. Alle 11 Filtersektionen in der rechten Seitenleiste werden streng sequentiell **von oben nach unten** ausgewertet. Die erste Regel, die auf ein empfangenes Signal zutrifft, entscheidet sofort." : 
-                    "AutoQSO features a fully reorderable First-Match filter pipeline. All 11 filter sections in the right sidebar evaluate sequentially **from top to bottom**. The first rule that matches an incoming decode makes an immediate final decision.")
+                    "AutoFilter verfügt über eine frei sortierbare First-Match Filter-Pipeline. Alle 11 Filtersektionen in der rechten Seitenleiste werden streng sequentiell **von oben nach unten** ausgewertet. Die erste Regel, die auf ein empfangenes Signal zutrifft, entscheidet sofort." : 
+                    "AutoFilter features a fully reorderable First-Match filter pipeline. All 11 filter sections in the right sidebar evaluate sequentially **from top to bottom**. The first rule that matches an incoming decode makes an immediate final decision.")
                     .font(.body)
                 
                 // Diagramm / Flow-Karte
@@ -953,7 +953,7 @@ struct HelpView: View {
                 Text(isDe ? "DX Cluster & Spot-Verarbeitung" : "DX Cluster & Spot Processing")
                     .font(.title2)
                     .bold()
-                Text(isDe ? "AutoQSO ermöglicht den parallelen Empfang von bis zu drei DX-Cluster-Verbindungen (C1, C2, C3) sowie den WSJT-X Dekodierungen." : "AutoQSO allows parallel reception of up to three DX Cluster connections (C1, C2, C3) alongside WSJT-X decodes.")
+                Text(isDe ? "AutoFilter ermöglicht den parallelen Empfang von bis zu drei DX-Cluster-Verbindungen (C1, C2, C3) sowie den WSJT-X Dekodierungen." : "AutoFilter allows parallel reception of up to three DX Cluster connections (C1, C2, C3) alongside WSJT-X decodes.")
                     .font(.body)
                 
                 Text(isDe ? "Zuweisung & Status:" : "Assignment & Status:")
@@ -968,7 +968,7 @@ struct HelpView: View {
                     .font(.headline)
                 VStack(alignment: .leading, spacing: 8) {
                     bullet(isDe ? "**Vollständige Anzeige**: Alle empfangenen Spots und Dekodierungen werden ohne Vorab-Löschung in der Haupttabelle dargestellt." : "**Full Display**: All received spots and decodes are shown in the main table without premature pruning.")
-                    bullet(isDe ? "**Grün**: CQ-Anrufe und potenzielle AutoQSO-Kandidaten." : "**Green**: CQ calls and potential AutoQSO candidates.")
+                    bullet(isDe ? "**Grün**: CQ-Anrufe und potenzielle AutoFilter-Kandidaten." : "**Green**: CQ calls and potential AutoFilter candidates.")
                     bullet(isDe ? "**Rot / Fett**: Ungearbeitete seltene Most Wanted Entitäten." : "**Red / Bold**: Unworked rare Most Wanted entities.")
                     bullet(isDe ? "**Blasses Rot**: Stationen, die auf dem aktuellen Band bereits im Logbuch stehen." : "**Pale Red**: Stations already worked on the current band in your logbook.")
                     bullet(isDe ? "**Grau / Muted**: Von den aktiven DX- oder Spotter-Filtern blockierte Stationen." : "**Gray / Muted**: Stations blocked by active DX or spotter filters.")
@@ -996,7 +996,7 @@ struct HelpView: View {
                 Text(isDe ? "Telnet Server & Spotting-Ausgabe" : "Telnet Server & Spotting Output")
                     .font(.title2)
                     .bold()
-                Text(isDe ? "AutoQSO läuft als lokaler Telnet-Cluster-Server, an den du externe Log-Software (z.B. MacLoggerDX) koppeln kannst." : "AutoQSO runs as a local Telnet cluster server to feed spots into external logging tools (e.g. MacLoggerDX).")
+                Text(isDe ? "AutoFilter läuft als lokaler Telnet-Cluster-Server, an den du externe Log-Software (z.B. MacLoggerDX) koppeln kannst." : "AutoFilter runs as a local Telnet cluster server to feed spots into external logging tools (e.g. MacLoggerDX).")
                     .font(.body)
                 
                 Text(isDe ? "Konfiguration:" : "Configuration:")
@@ -1016,7 +1016,7 @@ struct HelpView: View {
                 Text(isDe ? "Ausbreitungskarte & Maidenhead Grid-Map" : "Propagation Map & Maidenhead Grid Map")
                     .font(.title2)
                     .bold()
-                Text(isDe ? "AutoQSO bietet zwei spezialisierte interaktive Kartenansichten, die über die Toolbar-Buttons **Karte ↗** und **Grid-Map ↗** als eigenständige Fenster geöffnet werden können." : "AutoQSO offers two specialized interactive map views available via the **Map ↗** and **Grid Map ↗** toolbar buttons.")
+                Text(isDe ? "AutoFilter bietet zwei spezialisierte interaktive Kartenansichten, die über die Toolbar-Buttons **Karte ↗** und **Grid-Map ↗** als eigenständige Fenster geöffnet werden können." : "AutoFilter offers two specialized interactive map views available via the **Map ↗** and **Grid Map ↗** toolbar buttons.")
                     .font(.body)
                 
                 activeQSOPathIllustrationCard(isDe: isDe)
@@ -1070,7 +1070,7 @@ struct HelpView: View {
                 Text(isDe ? "Kompaktmodus (Compact Mode)" : "Compact Mode")
                     .font(.title2)
                     .bold()
-                Text(isDe ? "Der Kompaktmodus reduziert den Platzbedarf von AutoQSO auf ein absolutes Minimum." : "Compact Mode minimizes AutoQSO window footprint down to 480x320 pixels.")
+                Text(isDe ? "Der Kompaktmodus reduziert den Platzbedarf von AutoFilter auf ein absolutes Minimum." : "Compact Mode minimizes AutoFilter window footprint down to 480x320 pixels.")
                     .font(.body)
                 
                 Text(isDe ? "Funktionsumfang im Kompaktmodus:" : "Compact Mode Features:")
@@ -1124,16 +1124,16 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                Text(isDe ? "AutoQSO speichert alle QSOs, Konfigurationen und Einstellungen in einer einheitlichen SQLite-Datenbank (`autoqso_log.sqlite`)." : "AutoQSO stores all QSOs, configurations, and settings in a single unified SQLite database (`autoqso_log.sqlite`).")
+                Text(isDe ? "AutoFilter speichert alle QSOs, Konfigurationen und Einstellungen in einer einheitlichen SQLite-Datenbank (`autofilter_log.sqlite`)." : "AutoFilter stores all QSOs, configurations, and settings in a single unified SQLite database (`autofilter_log.sqlite`).")
                     .font(.body)
                 
                 Text(isDe ? "Konfiguration im Einstellungen-Dialog (Seitenleiste -> Speicherort & iCloud):" : "Configuration in Settings (Sidebar -> Storage & iCloud):")
                     .font(.headline)
                 
                 VStack(alignment: .leading, spacing: 8) {
-                    bullet(isDe ? "**Standard-Ordner**: Speichert die Datenbank unter `~/Documents/AutoQSO`." : "**Default Folder**: Stores the SQLite database in `~/Documents/AutoQSO`.")
+                    bullet(isDe ? "**Standard-Ordner**: Speichert die Datenbank unter `~/Documents/AutoFilter`." : "**Default Folder**: Stores the SQLite database in `~/Documents/AutoFilter`.")
                     bullet(isDe ? "**Benutzerdefinierter Ordner**: Freie Wahl eines lokalen Ordners via macOS Dialog." : "**Custom Folder**: Select any local directory via native macOS folder picker.")
-                    bullet(isDe ? "**iCloud Drive**: Speichert in `iCloud Drive/AutoQSO` zur automatischen Synchronisation von QSOs, Filtern und Einstellungen zwischen mehreren Macs." : "**iCloud Drive**: Stores in `iCloud Drive/AutoQSO` for automatic synchronization of QSOs, filters, and settings across your Macs.")
+                    bullet(isDe ? "**iCloud Drive**: Speichert in `iCloud Drive/AutoFilter` zur automatischen Synchronisation von QSOs, Filtern und Einstellungen zwischen mehreren Macs." : "**iCloud Drive**: Stores in `iCloud Drive/AutoFilter` for automatic synchronization of QSOs, filters, and settings across your Macs.")
                 }
                 .padding()
                 .background(Color.blue.opacity(0.08))
@@ -1149,7 +1149,7 @@ struct HelpView: View {
                 Text(isDe ? "Ansicht & Farbanpassungen" : "Appearance & Theme Customization")
                     .font(.title2)
                     .bold()
-                Text(isDe ? "Im Einstellungsmenü unter **Ansicht** kannst du das gesamte Erscheinungsbild von AutoQSO deinen individuellen Wünschen anpassen." : "In Settings under **Appearance & Theme**, customize the full visual presentation of AutoQSO.")
+                Text(isDe ? "Im Einstellungsmenü unter **Ansicht** kannst du das gesamte Erscheinungsbild von AutoFilter deinen individuellen Wünschen anpassen." : "In Settings under **Appearance & Theme**, customize the full visual presentation of AutoFilter.")
                     .font(.body)
                 
                 VStack(alignment: .leading, spacing: 10) {
@@ -1183,13 +1183,13 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                Text(isDe ? "Hast du Fragen, Probleme oder Feedback zu AutoQSO? Über den unten stehenden Button kannst du direkt eine E-Mail an unseren Support senden." : "Have questions, issues, or feedback regarding AutoQSO? Click the button below to compose a support email.")
+                Text(isDe ? "Hast du Fragen, Probleme oder Feedback zu AutoFilter? Über den unten stehenden Button kannst du direkt eine E-Mail an unseren Support senden." : "Have questions, issues, or feedback regarding AutoFilter? Click the button below to compose a support email.")
                     .font(.body)
                 
                 VStack(alignment: .leading, spacing: 8) {
                     Text(isDe ? "Automatisch übermittelte Systeminformationen:" : "Automatically Attached Diagnostics:")
                         .font(.headline)
-                    bullet("App Version & Build (`AutoQSO v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))`)")
+                    bullet("App Version & Build (`AutoFilter v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))`)")
                     bullet(isDe ? "macOS-Version & Build-Nummer" : "macOS Version & Build Number")
                     bullet(isDe ? "Hardware-Informationen (Mac-Modell/Hostname, Prozessortyp, CPU-Kerne, Arbeitsspeicher)" : "Hardware Details (Mac Model, Architecture, CPU Cores, RAM)")
                 }
@@ -1222,8 +1222,8 @@ struct HelpView: View {
                     Text(isDe ? "Nutzung auf eigene Verantwortung:" : "Operation Under Own Responsibility:")
                         .font(.headline)
                     Text(isDe ? 
-                        "Die Nutzung von AutoQSO und insbesondere der automatisierten Sendefunktion (**Auto QSO für WSJT-X**) erfolgt ausschließlich auf eigene Gefahr und Verantwortung des jeweiligen lizenzierten Funkamateurs." :
-                        "The operation of AutoQSO, and specifically the automated transmission engine (**Auto QSO for WSJT-X**), is strictly at the sole risk and responsibility of the licensed amateur radio control operator.")
+                        "Die Nutzung von AutoFilter und insbesondere der automatisierten Sendefunktion (**Auto QSO für WSJT-X**) erfolgt ausschließlich auf eigene Gefahr und Verantwortung des jeweiligen lizenzierten Funkamateurs." :
+                        "The operation of AutoFilter, and specifically the automated transmission engine (**Auto QSO for WSJT-X**), is strictly at the sole risk and responsibility of the licensed amateur radio control operator.")
                         .font(.body)
                     
                     Text(isDe ? "Einhaltung der Amateurfunkbestimmungen:" : "Regulatory Compliance:")
@@ -1478,10 +1478,10 @@ struct HelpView: View {
                         Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
-                        bullet(isDe ? "Konfiguration & Einstellungen in SQLite-Datenbank: Sämtliche App-Einstellungen, Filter-Regeln, UDP/Telnet/Cluster-Konfigurationen, Farbschemata und UI-Optionen werden nun persistent in der SQLite-Datenbank (`autoqso_log.sqlite`) gespeichert und in Echtzeit synchronisiert." : "Configuration & Settings in SQLite Database: All application settings, filter rules, UDP/Telnet/Cluster configurations, color themes, and UI options are now persistently stored in the SQLite database (`autoqso_log.sqlite`) with real-time synchronization.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Konfiguration & Einstellungen in SQLite-Datenbank: Sämtliche App-Einstellungen, Filter-Regeln, UDP/Telnet/Cluster-Konfigurationen, Farbschemata und UI-Optionen werden nun persistent in der SQLite-Datenbank (`autofilter_log.sqlite`) gespeichert und in Echtzeit synchronisiert." : "Configuration & Settings in SQLite Database: All application settings, filter rules, UDP/Telnet/Cluster configurations, color themes, and UI options are now persistently stored in the SQLite database (`autofilter_log.sqlite`) with real-time synchronization.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Nahtlose iCloud & Multi-Geräte Synchronisation: Beim Wechsel des Speicherorts oder Synchronisieren via iCloud Drive werden alle Konfigurationen automatisch aus der Datenbank geladen und übernommen." : "Seamless iCloud & Multi-Device Sync: When changing the storage location or syncing via iCloud Drive, all configurations are automatically loaded and applied from the database.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Präzise Trennlinien-Wiederherstellung (Kompaktmodus): Beim Verlassen des Kompaktmodus werden alle Trennlinien (Log-Konsole, Most-Wanted-Panel) und Seitenleistenbreiten exakt auf die zuvor eingestellten Maße zurückgesetzt." : "Precise Split Divider Restoration (Compact Mode): Exiting compact mode cleanly restores all inner window dividers (Log Console, Most Wanted Panel) and sidebar widths to their saved dimensions.", font: .subheadline, color: .secondary)
-                        bullet(isDe ? "Robuster Installer mit Administrator-Rechten: `AutoQSO Installer.app` und `Install AutoQSO.command` fordern bei geschützten Zielverzeichnissen (z. B. `/Applications/AFU`) automatisch erweiterte Rechte an, um bestehende Versionen sauber zu ersetzen." : "Robust Installer Privilege Elevation: Both `AutoQSO Installer.app` and `Install AutoQSO.command` request administrator privileges on protected destination directories (e.g. `/Applications/AFU`) to cleanly overwrite existing versions.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Robuster Installer mit Administrator-Rechten: `AutoFilter Installer.app` und `Install AutoFilter.command` fordern bei geschützten Zielverzeichnissen (z. B. `/Applications/AFU`) automatisch erweiterte Rechte an, um bestehende Versionen sauber zu ersetzen." : "Robust Installer Privilege Elevation: Both `AutoFilter Installer.app` and `Install AutoFilter.command` request administrator privileges on protected destination directories (e.g. `/Applications/AFU`) to cleanly overwrite existing versions.", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -1511,7 +1511,7 @@ struct HelpView: View {
                         bullet(isDe ? "VIP-First Standard-Reihenfolge & Umschalt-Presets (Default vs. Custom): Das Default-Preset platziert VIP-Ausnahmen (Grids, Rufzeichen, Länder) an Position 1–3 über Makro-Ländersperren, sodass Ausnahmen sofort greifen. Umschalter wechselt nahtlos zwischen Default und Custom." : "VIP-First Standard Order & Presets (Default vs. Custom): The Default preset places VIP exceptions (Grids, Calls, Countries) on positions 1–3 above general country blocks for instant exception overrides. Presets toggle seamlessly.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Echtzeit Filter-Tracing im System-Log: Checkbox „Filter-Tracing“ im Reiter System-Logs protokolliert jede Filter-Entscheidung live mit Farbcodierung (✅ Grün = PASS, ❌ Rot = DROP), Sektions-Position und Begründung." : "Real-Time Filter Tracing in System Log: “Filter Tracing” checkbox in the System Logs tab logs live filter decisions with color-coded status (✅ PASS, ❌ DROP), section index, and matching rule details.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Strikte CTY.DAT DXCC-Ländertrennung: Ländersperren (z. B. United States / USA) trennen eigenständige DXCC-Inseln und -Gebiete (Puerto Rico KP4, Alaska KL7, Hawaii KH6, Guam KH2, Virgin Islands KP2) sauber vom US-Festland ab." : "Strict CTY.DAT DXCC Entity Separation: Country filters strictly separate autonomous DXCC entities (Puerto Rico KP4, Alaska KL7, Hawaii KH6, Guam KH2, Virgin Islands KP2) from mainland USA.", font: .subheadline, color: .secondary)
-                        bullet(isDe ? "Automatischer QSO-Abbruch ohne Cooldown (HaltTx): Antwortet eine angerufene Station einer anderen Gegenstation, stoppt AutoQSO die Sendung via HaltTx sofort, verzichtet auf eine Cooldown-Sperre und wartet direkt auf den nächsten Trigger." : "Automatic QSO Abort without Cooldown (HaltTx): If a called target station is answered by another station, AutoQSO halts transmission immediately via HaltTx, skips cooldown quarantine, and stands ready for the next trigger.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Automatischer QSO-Abbruch ohne Cooldown (HaltTx): Antwortet eine angerufene Station einer anderen Gegenstation, stoppt AutoFilter die Sendung via HaltTx sofort, verzichtet auf eine Cooldown-Sperre und wartet direkt auf den nächsten Trigger." : "Automatic QSO Abort without Cooldown (HaltTx): If a called target station is answered by another station, AutoFilter halts transmission immediately via HaltTx, skips cooldown quarantine, and stands ready for the next trigger.", font: .subheadline, color: .secondary)
                     }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -1617,8 +1617,8 @@ struct HelpView: View {
                         Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
-                        bullet(isDe ? "Konfigurierbarer Filter für bereits gearbeitete Stationen: Neuer Schalter in der Filter-Sidebar, der gearbeitete Stationen nach einer frei wählbaren Zeitspanne (0 bis 999 Stunden, Tage, Monate oder Jahre) wieder durchlässt und für AutoQSO freigibt." : "Configurable Worked Station Filter: New toggle in Filter Sidebar allowing worked stations to pass through and become eligible for AutoQSO after a customizable duration (0 to 999 hours, days, months, or years).", font: .subheadline, color: .secondary)
-                        bullet(isDe ? "Blitzschnelle O(1) Zeitstempel-Indexierung: AutoQSO indexiert die exakten UTC-Zeitstempel aller QSOs im SQLite-Speicher, sodass Zeitspannen-Prüfungen auch bei zehntausenden Logbucheinträgen in Nanosekunden erfolgen." : "Lightning-Fast O(1) Timestamp Indexing: AutoQSO indexes exact UTC timestamps of all QSOs in SQLite for nanosecond lookups even across tens of thousands of records.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Konfigurierbarer Filter für bereits gearbeitete Stationen: Neuer Schalter in der Filter-Sidebar, der gearbeitete Stationen nach einer frei wählbaren Zeitspanne (0 bis 999 Stunden, Tage, Monate oder Jahre) wieder durchlässt und für AutoFilter freigibt." : "Configurable Worked Station Filter: New toggle in Filter Sidebar allowing worked stations to pass through and become eligible for AutoFilter after a customizable duration (0 to 999 hours, days, months, or years).", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Blitzschnelle O(1) Zeitstempel-Indexierung: AutoFilter indexiert die exakten UTC-Zeitstempel aller QSOs im SQLite-Speicher, sodass Zeitspannen-Prüfungen auch bei zehntausenden Logbucheinträgen in Nanosekunden erfolgen." : "Lightning-Fast O(1) Timestamp Indexing: AutoFilter indexes exact UTC timestamps of all QSOs in SQLite for nanosecond lookups even across tens of thousands of records.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Flexible Zifferneingabe & Einheiten-Picker: Direkte numerische Eingabe (0–999) im Textfeld kombiniert mit Stunden-, Tage-, Monate- und Jahre-Auswahl." : "Flexible Numeric Input & Unit Selector: Direct numeric entry (0–999) combined with Hours, Days, Months, and Years selection.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Vollständige Integration in Filter & Auto-Transmit: Einstellbare Wiederholungs-QSOs fließen nahtlos in die DX-Filterung, die automatische Sendeauswahl (Auto Transmit) und das Most-Wanted-Panel ein." : "Seamless Filter & Auto-Transmit Integration: Re-worked station rules seamlessly integrate into DX filtering, Auto Transmit, and Most Wanted calculations.", font: .subheadline, color: .secondary)
                     }
@@ -1673,7 +1673,7 @@ struct HelpView: View {
                         bullet(isDe ? "RUMlogNG AppleScript-Integration: Direkte 1-Klick-Synchronisation des Logbuchs aus der laufenden macOS App RUMlogNG über die native AppleScript-Schnittstelle (`ReadAdif`) – sowohl inkrementell als auch vollständig ab 1900." : "RUMlogNG AppleScript Integration: 1-click sync directly from running macOS RUMlogNG app via AppleScript (`ReadAdif`).", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Umschaltbare Logbuch-Quellen: Flexibler Segmented-Picker in den Einstellungen zum Umschalten zwischen RUMlogNG, ARRL LoTW und QRZ.com inklusive automatischem Post-QSO-Sync für die aktive Quelle." : "Switchable Logbook Sources: Toggle between RUMlogNG, ARRL LoTW, and QRZ.com with auto post-QSO sync.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Aktives QSO auf Ausbreitungskarte zentriert: Automatische Zentrierung und optimale Skalierung des Großkreis-Pfads (Great Circle) auf 2D-Karte und 3D-Globus bei jedem aktiven QSO, inklusive 1-Klick Re-Zentrierung über den Status-Banner." : "Active QSO Centering: Great Circle path auto-centered on 2D map and 3D globe during active QSOs.", font: .subheadline, color: .secondary)
-                        bullet(isDe ? "Dual-Installer Release-DMG: Bereitstellung von nativer GUI-Installer-App (`AutoQSO Installer.app`) und Terminal-Installationsskript (`Install AutoQSO.command`) im Release-Image." : "Dual-Installer DMG: Includes native macOS GUI Installer app and terminal command script.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Dual-Installer Release-DMG: Bereitstellung von nativer GUI-Installer-App (`AutoFilter Installer.app`) und Terminal-Installationsskript (`Install AutoFilter.command`) im Release-Image." : "Dual-Installer DMG: Includes native macOS GUI Installer app and terminal command script.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Quickstart Direktsprung-Routing: Direkte Sprungbuttons aus den 4 Quickstart-Schritten zu den jeweiligen Einstellungs-Tabs (Rufzeichen/Telnet, QTH-Locator, UDP-Server, Logbuch-Sync)." : "Quickstart Direct Navigation: 1-click shortcut buttons from Quickstart to respective Settings tabs.", font: .subheadline, color: .secondary)
                         
                         Text(isDe ? "🐞 Fehlerbehebungen & Leistungsverbesserungen" : "🐞 Bugfixes & Performance")
@@ -1703,7 +1703,7 @@ struct HelpView: View {
                         Text(isDe ? "✨ Neue Funktionen & Verbesserungen" : "✨ New Features & Improvements")
                             .font(.subheadline)
                             .bold()
-                        bullet(isDe ? "Nativer macOS GUI-Installer: Grafische Installer-App (`AutoQSO Installer.app`) direkt im `.dmg` ersetzt das Terminal-Skript. Bietet komfortable Zielordner-Auswahl, Gatekeeper-Quarantäne-Entfernung (`xattr -cr`), Code-Signatur-Auffrischung und Sofortstart." : "Native macOS GUI Installer: Graphical installer app in DMG with destination picker, Gatekeeper quarantine removal (`xattr -cr`), and instant launch.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Nativer macOS GUI-Installer: Grafische Installer-App (`AutoFilter Installer.app`) direkt im `.dmg` ersetzt das Terminal-Skript. Bietet komfortable Zielordner-Auswahl, Gatekeeper-Quarantäne-Entfernung (`xattr -cr`), Code-Signatur-Auffrischung und Sofortstart." : "Native macOS GUI Installer: Graphical installer app in DMG with destination picker, Gatekeeper quarantine removal (`xattr -cr`), and instant launch.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Interaktiver Grid-Inspector: Ein Klick auf ein beliebiges Grid-Feld auf der Karte öffnet ein Detail-Popover mit Status (gearbeitet/ungearbeitet), Peilung/Distanz, aktiven Stationen und QRZ.com-Aufruf." : "Interactive Grid Inspector: Click any grid square for worked status, bearing/distance, stations, and QRZ lookup.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Band-Schnellfilter auf Grid-Map: Horizontale Filter-Pill-Leiste (`ALL`, `160M`–`6M`) zum sofortigen Umschalten der angezeigten Grids und Map-Marker nach dem aktiven Band." : "Band Quick Filters: Pill selector (`ALL`, `160M`–`6M`) for instant band-specific grid filtering.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Peilung & Distanz (Beam Heading / Distance): Anzeige von Azimut und Großkreis-Entfernung bezogen auf das eigene Heimat-QTH (`🧭 285° · 4.210 km`) direkt in jeder Grid-Zeile." : "Beam Heading & Distance: Azimuth and great-circle distance relative to home QTH in each row.", font: .subheadline, color: .secondary)
@@ -1744,7 +1744,7 @@ struct HelpView: View {
                         bullet(isDe ? "3D-Globus-Projektion & Maidenhead-Gitter: Maidenhead-Grid-Linien und gearbeitete 4-Stellen Planquadrate werden in der 3D-Globusansicht nativ als 3D-Polylines und 3D-Polygone auf die Erdkugel projiziert." : "3D Globe Projection: Maidenhead grid lines and worked squares projected onto interactive 3D sphere.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Aktiver QSO-Pfad auf Ausbreitungskarte: Zeichnet bei einem aktiven WSJT-X Anruf/QSO eine leuchtend gelbe Großkreis-Verbindungslinie zwischen eigenem QTH (minimalistisches 🏠 Symbol) und der Zielstation auf der 2D-Karte und dem 3D-Globus inklusive Live-Statusbanner (⚡ AKTIVES QSO)." : "Active QSO Great Circle Path: Displays glowing connection line from home QTH to target station.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Einstellungsbereich Eigenes QTH & Interaktiver QTH Picker: Neuer Einstellungsreiter 'Eigenes QTH (Maidenhead)' (max. 8-Stellen-Präzision) mit Echtzeit-Standortanalyse und nativer interaktiver Karte (InteractiveQTHPickerView) mit Google-Style Drop-Pin." : "Home QTH Settings & Picker: Up to 8-character locator resolution with interactive map and drop-pin.", font: .subheadline, color: .secondary)
-                        bullet(isDe ? "Interaktiver Installer & macOS Gatekeeper Lösung: Doppelklickbares Skript (`Install AutoQSO.command`) direkt im `.dmg`, das den Zielordner abfragt, Quarantäne-Attribute entfernt und AutoQSO startet." : "Interactive Installer: Automates installation and quarantine clearance.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Interaktiver Installer & macOS Gatekeeper Lösung: Doppelklickbares Skript (`Install AutoFilter.command`) direkt im `.dmg`, das den Zielordner abfragt, Quarantäne-Attribute entfernt und AutoFilter startet." : "Interactive Installer: Automates installation and quarantine clearance.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Kompaktmodus Toolbar-Schaltflächen: Alle 6 Icon-Buttons (Logbuch, Ausbreitungskarte, Grid-Map, Normalmodus, Einstellungen, Hilfe) sind jetzt direkt in der Toolbar des Kompaktmodus verfügbar." : "Compact Mode Toolbar: Access Logbook, Propagation Map, Grid Map, Normal View, Settings, and Help.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Kartenstil Dropdown-Menü: Neues kompaktes, kontrastreiches Dropdown-Menü (.ultraThinMaterial Pill) für alle Kartenansichten ohne störende Text-Labels." : "Map Style Menu: Compact translucent pill dropdown for MapKit styles.", font: .subheadline, color: .secondary)
                     }
@@ -1936,7 +1936,7 @@ struct HelpView: View {
                     .font(.title)
                     .bold()
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("AutoQSO — DX-Filter and Automated FT8/FT4 QSO Manager")
+                    Text("AutoFilter — DX-Filter and Automated FT8/FT4 QSO Manager")
                         .font(.headline)
                     Text("Copyright (c) Georg Isenbürger - DJ6GI")
                         .font(.title3)
@@ -1956,8 +1956,8 @@ struct HelpView: View {
 
     private func sendSupportEmail() {
         let isDe = langManager.isGerman
-        let recipient = "support@autoqso.app"
-        let subject = isDe ? "AutoQSO Support Anfrage - v\(APP_VERSION)" : "AutoQSO Support Request - v\(APP_VERSION)"
+        let recipient = "support@autofilter.app"
+        let subject = isDe ? "AutoFilter Support Anfrage - v\(APP_VERSION)" : "AutoFilter Support Request - v\(APP_VERSION)"
         
         // System & Hardware Details ermitteln
         let osVersion = ProcessInfo.processInfo.operatingSystemVersionString
@@ -1972,7 +1972,7 @@ struct HelpView: View {
         #endif
 
         let bodyText = isDe ? """
-        Hallo AutoQSO Support-Team,
+        Hallo AutoFilter Support-Team,
 
         [Bitte beschreibe hier dein Anliegen oder Problem]
 
@@ -1980,7 +1980,7 @@ struct HelpView: View {
         --------------------------------------------------
         SYSTEM INFORMATIONEN (Automatisch generiert)
         --------------------------------------------------
-        App Version:      AutoQSO v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))
+        App Version:      AutoFilter v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))
         macOS Version:    \(osVersion)
         Gerätename:       \(hostName)
         Architektur:      \(architecture)
@@ -1988,7 +1988,7 @@ struct HelpView: View {
         Arbeitsspeicher:  \(physicalMemoryGB)
         --------------------------------------------------
         """ : """
-        Hello AutoQSO Support Team,
+        Hello AutoFilter Support Team,
 
         [Please describe your inquiry or issue here]
 
@@ -1996,7 +1996,7 @@ struct HelpView: View {
         --------------------------------------------------
         SYSTEM DIAGNOSTICS (Automatically Generated)
         --------------------------------------------------
-        App Version:      AutoQSO v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))
+        App Version:      AutoFilter v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))
         macOS Version:    \(osVersion)
         Device Name:      \(hostName)
         Architecture:     \(architecture)
@@ -2237,7 +2237,7 @@ struct HelpView: View {
                     Text(isDe ? "Dänemark" : "Denmark").font(.system(size: 10)).foregroundColor(.secondary)
                     Spacer()
                     Text("CQ DX OZ/DJ6GI JO45").font(.system(size: 10, design: .monospaced))
-                    Text(isDe ? "AutoQSO Kandidat" : "AutoQSO Target").font(.system(size: 9, weight: .semibold)).foregroundColor(.green)
+                    Text(isDe ? "AutoFilter Kandidat" : "AutoFilter Target").font(.system(size: 9, weight: .semibold)).foregroundColor(.green)
                 }
                 .padding(.horizontal, 8).padding(.vertical, 4)
                 .background(Color.green.opacity(0.1)).cornerRadius(4)

@@ -489,7 +489,7 @@ struct FilterProfileManagerSheet: View {
         guard let data = try? JSONEncoder().encode(profile) else { return }
         let panel = NSSavePanel()
         panel.allowedContentTypes = [UTType.json]
-        panel.nameFieldStringValue = "\(profile.name).autoqso-filter.json"
+        panel.nameFieldStringValue = "\(profile.name).autofilter-filter.json"
         if panel.runModal() == .OK, let url = panel.url {
             try? data.write(to: url)
         }

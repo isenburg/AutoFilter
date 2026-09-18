@@ -93,8 +93,8 @@ class RUMlogManager {
                 let err: String
                 if errorNumber == -1743 || errDescription.lowercased().contains("not authorized") {
                     err = self.isDe
-                        ? "Berechtigung fehlt: macOS blockiert Apple Events an RUMlogNG. Bitte öffne Systemeinstellungen ➔ Datenschutz & Sicherheit ➔ Automation und aktiviere 'RUMlogNG' unter 'AutoQSO'."
-                        : "Permission missing: macOS is blocking Apple Events to RUMlogNG. Please open System Settings ➔ Privacy & Security ➔ Automation and enable 'RUMlogNG' under 'AutoQSO'."
+                        ? "Berechtigung fehlt: macOS blockiert Apple Events an RUMlogNG. Bitte öffne Systemeinstellungen ➔ Datenschutz & Sicherheit ➔ Automation und aktiviere 'RUMlogNG' unter 'AutoFilter'."
+                        : "Permission missing: macOS is blocking Apple Events to RUMlogNG. Please open System Settings ➔ Privacy & Security ➔ Automation and enable 'RUMlogNG' under 'AutoFilter'."
                 } else {
                     err = self.isDe ? "AppleScript Fehler bei RUMlogNG: \(errDescription)" : "AppleScript error with RUMlogNG: \(errDescription)"
                 }

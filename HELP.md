@@ -1,4 +1,4 @@
-# AutoQSO Hilfe & Dokumentation
+# AutoFilter Hilfe & Dokumentation
 
 *Copyright (c) Georg Isenbürger - DJ6GI*
 
@@ -6,28 +6,28 @@
 
 ## 1. Einleitung & Installation
 
-AutoQSO ist eine macOS-Anwendung für Funkamateure. Die **Hauptfunktion ist der DX-Filter**, der eingehende DX-Spots und Dekodierungen nach flexiblen Kriterien analysiert, farblich klassifiziert und verarbeitet. **Für WSJT-X bietet AutoQSO zusätzlich die automatisierte Auto QSO Sende-Engine**, welche gezielte Anrufe auf FT8- und FT4-Frequenzen vollständig automatisch steuert, gegen das lokale SQLite-Logbuch abgleicht und seltene Most-Wanted-Stationen bevorzugt.
+AutoFilter ist eine macOS-Anwendung für Funkamateure. Die **Hauptfunktion ist der DX-Filter**, der eingehende DX-Spots und Dekodierungen nach flexiblen Kriterien analysiert, farblich klassifiziert und verarbeitet. **Für WSJT-X bietet AutoFilter zusätzlich die automatisierte Auto QSO Sende-Engine**, welche gezielte Anrufe auf FT8- und FT4-Frequenzen vollständig automatisch steuert, gegen das lokale SQLite-Logbuch abgleicht und seltene Most-Wanted-Stationen bevorzugt.
 
 ### Systemvoraussetzungen
 - **Betriebssystem**: macOS 14.0 (Sonoma) oder neuer (einschließlich macOS 15 Sequoia).
 - **Prozessor / Architektur**: Universal Binary (Nativ für **Apple Silicon** M1/M2/M3/M4 & **Intel Macs** `x86_64`).
 
 ### Interaktiver Installer & macOS Gatekeeper Lösung
-Da AutoQSO ad-hoc signiert ist (ohne kostenpflichtiges Apple-Entwickler-Zertifikat), stuft macOS Gatekeeper die App beim ersten Download evtl. als „unbekannter Entwickler“ oder „beschädigt“ ein. Im DMG stehen zwei Wege zur Verfügung:
+Da AutoFilter ad-hoc signiert ist (ohne kostenpflichtiges Apple-Entwickler-Zertifikat), stuft macOS Gatekeeper die App beim ersten Download evtl. als „unbekannter Entwickler“ oder „beschädigt“ ein. Im DMG stehen zwei Wege zur Verfügung:
 
 **Option 1: Nativer 1-Klick GUI Installer (Empfohlen)**
-1. Öffne die heruntergeladene **`AutoQSO-vX.X.X.dmg`** Datei.
-2. Starte per Doppelklick die App **`AutoQSO Installer.app`** (falls Gatekeeper warnt: *Rechtsklick -> Öffnen*).
-3. Wähle deinen Zielordner (`/Applications`, `~/Applications` oder Finder-Dialog). Der Installer kopiert AutoQSO, fordert bei geschützten Zielordnern (z. B. `/Applications/AFU`) bei Bedarf Administrator-Rechte an, entfernt das Quarantäne-Attribut (`xattr -cr`) automatisch und startet die App ohne Fehlermeldung.
+1. Öffne die heruntergeladene **`AutoFilter-vX.X.X.dmg`** Datei.
+2. Starte per Doppelklick die App **`AutoFilter Installer.app`** (falls Gatekeeper warnt: *Rechtsklick -> Öffnen*).
+3. Wähle deinen Zielordner (`/Applications`, `~/Applications` oder Finder-Dialog). Der Installer kopiert AutoFilter, fordert bei geschützten Zielordnern (z. B. `/Applications/AFU`) bei Bedarf Administrator-Rechte an, entfernt das Quarantäne-Attribut (`xattr -cr`) automatisch und startet die App ohne Fehlermeldung.
 
 **Option 2: Terminal-Installationsskript**
-- Starte per Doppelklick das Skript **`Install AutoQSO.command`** und folge den Anweisungen im Terminal (unterstützt ebenfalls Administrator-Rechte via `sudo`/`osascript`).
+- Starte per Doppelklick das Skript **`Install AutoFilter.command`** und folge den Anweisungen im Terminal (unterstützt ebenfalls Administrator-Rechte via `sudo`/`osascript`).
 
 ---
 
 ## 2. Quickstart – Mindesteinstellungen in 4 Schritten
 
-Für den erfolgreichen Betrieb von AutoQSO sind lediglich vier grundlegende Einstellungen erforderlich:
+Für den erfolgreichen Betrieb von AutoFilter sind lediglich vier grundlegende Einstellungen erforderlich:
 
 1. **Eigenes Rufzeichen & Grid-Locator (Heimat-QTH)**
    - *Eigenes Rufzeichen*: Wird unter **Einstellungen (⚙️) -> Telnet Server** (*Rufzeichen für Login*) eingestellt (relevant für Cluster-Verbindungen und den lokalen Telnet-Server).
@@ -110,7 +110,7 @@ Der DX-Cluster-Manager ermöglicht den gleichzeitigen Empfang von DX-Spots über
 
 ## 6. Telnet Server
 
-AutoQSO enthält einen eigenen Telnet-Cluster-Server, an den sich externe Log- oder Mapping-Programme (z.B. MacLoggerDX) connecten können:
+AutoFilter enthält einen eigenen Telnet-Cluster-Server, an den sich externe Log- oder Mapping-Programme (z.B. MacLoggerDX) connecten können:
 - **Port & Callsign**: Standardmäßig horcht der Server auf Port `8000`. Das Login-Rufzeichen (Standard `GUEST`) ist frei wählbar.
 - **Live-Status**: Zeigt an, ob der Server aktiv ist und wie viele externe Clients aktuell verbunden sind.
 - **WSJT-X Decodes Telnet-Ausgabe**: Ein Schalter ermöglicht es, alle lokalen WSJT-X Dekodierungen nach Durchlaufen deiner Filter als DX-Spots über Telnet auszugeben. Standardmäßig ist diese Option deaktiviert.
@@ -119,14 +119,14 @@ AutoQSO enthält einen eigenen Telnet-Cluster-Server, an den sich externe Log- o
 
 ## 7. Logbuch-Sync, SQLite-Datenbank & Einstellungen
 
-AutoQSO speichert nicht nur alle QSOs, sondern auch **sämtliche Konfigurationen, Filter-Regeln und Einstellungen direkt in der SQLite-Datenbank (`autoqso_log.sqlite`)**:
+AutoFilter speichert nicht nur alle QSOs, sondern auch **sämtliche Konfigurationen, Filter-Regeln und Einstellungen direkt in der SQLite-Datenbank (`autofilter_log.sqlite`)**:
 - **Durchsuchbare Einstellungen & Hilfe**: Sowohl das Einstellungsfenster als auch der Hilfebereich verfügen über ein integriertes Echtzeit-Suchfeld in der Seitenleiste. Bei der Eingabe werden passende Sektionen nach deutschen und englischen Begriffen (z. B. UDP, Multicast, Bridge, Port, Cluster, Telnet, RUMlog, LoTW, QRZ, ADIF, QTH, Maidenhead, Most Wanted, iCloud, Farbschema, etc.) live gefiltert.
 - **Persistent in SQLite**: Alle Filter-Reihenfolgen, Whitelists/Blacklists, UDP/Telnet/Cluster-Parameter, Farbanpassungen und UI-Zustände werden in einer dedizierten `settings`-Tabelle gespeichert.
 - **Echtzeit-Synchronisation**: Änderungen über `@AppStorage` oder die Einstellungen werden in Echtzeit in die SQLite-Datenbank gespiegelt.
-- **iCloud & Multi-Geräte Sync**: Beim Umschalten auf iCloud Drive (`iCloud Drive/AutoQSO`) oder einen benutzerdefinierten Ordner werden alle Einstellungen nahtlos aus der Datenbank geladen und auf jedem Mac übernommen.
+- **iCloud & Multi-Geräte Sync**: Beim Umschalten auf iCloud Drive (`iCloud Drive/AutoFilter`) oder einen benutzerdefinierten Ordner werden alle Einstellungen nahtlos aus der Datenbank geladen und auf jedem Mac übernommen.
 - **RUMlogNG (macOS App)**: 1-Klick-Synchronisation über die native macOS AppleScript-Schnittstelle von RUMlogNG (`ReadAdif`).
 - **LoTW & QRZ.com**: Eingabe der Zugangsdaten und Abgleich (Vollständig ab 1900 oder inkrementell).
-- **ADIF-Datei importieren**: Du kannst deine QSOs aus Drittprogrammen über eine ADIF-Datei (`.adi` oder `.adif`) importieren. AutoQSO liest die Datei ein, filtert Duplikate heraus und fügt neue QSOs in die lokale SQLite-Datenbank ein.
+- **ADIF-Datei importieren**: Du kannst deine QSOs aus Drittprogrammen über eine ADIF-Datei (`.adi` oder `.adif`) importieren. AutoFilter liest die Datei ein, filtert Duplikate heraus und fügt neue QSOs in die lokale SQLite-Datenbank ein.
 - **Intelligente Deduplizierung**: Erkennt und fusioniert doppelte QSOs durch Start-/Endzeit-Abweichungen (`TIME_ON` vs. `TIME_OFF`) automatisch.
 - **Logbuch löschen**: Löscht alle lokalen QSOs aus der SQLite-Datenbank nach einer Sicherheitsabfrage.
 
@@ -168,7 +168,7 @@ Zur Diagnose und Rohdaten-Überwachung verfügt die App über drei umschaltbare 
 
 ## 11. Kompaktmodus (Compact Mode)
 
-Über den Button **Kompakt** in der Toolbar lässt sich AutoQSO auf ein Minimum reduzieren (bis zu `480x320` Pixel):
+Über den Button **Kompakt** in der Toolbar lässt sich AutoFilter auf ein Minimum reduzieren (bis zu `480x320` Pixel):
 - Blendet Log-Konsolen und Seitenleisten aus.
 - Kompakte Steuerleiste oben mit schnellem Zugriff auf Auto ON/OFF, Filter AN/AUS, Karte ↗ und Status-Indikatoren.
 - Platzsparender Most-Wanted-Ticker am unteren Fensterrand.
@@ -178,7 +178,7 @@ Zur Diagnose und Rohdaten-Überwachung verfügt die App über drei umschaltbare 
 
 ## 12. Mehrsprachigkeit & Spracheinstellungen
 
-AutoQSO unterstützt Deutsch 🇩🇪 und Englisch 🇬🇧:
+AutoFilter unterstützt Deutsch 🇩🇪 und Englisch 🇬🇧:
 - Unter **Einstellungen (⚙️) -> Sprache** lässt sich die Anzeigesprache jederzeit umschalten:
   - 🌐 **System (Standard / Default)**: Passt sich automatisch der macOS-Systemsprache an.
   - 🇩🇪 **Deutsch**: Deutsche Benutzeroberfläche.

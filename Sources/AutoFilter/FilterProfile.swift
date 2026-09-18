@@ -1,6 +1,6 @@
 import Foundation
 
-/// A complete, serializable snapshot of all AutoQSO filter settings and pipeline ordering.
+/// A complete, serializable snapshot of all AutoFilter filter settings and pipeline ordering.
 public struct FilterProfile: Identifiable, Codable, Equatable {
     public let id: String
     public var name: String

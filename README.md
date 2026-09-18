@@ -1,4 +1,4 @@
-# AutoQSO
+# AutoFilter
 
 **DX-Filter and Automated FT8/FT4 QSO Manager & WSJT-X Assistant**
 
@@ -8,13 +8,13 @@
 
 ## 📖 Overview
 
-**AutoQSO** is a high-performance macOS application designed for amateur radio operators. 
+**AutoFilter** is a high-performance macOS application designed for amateur radio operators. 
 
 - **Primary Function (DX-Filter)**: Analyzes, classifies, and filters incoming DX spots and decodes in real-time according to custom criteria, callsign lists, countries, and bands.
 - **WSJT-X Integration (Auto QSO)**: Automated transmit engine for FT8 and FT4 contacts, cross-referencing incoming decodes against a local SQLite logbook synchronized with RUMlogNG, ARRL LoTW, and QRZ.com, prioritizing rare Most-Wanted DXCC stations.
 
 ### 🔄 Inline-Filter Architecture
-AutoQSO operates as an inline filter positioned between incoming signal streams (up to **3 simultaneous DX Clusters** plus **WSJT-X UDP Decodes**) and your logging software (such as **RUMlogNG**):
+AutoFilter operates as an inline filter positioned between incoming signal streams (up to **3 simultaneous DX Clusters** plus **WSJT-X UDP Decodes**) and your logging software (such as **RUMlogNG**):
 - **No Cluster Commands Required**: Eliminates the need to configure server-side filter commands on individual cluster servers.
 - **Independent of Cluster Software**: Consistent local filtering regardless of cluster type (DXSpider, AR-Cluster, CC-Cluster, RBN).
 - **Telnet Forwarding**: Filtered spots are forwarded via the built-in Telnet server directly to RUMlogNG.
@@ -43,22 +43,22 @@ AutoQSO operates as an inline filter positioned between incoming signal streams 
 
 ## 📥 Installation & macOS Gatekeeper Fix
 
-Since AutoQSO is distributed with self-signed (ad-hoc) code signing without a paid Apple Developer ID certificate, macOS Gatekeeper may block direct launches. The DMG release includes two installer options:
+Since AutoFilter is distributed with self-signed (ad-hoc) code signing without a paid Apple Developer ID certificate, macOS Gatekeeper may block direct launches. The DMG release includes two installer options:
 
 ### Option 1: Native 1-Click GUI Installer (Recommended)
-1. Mount the downloaded **`AutoQSO-vX.X.X.dmg`** file.
-2. Double-click (or **Right-Click -> Open**) **`AutoQSO Installer.app`** inside the DMG.
+1. Mount the downloaded **`AutoFilter-vX.X.X.dmg`** file.
+2. Double-click (or **Right-Click -> Open**) **`AutoFilter Installer.app`** inside the DMG.
 3. Select your desired target directory (`/Applications`, `~/Applications`, or custom folder). The installer automatically copies the app, removes quarantine attributes (`xattr -cr`), and refreshes code signatures.
 
 ### Option 2: Interactive Terminal Installer Script
-1. Inside the DMG, double-click **`Install AutoQSO.command`**.
+1. Inside the DMG, double-click **`Install AutoFilter.command`**.
 2. Follow the prompt to select the destination folder.
 
 ### Option 3: Manual Installation (Terminal)
-If you drag `AutoQSO.app` into `/Applications` manually, run:
+If you drag `AutoFilter.app` into `/Applications` manually, run:
 ```bash
-xattr -cr /Applications/AutoQSO.app
-codesign --force --deep --sign - /Applications/AutoQSO.app
+xattr -cr /Applications/AutoFilter.app
+codesign --force --deep --sign - /Applications/AutoFilter.app
 ```
 
 ---
@@ -72,8 +72,8 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 - Set **UDP Server Address**: `224.0.0.1` (or `127.0.0.1`).
 - Set **UDP Server Port**: `2237`.
 
-### 2. AutoQSO Configuration
-1. Launch **AutoQSO**.
+### 2. AutoFilter Configuration
+1. Launch **AutoFilter**.
 2. Go to **Settings -> Logbook Sync** (or **Einstellungen -> Logbuch-Sync**) to choose your active logbook source (**RUMlogNG**, **LoTW**, or **QRZ.com**).
 3. Go to **Settings -> Telnet Server** (or **Einstellungen -> Telnet Server**) to set your login callsign.
 4. Go to **Settings -> Home QTH** (or **Einstellungen -> Eigenes QTH**) to set your Maidenhead locator (or click 🗺️ for interactive map picker).
@@ -87,7 +87,7 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 > **OPERATOR RESPONSIBILITY & REGULATORY COMPLIANCE**
 > 
 > 1. **Station Control**: Operating an amateur radio station automatically must comply with all national telecommunications laws and amateur radio regulations in your country (e.g., BNetzA, FCC, Ofcom). The licensed operator is solely responsible for all transmissions originating from their station.
-> 2. **Duty of Supervision**: Always maintain control over your station while AutoQSO is active. Never leave an automated station unattended unless operating strictly under authorized automatic control guidelines.
+> 2. **Duty of Supervision**: Always maintain control over your station while AutoFilter is active. Never leave an automated station unattended unless operating strictly under authorized automatic control guidelines.
 > 3. **No Warranty**: This software is provided **"AS IS"**, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
 > 4. **Limitation of Liability**: In no event shall the author (**Georg Isenbürger - DJ6GI**) be liable for any claim, damages, regulatory fines, or other liability arising from, out of, or in connection with the software or the use or other dealings in the software.
 
@@ -108,7 +108,7 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 - **Enhanced Map Settings**: Added a new slider in *Settings → Appearance → Map View* with 1-click restore to defaults.
 
 ### Version 4.5.0
-- **Intelligent Filter Profiles & Presets**: Complete snapshot recall and storage of all 13 filter rules and pipeline sequence. Includes 5 built-in system presets (*Allround*, *DXpedition & Rare DXCC*, *Contest / High-Rate*, *Grid Hunting WAS*, *Phone / SSB Only*), custom user profiles with individual icons and names, dynamic dirty state indicator (`*`), optional automatic band/mode recall (Smart Recall), and standard JSON file export/import (`.autoqso-filter.json`).
+- **Intelligent Filter Profiles & Presets**: Complete snapshot recall and storage of all 13 filter rules and pipeline sequence. Includes 5 built-in system presets (*Allround*, *DXpedition & Rare DXCC*, *Contest / High-Rate*, *Grid Hunting WAS*, *Phone / SSB Only*), custom user profiles with individual icons and names, dynamic dirty state indicator (`*`), optional automatic band/mode recall (Smart Recall), and standard JSON file export/import (`.autofilter-filter.json`).
 - **Streamlined Sidebar Layout**: Cleaned up the filter sidebar by removing redundant bottom `Default`/`Custom` order buttons.
 
 ### Version 4.4.0
@@ -133,10 +133,10 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 - **Optimized Map Layering & Rendering**: Removed Metal drawingGroup layer promotion overrides for smooth panning/zooming and reliable CoreAnimation layer hierarchy.
 
 ### Version 4.1.1 (Build 494)
-- **Configuration & Settings in SQLite Database**: All application settings, filter rules, UDP/Telnet/Cluster configurations, color themes, and UI options are now persistently stored in the SQLite database (`autoqso_log.sqlite`) alongside QSO logs with real-time bidirectional synchronization.
+- **Configuration & Settings in SQLite Database**: All application settings, filter rules, UDP/Telnet/Cluster configurations, color themes, and UI options are now persistently stored in the SQLite database (`autofilter_log.sqlite`) alongside QSO logs with real-time bidirectional synchronization.
 - **Seamless iCloud & Multi-Device Synchronization**: Switching storage locations or syncing across multiple Macs via iCloud Drive automatically hydrates and synchronizes all configurations directly from the database.
 - **Restored Inner Window Dividers on Compact Mode Exit**: Returning from Compact Mode cleanly preserves and restores the saved split divider heights (`logConsoleHeight`, `mostWantedPanelHeight`) and sidebar widths.
-- **Elevated Installer Permissions**: Both `AutoQSO Installer.app` and `Install AutoQSO.command` automatically request administrator privileges when installing to or overwriting existing versions in protected directories (e.g. `/Applications/AFU`).
+- **Elevated Installer Permissions**: Both `AutoFilter Installer.app` and `Install AutoFilter.command` automatically request administrator privileges when installing to or overwriting existing versions in protected directories (e.g. `/Applications/AFU`).
 
 ### Version 4.1.0 (Build 477)
 - **VIP: Allowed Maidenhead Grids Filter**: New dedicated filter section supporting single grids (`DN71`), bounding-box ranges (`DN61-DN74`, `KN64-KN71`), and comma-separated lists (`DN61-DN74, EN10`) with instant First-Match VIP exception pass.
@@ -147,7 +147,7 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 - **Debounced Cycle Evaluation & Diagnostic Throttling**: Auto-QSO candidate search is debounced by 350 ms to process whole decode bursts at cycle end once, with throttled summary diagnostics.
 - **Removed Obsolete Conflict Warnings**: Cleaned up legacy conflict checks in favor of deterministic multi-tier First-Match VIP exception evaluation.
 - **Strict CTY.DAT DXCC Entity Adherence**: Country filtering strictly distinguishes autonomous DXCC entities (e.g. Puerto Rico `KP4`, Alaska `KL7`, Hawaii `KH6`, Guam `KH2`, Virgin Islands `KP2`) from mainland United States (`K`), preventing accidental collateral blocks.
-- **Automatic QSO Abort without Cooldown (HaltTx)**: If an active target station answers a third party, AutoQSO immediately sends a `HaltTx` command to WSJT-X, cancels transmission without cooldown quarantine, and prepares for the next trigger.
+- **Automatic QSO Abort without Cooldown (HaltTx)**: If an active target station answers a third party, AutoFilter immediately sends a `HaltTx` command to WSJT-X, cancels transmission without cooldown quarantine, and prepares for the next trigger.
 
 ### Version 4.0.1 (Build 459)
 - **Visual Help Illustrations & Window Expansion**: Enriched the Help & Info dialog with dedicated UI illustrations for toolbar controls, button states, color-coded decode row legends, and live QSO banners in an enlarged 860 × 620 px layout.
@@ -191,7 +191,7 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 - **RUMlogNG AppleScript Integration**: 1-click logbook synchronization from running RUMlogNG app via native AppleScript (`ReadAdif`) with full (since 1900) and incremental sync modes.
 - **Selectable Logbook Providers**: Switch between *RUMlogNG*, *ARRL LoTW*, and *QRZ.com* in settings with automatic dynamic post-QSO syncing.
 - **Active QSO Great-Circle Centering**: Automatically centers and zooms the map on active QSO great-circle paths with 1-click re-centering from the top status pill.
-- **Dual-Installer Release DMG**: Includes both native macOS GUI Installer (`AutoQSO Installer.app`) and terminal script (`Install AutoQSO.command`).
+- **Dual-Installer Release DMG**: Includes both native macOS GUI Installer (`AutoFilter Installer.app`) and terminal script (`Install AutoFilter.command`).
 - **Quickstart Deep-Linking**: Direct navigation buttons from Quickstart to specific settings tabs.
 - **Auto-Scroll Crash Fix**: Thread-safe asynchronous viewport scrolling for high-throughput decoding.
 
@@ -201,7 +201,7 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 - **Band Quick-Filter Pills**: Horizontal filter pills (`ALL`, `160M`–`6M`) on the grid map.
 - **Bearing & Distance Display**: Shows azimuth and great-circle distance relative to Home QTH in grid lists.
 - **Spot Freshness Decay**: Visual indicators for fresh spots (<3 min) and subtle fading for older spots.
-- **Interactive 1-Click Installer**: Bundled `Install AutoQSO.command` inside DMG releases with target folder selection (`/Applications`, `~/Applications`, Finder dialog) and automatic Gatekeeper quarantine removal (`xattr -cr`).
+- **Interactive 1-Click Installer**: Bundled `Install AutoFilter.command` inside DMG releases with target folder selection (`/Applications`, `~/Applications`, Finder dialog) and automatic Gatekeeper quarantine removal (`xattr -cr`).
 - **3D Globe Projection & Maidenhead Grid**: Rendered Maidenhead grid lines and worked 4-character squares natively as 3D polylines and polygons on 3D Globe map.
 - **Active QSO Path Visualization**: Added accurate 3D spherical great-circle arc (Slerp) between Home QTH (🏠) and target station (⚡) with top status banner.
 - **Interactive QTH Picker**: Modal map picker with 8-character locator resolution and Google-style drop pin.

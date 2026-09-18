@@ -251,7 +251,7 @@ class DecodeViewModel {
     private var recalculationTimer: Timer?
     private var needsRecalculation = false
     private var isRecalculating = false
-    private let recalcQueue = DispatchQueue(label: "com.autoqso.recalc", qos: .userInitiated)
+    private let recalcQueue = DispatchQueue(label: "com.autofilter.recalc", qos: .userInitiated)
     private var isDe: Bool { LanguageManager.shared.isGerman }
     var isAutoModeEnabled: Bool = false {
         didSet {
@@ -1001,7 +1001,7 @@ class DecodeViewModel {
     func sendReply(for decode: WSJTXDecode) {
         server.activeDxCall = decode.callsign
         let reply = WSJTXReply(
-            id: "AutoQSO",
+            id: "AutoFilter",
             time: decode.time,
             snr: decode.snr,
             deltaTime: decode.deltaTime,
@@ -1022,7 +1022,11 @@ class DecodeViewModel {
 
     private var ctyCacheURL: URL {
         let paths = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
-        let appSupport = paths[0].appendingPathComponent("com.dj6gi.AutoQSO", isDirectory: true)
+        let appSupport = paths[0].appendingPathComponent("com.dj6gi.AutoFilter", isDirectory: true)
+        let legacySupport = paths[0].appendingPathComponent("com.dj6gi.AutoQSO", isDirectory: true)
+        if !FileManager.default.fileExists(atPath: appSupport.path) && FileManager.default.fileExists(atPath: legacySupport.path) {
+            try? FileManager.default.copyItem(at: legacySupport, to: appSupport)
+        }
         try? FileManager.default.createDirectory(at: appSupport, withIntermediateDirectories: true)
         return appSupport.appendingPathComponent("cty_cache.dat")
     }
