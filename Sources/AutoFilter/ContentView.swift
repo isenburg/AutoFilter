@@ -119,6 +119,7 @@ struct ContentView: View {
     @State private var hostingWindow: NSWindow? = nil
     @State private var isTransitioningMode = true
     @State private var isClusterSendSheetPresented = false
+    @ObservedObject private var storeManager = StoreManager.shared
     
     private var isMulticastAddress: Bool {
         if let firstOctetStr = udpAddress.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: ".").first,
@@ -209,7 +210,11 @@ struct ContentView: View {
             HStack(alignment: .center, spacing: 12) {
                 // WSJTX Auto Mode Section (AutoQSO)
                 Button(action: {
-                    viewModel.isAutoModeEnabled.toggle()
+                    if storeManager.isTrialExpired {
+                        storeManager.showPurchaseSheet = true
+                    } else {
+                        viewModel.isAutoModeEnabled.toggle()
+                    }
                 }) {
                     HStack(spacing: 4) {
                         Image(systemName: viewModel.isAutoModeEnabled ? "play.circle.fill" : "play.circle")
@@ -357,8 +362,25 @@ struct ContentView: View {
             
             Spacer()
             
-            // 3. RIGHT SIDEBAR TOGGLE: Filter (DX-Filter) button aligned above filter sidebar
-            HStack {
+            // 3. RIGHT SIDEBAR TOGGLE & TRIAL STATUS
+            HStack(spacing: 8) {
+                if !storeManager.isUnlocked {
+                    Button(action: {
+                        storeManager.showPurchaseSheet = true
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: storeManager.isTrialExpired ? "lock.fill" : "timer")
+                            Text(storeManager.isTrialExpired
+                                ? (LanguageManager.shared.isGerman ? "Test abgelaufen" : "Trial expired")
+                                : "\(storeManager.formattedRemainingTime)")
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(storeManager.isTrialExpired ? .red : .orange)
+                    .help(LanguageManager.shared.isGerman ? "Testversion – Klicken zum Freischalten" : "Trial – Click to unlock")
+                }
+                
                 if isSidebarVisible {
                     Button(action: {
                         isSidebarVisible.toggle()
@@ -378,7 +400,7 @@ struct ContentView: View {
                     .help(L("toolbar.filterSidebar"))
                 }
             }
-            .frame(width: isSidebarVisible ? CGFloat(rightSidebarWidth) : 100, alignment: .trailing)
+            .frame(minWidth: 100, alignment: .trailing)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -582,6 +604,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $isShowingNewProfileAlert) {
             SaveNewProfileSheet(viewModel: viewModel)
+        }
+        .sheet(isPresented: $storeManager.showPurchaseSheet) {
+            PurchaseView()
         }
     }
 

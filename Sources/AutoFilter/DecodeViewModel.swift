@@ -255,6 +255,11 @@ class DecodeViewModel {
     private var isDe: Bool { LanguageManager.shared.isGerman }
     var isAutoModeEnabled: Bool = false {
         didSet {
+            if isAutoModeEnabled && StoreManager.shared.isTrialExpired {
+                isAutoModeEnabled = false
+                StoreManager.shared.triggerPurchasePrompt()
+                return
+            }
             if !isAutoModeEnabled {
                 currentTargetCall = ""
                 qsoStartTime = nil
@@ -280,7 +285,14 @@ class DecodeViewModel {
     var blockedCQZones: [Int] = []
     var blockedITUZones: [Int] = []
     
-    var isFiltersEnabled: Bool = true
+    var isFiltersEnabled: Bool = true {
+        didSet {
+            if isFiltersEnabled && StoreManager.shared.isTrialExpired {
+                isFiltersEnabled = false
+                StoreManager.shared.triggerPurchasePrompt()
+            }
+        }
+    }
     var isWsjtSpecialFilterEnabled: Bool = false
     var isMessageFilterEnabled: Bool = false
     var messageFilterQuery: String = ""
@@ -495,6 +507,18 @@ class DecodeViewModel {
         
         // Load filter settings from UserDefaults
         loadFilters()
+        
+        // Listen for trial expiration
+        Task { @MainActor [weak self] in
+            StoreManager.shared.onTrialExpired = { [weak self] in
+                guard let self = self else { return }
+                self.isFiltersEnabled = false
+                self.isAutoModeEnabled = false
+                self.addLog(LanguageManager.shared.isGerman
+                    ? "⚠️ 60-Minuten-Testzeit abgelaufen. Filter auf Durchzug geschaltet & AutoQSO deaktiviert."
+                    : "⚠️ 60-minute trial expired. Filters disabled (pass-through) & AutoQSO deactivated.")
+            }
+        }
         
         // Load CTY.DAT cache & Auto-refresh if > 14 days
         loadCtyDatabase()
