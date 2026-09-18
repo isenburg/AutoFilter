@@ -95,6 +95,12 @@ In **WSJT-X**, navigate to **Settings -> Reporting**:
 
 ## 📝 Changelog
 
+### Version 5.0.0
+- **Rebranding to AutoFilter**: Evolution from AutoQSO to AutoFilter with enhanced focus on advanced DX spot filtering and FT8/CW/RTTY automation.
+- **Mac App Store & StoreKit 2 Integration**: Native StoreKit 2 in-app purchase architecture for lifetime license activation and purchase restoration.
+- **60-Minute Session Trial Mode**: Free trial mode offering full feature access for 60 minutes per session; automated pass-through and purchase prompt upon trial expiry with instant reset on app restart.
+- **Trial Status Indicator**: Real-time session countdown badge in the main toolbar providing one-click access to the upgrade sheet.
+
 ### Version 4.5.2
 - **3D Globe Map Active QSO Marker**: Fixed an issue where the active QSO partner marker was not displayed and the previous QSO marker remained visible on the globe map.
 - **Propagation Map Bilingual Localization**: Full native German and English localization for all propagation map overlays, status indicators, Maidenhead grid settings, chart titles, axis labels, and hover tooltips with reactive language switching.

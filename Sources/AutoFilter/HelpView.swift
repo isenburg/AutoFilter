@@ -1251,10 +1251,10 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                // Version 4.5.2
+                // Version 5.0.0
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 4.5.2")
+                        Text("Version 5.0.0")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -1267,6 +1267,27 @@ struct HelpView: View {
                             .background(Color.green.opacity(0.2))
                             .foregroundStyle(.green)
                             .clipShape(Capsule())
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "✨ Neue Funktionen & Meilensteine" : "✨ New Features & Milestones")
+                            .font(.subheadline)
+                            .bold()
+                        bullet(isDe ? "Rebranding zu AutoFilter: Weiterentwicklung von AutoQSO zu AutoFilter mit klarem Fokus auf moderne DX-Filterung und FT8/CW/RTTY-Automatisierung." : "Rebranding to AutoFilter: Evolution from AutoQSO to AutoFilter with enhanced focus on advanced DX spot filtering and FT8/CW/RTTY automation.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Mac App Store & StoreKit 2 Integration: Nativer In-App-Kauf für die lebenslange Vollversion und einfache Wiederherstellung von Käufen." : "Mac App Store & StoreKit 2 Integration: Native StoreKit 2 in-app purchase architecture for lifetime license activation and purchase restoration.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "60-Minuten Session-Testversion: Kostenlose Testmöglichkeit aller Premium-Funktionen für 60 Minuten pro Sitzung; automatischer Durchzug nach Ablauf mit Neustart-Reset." : "60-Minute Session Trial: Free trial offering full feature access for 60 minutes per session; automated pass-through upon expiry with instant reset on app restart.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Toolbar Test-Statusanzeige: Echtzeit-Countdown in der Menüleiste mit 1-Klick-Zugriff auf das Freischalt-Sheet." : "Toolbar Trial Status Badge: Real-time session countdown in the toolbar with 1-click access to the unlock sheet.", font: .subheadline, color: .secondary)
+                    }
+                }
+                
+                Divider()
+                
+                // Version 4.5.2
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 4.5.2")
+                            .font(.headline)
+                            .bold()
                     }
                     
                     VStack(alignment: .leading, spacing: 6) {
