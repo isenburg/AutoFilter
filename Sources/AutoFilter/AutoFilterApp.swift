@@ -6,6 +6,7 @@ struct AutoFilterApp: App {
     @State private var viewModel = DecodeViewModel()
     private var langManager = LanguageManager.shared
     @AppStorage("appColorScheme") private var appColorScheme = "system"
+    @AppStorage("appLanguage") private var appLanguage = "en"
     
     init() {
         UserDefaults.standard.register(defaults: [
@@ -15,7 +16,7 @@ struct AutoFilterApp: App {
         _ = DatabaseManager.shared
     }
     
-    private var isDe: Bool { langManager.isGerman }
+    private var isDe: Bool { appLanguage == "de" }
     
     var preferredScheme: ColorScheme? {
         switch appColorScheme {

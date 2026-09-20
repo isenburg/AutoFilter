@@ -142,6 +142,7 @@ struct PropagationMapView: View {
             }
         }
         .frame(minWidth: 840, minHeight: 380)
+        .navigationTitle(isDe ? "Ausbreitungskarte" : "Propagation Map")
         .onAppear {
             refreshTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in 
                 now = Date() 
@@ -302,12 +303,14 @@ struct PropagationMapView: View {
                                     .font(.system(size: 9, weight: .bold))
                                     .foregroundStyle(.secondary)
                             }
+                            .fixedSize()
                             .padding(.horizontal, 8)
                             .padding(.vertical, 5.5)
                             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.1), lineWidth: 1))
                         }
                         .menuStyle(.borderlessButton)
+                        .fixedSize()
                         .help(isDe ? "Kartenstil auswählen" : "Select map style")
 
                         Button(action: {
@@ -352,6 +355,7 @@ struct PropagationMapView: View {
                             .help(isDe ? "Liste einblenden" : "Show sidebar")
                         }
                     }
+                    .fixedSize()
                     .padding(4)
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.primary.opacity(0.1), lineWidth: 1))

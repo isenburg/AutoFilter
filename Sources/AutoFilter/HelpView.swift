@@ -76,7 +76,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
         case .overview:
             return ["übersicht", "overview", "system", "dx-filter", "auto qso", "wsjt-x", "wsjtx", "ft8", "ft4", "sqlite", "most wanted", "entfernung", "distance", "telnet", "farbschema", "theme", "hauptfunktionen", "features", "filter-pipeline", "whitelist", "vip-pass"]
         case .quickstart:
-            return ["quickstart", "schnellstart", "mindesteinstellungen", "minimum setup", "schritte", "steps", "rufzeichen", "callsign", "qth", "locator", "wsjt-x udp", "logbuch", "logbook sync", "cluster", "c1", "c2", "c3", "setup", "anleitung", "guide"]
+            return ["quickstart", "schnellstart", "mindesteinstellungen", "minimum setup", "inline", "inline-filter", "logger", "schritte", "steps", "rufzeichen", "callsign", "qth", "locator", "wsjt-x udp", "logbuch", "logbook sync", "cluster", "c1", "c2", "c3", "setup", "anleitung", "guide", "telnet ip", "telnet port"]
         case .toolbar:
             return ["toolbar", "bedienung", "controls", "buttons", "verbindungs-sidebar", "auto transmit", "auto on", "auto off", "cq only", "freeze", "pause", "suche", "search", "suchfeld", "logbuch", "sortierung", "sort order", "tabelle löschen", "clear", "ausbreitungskarte", "kompaktmodus", "einstellungen", "settings", "filter-sidebar", "klick", "click", "doppelklick", "shortcuts", "tastatur", "maus"]
         case .wsjtx:
@@ -315,9 +315,9 @@ struct HelpView: View {
                         .font(.title)
                         .foregroundColor(.accentColor)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(isDe ? "Neu bei AutoFilter? Schnellstart in 4 Schritten:" : "New to AutoFilter? Quickstart in 4 steps:")
+                        Text(isDe ? "Neu bei AutoFilter? Schnellstart-Anleitung:" : "New to AutoFilter? Quickstart Guide:")
                             .font(.headline)
-                        Text(isDe ? "Erfahre, welche Mindesteinstellungen (Rufzeichen, QTH, WSJT-X, Logbuch) du für den Betrieb benötigst." : "Learn what minimum settings (callsign, QTH, WSJT-X, logbook) you need for operation.")
+                        Text(isDe ? "Erfahre mehr über das 3-Schritte Minimal-Setup als Inline-Filter und das 4-Schritte Komplett-Setup für Auto QSO." : "Learn about the 3-step minimum setup as an inline filter and the 4-step full setup for Auto QSO.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -379,13 +379,13 @@ struct HelpView: View {
             }
             
         case .quickstart:
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 18) {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(isDe ? "Quickstart – Mindesteinstellungen" : "Quickstart – Minimum Setup")
+                        Text(isDe ? "Quickstart – Schnellstart-Anleitung" : "Quickstart – Getting Started Guide")
                             .font(.title2)
                             .bold()
-                        Text(isDe ? "Vier grundlegende Schritte zum sofortigen Funkbetrieb mit AutoFilter." : "Four basic steps for immediate radio operation with AutoFilter.")
+                        Text(isDe ? "Zwei Betriebsmodi: Minimal-Setup als Inline-Filter (3 Schritte) oder Komplett-Setup für Auto QSO (4 Schritte)." : "Two setup modes: Minimal setup as an inline filter (3 steps) or full setup for Auto QSO (4 steps).")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -399,7 +399,138 @@ struct HelpView: View {
                     .buttonStyle(.borderedProminent)
                 }
                 
-                // 1. Eigenes Rufzeichen & QTH
+                // ── A. MINIMAL-SETUP: INLINE-FILTER ──────────────────
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.triangle.pull")
+                            .font(.title3)
+                            .foregroundColor(.accentColor)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(isDe ? "Minimal-Setup: Inline-Filter (3 Schritte)" : "Minimum Setup: Inline Filter (3 Steps)")
+                                .font(.headline)
+                                .bold()
+                            Text(isDe ? "Empfohlen für den Betrieb von AutoFilter als intelligenter DX-Cluster-Filter zwischen Internet-Clustern und deinem Logbuch (z. B. RUMlogNG, MacLoggerDX, Log4OM, N1MM)." : "Recommended for running AutoFilter as an intelligent inline DX cluster filter between internet clusters and your logging software (e.g. RUMlogNG, MacLoggerDX, Log4OM, N1MM).")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.bottom, 2)
+                    
+                    // 1. Internetverbindung
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Label(isDe ? "1. Internetverbindung" : "1. Internet Connection", systemImage: "network")
+                                .font(.headline)
+                        }
+                        Text(isDe ?
+                            "• **Zweck**: Eine aktive Internetverbindung ist erforderlich, um Live-DX-Spots von weltweiten Cluster-Servern (DXSpider, AR-Cluster, CC-Cluster, RBN) zu empfangen." :
+                            "• **Purpose**: An active internet connection is required to receive live worldwide DX spots from upstream cluster servers (DXSpider, AR-Cluster, CC-Cluster, RBN).")
+                            .font(.subheadline)
+                        Text(isDe ?
+                            "• **Setup**: Keine manuelle Konfiguration in AutoFilter nötig – die bestehende Internet-/WLAN-Verbindung deines Macs wird automatisch genutzt." :
+                            "• **Setup**: No manual configuration in AutoFilter needed – your Mac's active internet/Wi-Fi connection is used automatically.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(12)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.15), lineWidth: 1))
+                    
+                    // 2. DX Cluster auswählen
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Label(isDe ? "2. DX Cluster auswählen" : "2. Select DX Cluster", systemImage: "list.bullet.rectangle.portrait.fill")
+                                .font(.headline)
+                            Spacer()
+                            Button(action: { openSettings(to: .cluster) }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "gearshape")
+                                    Text(isDe ? "Cluster-Setup" : "Cluster Setup")
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            
+                            Button(isDe ? "Cluster Hilfe" : "Cluster Guide") {
+                                selectedSection = .cluster
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        }
+                        Text(isDe ?
+                            "• **Zweck**: Auswahl und Verbindung zu mindestens einem Upstream-DX-Cluster (C1, C2 oder C3)." :
+                            "• **Purpose**: Connect to at least one upstream DX cluster source (C1, C2, or C3).")
+                            .font(.subheadline)
+                        Text(isDe ?
+                            "• **Setup**: Wähle in der linken Seitenleiste oder unter **Einstellungen (⚙️) -> DX Cluster** deinen bevorzugten Cluster aus dem Dropdown-Menü (z. B. DB0ERF, VE7CC, K3LR). AutoFilter verbindet sich automatisch und empfängt Live-Spots." :
+                            "• **Setup**: In the left sidebar or under **Settings (⚙️) -> DX Cluster**, choose your preferred cluster from the dropdown menu (e.g. DB0ERF, VE7CC, K3LR). AutoFilter connects automatically and receives live spots.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(12)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.15), lineWidth: 1))
+                    
+                    // 3. Telnet-Server (IP & Port) für Logger konfigurieren
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Label(isDe ? "3. Telnet-Server (IP & Port) für Logger konfigurieren" : "3. Configure Telnet Server (IP & Port) for Logger", systemImage: "terminal.fill")
+                                .font(.headline)
+                            Spacer()
+                            Button(action: { openSettings(to: .telnet) }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "gearshape")
+                                    Text(isDe ? "Telnet-Setup" : "Telnet Setup")
+                                }
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            
+                            Button(isDe ? "Telnet Hilfe" : "Telnet Guide") {
+                                selectedSection = .telnet
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        }
+                        Text(isDe ?
+                            "• **Zweck**: Weiterleitung der gefilterten DX-Spots in Echtzeit an dein externes Logbuch-Programm (z. B. RUMlogNG, MacLoggerDX, Log4OM, N1MM)." :
+                            "• **Purpose**: Live forwarding of all filtered DX spots directly to your external logging software (e.g. RUMlogNG, MacLoggerDX, Log4OM, N1MM).")
+                            .font(.subheadline)
+                        Text(isDe ?
+                            "• **Einstellung in AutoFilter**: Öffne **Einstellungen (⚙️) -> Telnet Server** und aktiviere den Server (Standard: Port `8000`, IP `127.0.0.1` bei lokalem Betrieb).\n• **Einstellung im Logger**: Trage in deinem Logbuch-Programm als Cluster-Host die IP `127.0.0.1` (oder die LAN-IP des Macs) und den Port `8000` ein, auf dem der Logger auf Spots lauscht bzw. sich verbindet. Dein Logger empfängt nun alle sauberen, nach deinen Filterregeln aufbereiteten Spots!" :
+                            "• **Setup in AutoFilter**: Open **Settings (⚙️) -> Telnet Server** and enable the server (default: port `8000`, IP `127.0.0.1` on the same Mac).\n• **Setup in Logger**: In your logging program, configure the DX cluster connection with host IP `127.0.0.1` (or local Mac LAN IP) and the port (`8000`) the logger connects to / listens on. Your logger now receives all clean spots according to your active filter rules!")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(12)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.15), lineWidth: 1))
+                }
+                
+                Divider()
+                    .padding(.vertical, 4)
+                
+                // ── B. KOMPLETT-SETUP: AUTO QSO & WSJT-X (ALL-INCLUSIVE) ─
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles")
+                            .font(.title3)
+                            .foregroundColor(.accentColor)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(isDe ? "Komplett-Setup: Auto QSO & WSJT-X (All-Inclusive in 4 Schritten)" : "Full Setup: Auto QSO & WSJT-X (All-Inclusive in 4 Steps)")
+                                .font(.headline)
+                                .bold()
+                            Text(isDe ? "Erweiterter Vollbetrieb mit WSJT-X FT8/FT4 Automatisierung, automatischem Senden (Auto QSO), Logbuch-Sync und Ausbreitungskarte." : "Extended full operation with WSJT-X FT8/FT4 automation, automated transmit (Auto QSO), logbook synchronization, and propagation map.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.bottom, 2)
+                    
+                    // 1. Eigenes Rufzeichen & QTH
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Label(isDe ? "1. Rufzeichen & Heimat-QTH" : "1. Callsign & Home QTH", systemImage: "location.circle.fill")
@@ -551,6 +682,7 @@ struct HelpView: View {
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(8)
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.15), lineWidth: 1))
+            }
             }
             
         case .toolbar:

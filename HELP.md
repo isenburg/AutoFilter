@@ -25,9 +25,30 @@ Da AutoFilter ad-hoc signiert ist (ohne kostenpflichtiges Apple-Entwickler-Zerti
 
 ---
 
-## 2. Quickstart – Mindesteinstellungen in 4 Schritten
+## 2. Quickstart – Schnellstart-Anleitung
 
-Für den erfolgreichen Betrieb von AutoFilter sind lediglich vier grundlegende Einstellungen erforderlich:
+AutoFilter bietet zwei grundlegende Betriebsmodi – vom schlanken Minimal-Setup als reiner Inline-Clusterfilter bis zum vollintegrierten Komplett-Setup für WSJT-X FT8/FT4:
+
+### 2.1 Minimal-Setup: Inline-Filter in 3 Schritten
+Das **absolute Mindest-Setup** für den Betrieb von AutoFilter als intelligenter Inline-Clusterfilter zwischen Internet-Clustern und deiner Logging-Software (z. B. RUMlogNG, MacLoggerDX, Log4OM, N1MM):
+
+1. **Internetverbindung**
+   - *Zweck*: Erforderlich zum Empfang weltweiter Live-DX-Spots von Upstream-Clustern (DXSpider, AR-Cluster, CC-Cluster, RBN).
+   - *Setup*: Keine separate Konfiguration in AutoFilter nötig – die aktive Internet-/WLAN-Verbindung deines Macs wird automatisch verwendet.
+
+2. **DX Cluster auswählen**
+   - *Zweck*: Verbindung zu mindestens einer Spot-Quelle (C1, C2 oder C3).
+   - *Setup*: In der linken Seitenleiste oder unter **Einstellungen (⚙️) -> DX Cluster** einen beliebigen Cluster aus dem Dropdown-Menü wählen (z. B. DB0ERF, VE7CC, K3LR). AutoFilter verbindet sich automatisch.
+
+3. **Telnet-Server (IP & Port) für Logger konfigurieren**
+   - *Zweck*: Weiterleitung aller gefilterten DX-Spots in Echtzeit an dein externes Logbuch-Programm.
+   - *Einstellung in AutoFilter*: Unter **Einstellungen (⚙️) -> Telnet Server** den integrierten Server aktivieren (Standard: IP `127.0.0.1`, Port `8000`).
+   - *Einstellung im Logger*: Im Logbuch-Programm (z. B. RUMlogNG, MacLoggerDX, N1MM) als Telnet-Cluster-Host die IP `127.0.0.1` (oder die LAN-IP des Macs) und den Port `8000` eintragen, auf dem der Logger auf Spots lauscht bzw. sich verbindet. Dein Logger empfängt nun alle sauberen, nach deinen Filterregeln verarbeiteten Spots!
+
+---
+
+### 2.2 Komplett-Setup: Auto QSO & WSJT-X (All-Inclusive in 4 Schritten)
+Für den erweiterten Vollbetrieb mit WSJT-X FT8/FT4 Automatisierung, automatischem Senden (Auto QSO), Logbuch-Duplikatsabgleich und Ausbreitungskarte:
 
 1. **Eigenes Rufzeichen & Grid-Locator (Heimat-QTH)**
    - *Eigenes Rufzeichen*: Wird unter **Einstellungen (⚙️) -> Telnet Server** (*Rufzeichen für Login*) eingestellt (relevant für Cluster-Verbindungen und den lokalen Telnet-Server).
@@ -47,7 +68,7 @@ Für den erfolgreichen Betrieb von AutoFilter sind lediglich vier grundlegende E
    - *Einstellung*: **Einstellungen (⚙️) -> Logbuch-Sync** öffnen, Quelle auswählen (**RUMlogNG**, **LoTW** oder **QRZ.com**) und Sync starten (oder ADIF-Datei importieren).
    - *Details*: Siehe Abschnitt [7. Logbuch-Sync & ADIF-Import](#7-logbuch-sync--adif-import).
 
-4. **DX Cluster (Optional, empfohlen)**
+4. **DX Cluster & Filter (Optional, empfohlen)**
    - *Zweck*: Paralleler Empfang von DX-Spots über bis zu 3 Verbindungen (C1, C2, C3).
    - *Einstellung*: Dropdown-Picker in der linken Seitenleiste oder unter **Einstellungen (⚙️) -> DX Cluster**.
    - *Details*: Siehe Abschnitt [5. DX Cluster Manager & Spot-Verarbeitung](#5-dx-cluster-manager--spot-verarbeitung).

@@ -89,31 +89,46 @@ struct TableAutoScroller: NSViewRepresentable {
             }
         }
         
-        func scrollToActive(isNewestOnTop: Bool) {
-            let performScroll = { [weak self] in
-                guard let self = self, let tv = self.tableView, let sv = self.scrollView else { return }
-                let count = tv.numberOfRows
-                guard count > 0 else { return }
+        func scrollToActive(isNewestOnTop: Bool, attemptsRemaining: Int = 10) {
+            guard let tv = self.tableView, let sv = self.scrollView else {
+                if attemptsRemaining > 0 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                        self?.scrollToActive(isNewestOnTop: isNewestOnTop, attemptsRemaining: attemptsRemaining - 1)
+                    }
+                }
+                return
+            }
+            let count = tv.numberOfRows
+            guard count > 0 else {
+                if attemptsRemaining > 0 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
+                        self?.scrollToActive(isNewestOnTop: isNewestOnTop, attemptsRemaining: attemptsRemaining - 1)
+                    }
+                }
+                return
+            }
+            
+            if isNewestOnTop {
+                tv.scrollRowToVisible(0)
+                sv.scroll(sv.contentView, to: NSPoint(x: 0, y: 0))
+                sv.reflectScrolledClipView(sv.contentView)
+                sv.verticalScroller?.floatValue = 0.0
+            } else {
+                let lastRow = count - 1
+                let rowRect = tv.rect(ofRow: lastRow)
+                tv.scrollRowToVisible(lastRow)
+                let docH = max(tv.frame.height, rowRect.maxY)
+                let maxOffset = max(0, docH - sv.contentView.bounds.height)
+                sv.scroll(sv.contentView, to: NSPoint(x: 0, y: maxOffset))
+                sv.reflectScrolledClipView(sv.contentView)
+                sv.verticalScroller?.floatValue = 1.0
                 
-                if isNewestOnTop {
-                    tv.scrollRowToVisible(0)
-                    sv.contentView.scroll(to: NSPoint(x: 0, y: 0))
-                    sv.reflectScrolledClipView(sv.contentView)
-                } else {
-                    let lastRow = count - 1
-                    tv.scrollRowToVisible(lastRow)
-                    if let doc = sv.documentView {
-                        let maxY = max(0, doc.bounds.height - sv.contentView.bounds.height)
-                        sv.contentView.scroll(to: NSPoint(x: 0, y: maxY))
-                        sv.reflectScrolledClipView(sv.contentView)
+                if maxOffset == 0 && count > 5 && attemptsRemaining > 0 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
+                        self?.scrollToActive(isNewestOnTop: isNewestOnTop, attemptsRemaining: attemptsRemaining - 1)
                     }
                 }
             }
-            
-            DispatchQueue.main.async { performScroll() }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { performScroll() }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { performScroll() }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) { performScroll() }
         }
     }
 

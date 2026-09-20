@@ -238,7 +238,9 @@ struct ContentView: View {
                 // Sort Order & Pause Section
                 Button(action: {
                     isNewestOnTop.toggle()
-                    NotificationCenter.default.post(name: NSNotification.Name("ScrollSpotsTableToActive"), object: isNewestOnTop)
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: NSNotification.Name("ScrollSpotsTableToActive"), object: isNewestOnTop)
+                    }
                 }) {
                     Image(systemName: isNewestOnTop ? "arrow.up" : "arrow.down")
                 }
@@ -1023,7 +1025,9 @@ struct ContentView: View {
             // Sort Order
             Button(action: {
                 isNewestOnTop.toggle()
-                NotificationCenter.default.post(name: NSNotification.Name("ScrollSpotsTableToActive"), object: isNewestOnTop)
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: NSNotification.Name("ScrollSpotsTableToActive"), object: isNewestOnTop)
+                }
             }) {
                 Image(systemName: isNewestOnTop ? "arrow.up" : "arrow.down")
             }
@@ -2741,10 +2745,19 @@ struct CountryInputField: View {
     let suggestions: [String]
     let onAdd: () -> Void
     
+    private var placeholderText: String {
+        let isDe = LanguageManager.shared.isGerman
+        let regionCode = Locale.current.region?.identifier ?? "DE"
+        let countryName = Locale(identifier: isDe ? "de" : "en").localizedString(forRegionCode: regionCode)
+            ?? Locale.current.localizedString(forRegionCode: regionCode)
+            ?? (isDe ? "Deutschland" : "Germany")
+        return isDe ? "z.B. \(countryName)..." : "e.g. \(countryName)..."
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                TextField("z.B. Russia, Germany...", text: $text)
+                TextField(placeholderText, text: $text)
                     .textFieldStyle(UnifiedTextFieldStyle())
                     .controlSize(.small)
                 Button(action: onAdd) {

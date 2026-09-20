@@ -574,6 +574,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                 || self.lastGridFontSize != gridFontSize
                 || self.lastShowGrid != showGrid
                 || self.lastShowShading != showShading
+                || self.lastWorkedGrids != workedGrids
                 || self.lastShowBadges != showBadges
                 || self.lastGridTextColor != gridTextColor
                 || self.lastGridLineColor != gridLineColor
@@ -735,6 +736,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                         if settingsChanged || now.timeIntervalSince(self.lastFullInvalidationTime) > 3.0 {
                             self.lastFullInvalidationTime = now
                             self.cachedVectorRenderer?.setNeedsDisplay()
+                            self.currentMapView?.setNeedsDisplay(self.currentMapView?.bounds ?? .zero)
                         }
                     }
                 }

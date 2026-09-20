@@ -98,7 +98,7 @@ struct PropagationChartView: View {
             .padding(.horizontal, 12)
             .padding(.bottom, 12)
         }
-        .frame(maxWidth: isStacked ? 380 : 520, maxHeight: 250)
+        .frame(maxWidth: isStacked ? 320 : 400, maxHeight: 190)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.willMoveNotification)) { _ in

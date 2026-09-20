@@ -17,7 +17,7 @@ struct NewGridMapView: View {
     @AppStorage("mapTimeWindow") private var mapTimeWindow = 30
     @AppStorage("fontSizeTable") private var fontSizeTable = 11.0
     @AppStorage("showBlockedGridSpots") private var showBlockedGridSpots = true
-    @AppStorage("showWorkedGridShading") private var showWorkedGridShading = false
+    @AppStorage("showWorkedGridShading") private var showWorkedGridShading = true
     @AppStorage("gridOverlayShowPill") private var gridOverlayShowPill = true
     @AppStorage("gridOverlayTextColor") private var gridOverlayTextColor = ""
     @AppStorage("gridOverlayLineColor") private var gridOverlayLineColor = ""
@@ -263,7 +263,7 @@ struct NewGridMapView: View {
         GlobeMapViewContainer(
             programmaticRegion: programmaticRegion,
             showGridOverlay: showMaidenheadOverlay,
-            workedGrids: viewModel.worked4CharGrids,
+            workedGrids: viewModel.lotwManager.workedGridsSet,
             showWorkedGridShading: showWorkedGridShading,
             showBadges: gridOverlayShowPill,
             gridTextColor: gridOverlayTextColor,
@@ -305,7 +305,8 @@ struct NewGridMapView: View {
     private var mapSection: some View {
         ZStack(alignment: .bottom) {
             renderMapView()
-            .overlay(alignment: .topTrailing) {
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(alignment: .topTrailing) {
                     HStack(spacing: 6) {
                         Menu {
                             ForEach(MapStyleOption.allCases) { style in
@@ -328,12 +329,14 @@ struct NewGridMapView: View {
                                     .font(.system(size: 9, weight: .bold))
                                     .foregroundStyle(.secondary)
                             }
+                            .fixedSize()
                             .padding(.horizontal, 8)
                             .padding(.vertical, 5.5)
                             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                             .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.primary.opacity(0.1), lineWidth: 1))
                         }
                         .menuStyle(.borderlessButton)
+                        .fixedSize()
                         .help("Kartenstil auswählen")
 
                         Button(action: {
@@ -378,6 +381,7 @@ struct NewGridMapView: View {
                             .help("Liste einblenden")
                         }
                     }
+                    .fixedSize()
                     .padding(4)
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.primary.opacity(0.1), lineWidth: 1))

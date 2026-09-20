@@ -102,7 +102,7 @@ class RUMlogManager {
                 DispatchQueue.main.async {
                     self.isDownloading = false
                     self.errorMessage = err
-                    self.addLog(self.isDe ? "Fehler: \(err)" : "Error: \(err)")
+                    self.addLog(self.isDe ? "Fehler: \(err) (Code \(errorNumber): \(errDescription))" : "Error: \(err) (Code \(errorNumber): \(errDescription))")
                 }
                 return
             }

@@ -65,19 +65,22 @@ codesign --force --deep --sign - /Applications/AutoFilter.app
 
 ## 🚀 Getting Started
 
-### 1. WSJT-X Setup
-In **WSJT-X**, navigate to **Settings -> Reporting**:
-- Enable **Prompt me to log QSO**.
-- Check **Accept UDP requests**.
-- Set **UDP Server Address**: `224.0.0.1` (or `127.0.0.1`).
-- Set **UDP Server Port**: `2237`.
+AutoFilter supports two primary operation modes:
 
-### 2. AutoFilter Configuration
-1. Launch **AutoFilter**.
-2. Go to **Settings -> Logbook Sync** (or **Einstellungen -> Logbuch-Sync**) to choose your active logbook source (**RUMlogNG**, **LoTW**, or **QRZ.com**).
-3. Go to **Settings -> Telnet Server** (or **Einstellungen -> Telnet Server**) to set your login callsign.
-4. Go to **Settings -> Home QTH** (or **Einstellungen -> Eigenes QTH**) to set your Maidenhead locator (or click 🗺️ for interactive map picker).
-5. Toggle **WSJTX Auto Transmit** in the toolbar to enable automated calling.
+### Mode A: Minimum Setup – Inline DX Cluster Filter (3 Steps)
+For operating AutoFilter strictly as an intelligent inline filter between upstream internet clusters and your logging software (e.g., RUMlogNG, MacLoggerDX, Log4OM, N1MM):
+1. **Internet Connection**: Active internet connection to receive live DX spots.
+2. **Select DX Cluster**: Select and connect to your preferred cluster (C1, C2, or C3) via the sidebar dropdown or **Settings -> DX Cluster**.
+3. **Configure Telnet Server (IP & Port)**: Enable the Telnet server under **Settings -> Telnet Server** (default: `127.0.0.1:8000`), and configure your logging software's DX cluster connection to connect to `127.0.0.1` on port `8000`. Filtered spots will flow directly into your logger in real time!
+
+---
+
+### Mode B: Full Setup – Auto QSO & WSJT-X (All-Inclusive in 4 Steps)
+For full-featured operation with automated calling (Auto QSO), live decode filtering, and duplicate checking:
+1. **Callsign & Home QTH**: Set your login callsign under **Settings -> Telnet Server** and your Maidenhead grid locator under **Settings -> Home QTH**.
+2. **WSJT-X UDP Setup**: In WSJT-X under **Settings -> Reporting**, enable `Prompt me to log QSO` [x], `Accept UDP requests` [x], `UDP Server Address: 224.0.0.1` (or `127.0.0.1`), and `Port: 2237`.
+3. **Logbook Sync**: Open **Settings -> Logbook Sync** and sync your QSOs via RUMlogNG, LoTW, QRZ.com, or ADIF file import.
+4. **DX Cluster & Auto Transmit**: Select your upstream cluster, configure your filter rules in the right sidebar, and toggle **Auto Transmit** in the top toolbar.
 
 ---
 

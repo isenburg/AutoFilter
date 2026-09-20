@@ -118,7 +118,7 @@ public struct SplitViewAutosaver: NSViewRepresentable {
                 object: splitView,
                 queue: .main
             ) { [weak self, weak splitView] _ in
-                guard let self = self, self.isReadyToRecord, let splitView = splitView, let child = self.trackedChild else { return }
+                guard let self = self, self.isReadyToRecord, splitView != nil, let child = self.trackedChild else { return }
                 let h = Double(child.frame.height)
                 if h > 60 && h < 600 {
                     UserDefaults.standard.set(h, forKey: key)
