@@ -273,7 +273,7 @@ public struct LocalizationDictionary {
         "settings.telnet.enable": "Lokalen Telnet-Cluster-Server aktivieren",
         "settings.telnet.port": "Telnet Server Port:",
         "settings.telnet.callsign": "Rufzeichen für Login (z. B. eigenes Rufzeichen):",
-        "settings.telnet.forwardDecodes": "Lokale WSJT-X Dekodierungen via Telnet als DX-Spots senden",
+        "settings.telnet.forwardDecodes": "WSJT-x Spots via Telnet",
         
         // Einstellungen - Logbuch-Sync
         "settings.sync.provider": "Aktive Logbuch-Quelle:",
@@ -606,7 +606,7 @@ public struct LocalizationDictionary {
         "settings.telnet.enable": "Enable Local Telnet Cluster Server",
         "settings.telnet.port": "Telnet Server Port:",
         "settings.telnet.callsign": "Login Callsign (e.g. your callsign):",
-        "settings.telnet.forwardDecodes": "Forward local WSJT-X decodes as DX spots via Telnet",
+        "settings.telnet.forwardDecodes": "WSJT-x Spots via Telnet",
         
         // Settings - Logbook Sync
         "settings.sync.provider": "Active Logbook Source:",

@@ -72,6 +72,7 @@ private func nsColorForBand(_ band: String) -> NSColor {
 final class MaidenheadGeometryCache {
     static let shared = MaidenheadGeometryCache()
     private var grid4Cache: [String: PreProjectedWorkedGrid] = [:]
+    private var grid6Cache: [String: PreProjectedWorkedGrid] = [:]
     private let lock = NSLock()
 
     func projectedGrid4(_ grid4: String) -> PreProjectedWorkedGrid? {
@@ -94,6 +95,29 @@ final class MaidenheadGeometryCache {
         
         let item = PreProjectedWorkedGrid(mapRect: rect, points: (p0, p1, p2, p3))
         grid4Cache[grid4] = item
+        return item
+    }
+
+    func projectedGrid6(_ grid6: String) -> PreProjectedWorkedGrid? {
+        lock.lock()
+        defer { lock.unlock() }
+        if let cached = grid6Cache[grid6] {
+            return cached
+        }
+        guard let box = Maidenhead.grid6BoundingBox(grid6) else { return nil }
+        let p0 = MKMapPoint(CLLocationCoordinate2D(latitude: box.maxLat, longitude: box.minLon))
+        let p1 = MKMapPoint(CLLocationCoordinate2D(latitude: box.maxLat, longitude: box.maxLon))
+        let p2 = MKMapPoint(CLLocationCoordinate2D(latitude: box.minLat, longitude: box.maxLon))
+        let p3 = MKMapPoint(CLLocationCoordinate2D(latitude: box.minLat, longitude: box.minLon))
+        
+        let minX = min(p0.x, p1.x, p2.x, p3.x)
+        let maxX = max(p0.x, p1.x, p2.x, p3.x)
+        let minY = min(p0.y, p1.y, p2.y, p3.y)
+        let maxY = max(p0.y, p1.y, p2.y, p3.y)
+        let rect = MKMapRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+        
+        let item = PreProjectedWorkedGrid(mapRect: rect, points: (p0, p1, p2, p3))
+        grid6Cache[grid6] = item
         return item
     }
 }
@@ -352,6 +376,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
     var programmaticRegion: MKCoordinateRegion? = nil
     var showGridOverlay: Bool
     var workedGrids: Set<String> = []
+    var workedGrids6: Set<String> = []
     var showWorkedGridShading: Bool = false
     var showBadges: Bool = true
     var gridTextColor: String = ""
@@ -419,6 +444,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
         context.coordinator.scheduleBackgroundSnapshotUpdate(
             showGrid: showGridOverlay,
             workedGrids: workedGrids,
+            workedGrids6: workedGrids6,
             showShading: showWorkedGridShading,
             showBadges: showBadges,
             gridTextColor: gridTextColor,
@@ -458,6 +484,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
         let settingsChanged = coord.lastShowGrid != showGridOverlay
             || coord.lastShowShading != showWorkedGridShading
             || coord.lastWorkedGrids != workedGrids
+            || coord.lastWorkedGrids6 != workedGrids6
             || coord.lastShowBadges != showBadges
             || coord.lastGridTextColor != gridTextColor
             || coord.lastGridLineColor != gridLineColor
@@ -475,6 +502,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                 coord.scheduleBackgroundSnapshotUpdate(
                     showGrid: showGridOverlay,
                     workedGrids: workedGrids,
+                    workedGrids6: workedGrids6,
                     showShading: showWorkedGridShading,
                     showBadges: showBadges,
                     gridTextColor: gridTextColor,
@@ -494,6 +522,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                 coord.scheduleBackgroundSnapshotUpdate(
                     showGrid: showGridOverlay,
                     workedGrids: workedGrids,
+                    workedGrids6: workedGrids6,
                     showShading: showWorkedGridShading,
                     showBadges: showBadges,
                     gridTextColor: gridTextColor,
@@ -525,8 +554,11 @@ struct GlobeMapViewContainer: NSViewRepresentable {
         var lastShowGrid: Bool = false
         var lastShowShading: Bool = false
         var lastWorkedGrids: Set<String> = []
+        var lastWorkedGrids6: Set<String> = []
         private var cachedWorkedGridsGeometry: [PreProjectedWorkedGrid] = []
         private var cachedWorkedGridsSet: Set<String> = []
+        private var cachedWorkedGrids6Geometry: [PreProjectedWorkedGrid] = []
+        private var cachedWorkedGrids6Set: Set<String> = []
         private var cachedWorkedGridsShading: Bool = false
         var lastShowBadges: Bool = true
         var lastGridTextColor: String = ""
@@ -560,6 +592,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
         func scheduleBackgroundSnapshotUpdate(
             showGrid: Bool,
             workedGrids: Set<String>,
+            workedGrids6: Set<String> = [],
             showShading: Bool,
             showBadges: Bool = true,
             gridTextColor: String = "",
@@ -575,6 +608,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                 || self.lastShowGrid != showGrid
                 || self.lastShowShading != showShading
                 || self.lastWorkedGrids != workedGrids
+                || self.lastWorkedGrids6 != workedGrids6
                 || self.lastShowBadges != showBadges
                 || self.lastGridTextColor != gridTextColor
                 || self.lastGridLineColor != gridLineColor
@@ -583,6 +617,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
             self.lastShowGrid = showGrid
             self.lastShowShading = showShading
             self.lastWorkedGrids = workedGrids
+            self.lastWorkedGrids6 = workedGrids6
             self.lastShowBadges = showBadges
             self.lastGridTextColor = gridTextColor
             self.lastGridLineColor = gridLineColor
@@ -600,25 +635,75 @@ struct GlobeMapViewContainer: NSViewRepresentable {
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 guard let self = self else { return }
 
-                // 1. Project worked grids (INSTANT O(1) from persistent cache, never re-calculated on gestures)
+                // 0. Determine zoom level & locator length first
+                let latDelta = region.span.latitudeDelta
+                let lonDelta = region.span.longitudeDelta
+                
+                let lonStep: Double
+                let latStep: Double
+                let locatorLength: Int
+                let fontSize: CGFloat
+
+                if latDelta > 25.0 {
+                    // 2-character Fields (e.g. JO)
+                    lonStep = 20.0
+                    latStep = 10.0
+                    locatorLength = 2
+                    fontSize = 14.0
+                } else if latDelta > 1.2 {
+                    // 4-character Squares (e.g. JO31)
+                    lonStep = 2.0
+                    latStep = 1.0
+                    locatorLength = 4
+                    fontSize = 12.0
+                } else {
+                    // 6-character Subsquares (e.g. JO31aa)
+                    lonStep = 2.0 / 24.0   // 0.08333 deg
+                    latStep = 1.0 / 24.0   // 0.04167 deg
+                    locatorLength = 6
+                    fontSize = 10.0
+                }
+
+                // 1. Project worked grids (INSTANT O(1) from persistent cache)
                 var projectedGrids: [PreProjectedWorkedGrid] = []
-                if showShading && !workedGrids.isEmpty {
-                    if self.cachedWorkedGridsSet != workedGrids || self.cachedWorkedGridsShading != showShading {
-                        var projected: [PreProjectedWorkedGrid] = []
-                        projected.reserveCapacity(workedGrids.count)
-                        for grid4 in workedGrids {
-                            if let item = MaidenheadGeometryCache.shared.projectedGrid4(grid4) {
-                                projected.append(item)
+                if showShading {
+                    if locatorLength == 6 {
+                        if !workedGrids6.isEmpty {
+                            if self.cachedWorkedGrids6Set != workedGrids6 || self.cachedWorkedGridsShading != showShading {
+                                var projected: [PreProjectedWorkedGrid] = []
+                                projected.reserveCapacity(workedGrids6.count)
+                                for grid6 in workedGrids6 {
+                                    if let item = MaidenheadGeometryCache.shared.projectedGrid6(grid6) {
+                                        projected.append(item)
+                                    }
+                                }
+                                self.cachedWorkedGrids6Geometry = projected
+                                self.cachedWorkedGrids6Set = workedGrids6
                             }
+                            projectedGrids = self.cachedWorkedGrids6Geometry
                         }
-                        self.cachedWorkedGridsGeometry = projected
-                        self.cachedWorkedGridsSet = workedGrids
-                        self.cachedWorkedGridsShading = showShading
+                    } else {
+                        if !workedGrids.isEmpty {
+                            if self.cachedWorkedGridsSet != workedGrids || self.cachedWorkedGridsShading != showShading {
+                                var projected: [PreProjectedWorkedGrid] = []
+                                projected.reserveCapacity(workedGrids.count)
+                                for grid4 in workedGrids {
+                                    if let item = MaidenheadGeometryCache.shared.projectedGrid4(grid4) {
+                                        projected.append(item)
+                                    }
+                                }
+                                self.cachedWorkedGridsGeometry = projected
+                                self.cachedWorkedGridsSet = workedGrids
+                            }
+                            projectedGrids = self.cachedWorkedGridsGeometry
+                        }
                     }
-                    projectedGrids = self.cachedWorkedGridsGeometry
+                    self.cachedWorkedGridsShading = showShading
                 } else {
                     self.cachedWorkedGridsGeometry = []
+                    self.cachedWorkedGrids6Geometry = []
                     self.cachedWorkedGridsSet = []
+                    self.cachedWorkedGrids6Set = []
                     self.cachedWorkedGridsShading = false
                 }
 
@@ -627,34 +712,6 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                 var projectedLabels: [PreProjectedGridLabel] = []
 
                 if showGrid {
-                    let latDelta = region.span.latitudeDelta
-                    let lonDelta = region.span.longitudeDelta
-                    
-                    let lonStep: Double
-                    let latStep: Double
-                    let locatorLength: Int
-                    let fontSize: CGFloat
-
-                    if latDelta > 25.0 {
-                        // 2-character Fields (e.g. JO)
-                        lonStep = 20.0
-                        latStep = 10.0
-                        locatorLength = 2
-                        fontSize = 14.0
-                    } else if latDelta > 1.2 {
-                        // 4-character Squares (e.g. JO31)
-                        lonStep = 2.0
-                        latStep = 1.0
-                        locatorLength = 4
-                        fontSize = 12.0
-                    } else {
-                        // 6-character Subsquares (e.g. JO31aa)
-                        lonStep = 2.0 / 24.0   // 0.08333 deg
-                        latStep = 1.0 / 24.0   // 0.04167 deg
-                        locatorLength = 6
-                        fontSize = 10.0
-                    }
-                    
                     let center = region.center
                     let minLat = max(-80.0, floor((center.latitude - latDelta * 1.0) / latStep) * latStep)
                     let maxLat = min(80.0, ceil((center.latitude + latDelta * 1.0) / latStep) * latStep)
@@ -687,9 +744,18 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                         var cLon = minLon + lonStep / 2.0
                         while cLon < maxLon {
                             let loc = Maidenhead.latLonToLocator(lat: cLat, lon: cLon, length: locatorLength)
-                            let pt = MKMapPoint(CLLocationCoordinate2D(latitude: cLat, longitude: cLon))
-                            let labelRect = MKMapRect(x: pt.x - 30000, y: pt.y - 15000, width: 60000, height: 30000)
-                            projectedLabels.append(PreProjectedGridLabel(mapRect: labelRect, point: pt, text: loc, fontSize: fontSize))
+                            if locatorLength == 6 {
+                                // Sobald 6-stellige Grids angezeigt werden, nur noch die bereits gearbeiteten Grids anzeigen
+                                if workedGrids6.contains(loc) {
+                                    let pt = MKMapPoint(CLLocationCoordinate2D(latitude: cLat, longitude: cLon))
+                                    let labelRect = MKMapRect(x: pt.x - 30000, y: pt.y - 15000, width: 60000, height: 30000)
+                                    projectedLabels.append(PreProjectedGridLabel(mapRect: labelRect, point: pt, text: loc, fontSize: fontSize))
+                                }
+                            } else {
+                                let pt = MKMapPoint(CLLocationCoordinate2D(latitude: cLat, longitude: cLon))
+                                let labelRect = MKMapRect(x: pt.x - 30000, y: pt.y - 15000, width: 60000, height: 30000)
+                                projectedLabels.append(PreProjectedGridLabel(mapRect: labelRect, point: pt, text: loc, fontSize: fontSize))
+                            }
                             cLon += lonStep
                         }
                         cLat += latStep
@@ -805,6 +871,7 @@ struct GlobeMapViewContainer: NSViewRepresentable {
                 self.scheduleBackgroundSnapshotUpdate(
                     showGrid: self.lastShowGrid,
                     workedGrids: self.lastWorkedGrids,
+                    workedGrids6: self.lastWorkedGrids6,
                     showShading: self.lastShowShading,
                     showBadges: self.lastShowBadges,
                     gridTextColor: self.lastGridTextColor,

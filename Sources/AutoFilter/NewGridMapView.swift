@@ -95,7 +95,7 @@ struct NewGridMapView: View {
         )) { item in
             WorkedGridDetailView(
                 grid: item.grid,
-                qsos: viewModel.lotwManager.qsos(forGrid4: item.grid)
+                qsos: viewModel.lotwManager.qsos(forGrid: item.grid)
             )
         }
     }
@@ -126,18 +126,18 @@ struct NewGridMapView: View {
         var id: String { grid }
     }
 
-        private func makeGridInspectorInfo(for coord: CLLocationCoordinate2D, spanDelta: Double) -> GridInspectorInfo {
-        let length = spanDelta <= 2.5 ? 6 : 4
+    private func makeGridInspectorInfo(for coord: CLLocationCoordinate2D, spanDelta: Double) -> GridInspectorInfo {
+        let length = spanDelta <= 1.2 ? 6 : 4
         let grid = Maidenhead.latLonToLocator(lat: coord.latitude, lon: coord.longitude, length: length)
         let grid4 = String(grid.prefix(4))
         
         let center = Maidenhead.locatorToLatLon(grid)
         let gridCenterCoord = center.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) } ?? coord
         
-        let matchingQSOs = viewModel.lotwManager.qsos(forGrid4: grid4)
+        let matchingQSOs = (length == 6) ? viewModel.lotwManager.qsos(forGrid: grid) : viewModel.lotwManager.qsos(forGrid: grid4)
         
         let activeCluster = displayGridClusters.first(where: {
-            $0.grid == grid || $0.grid == grid4
+            $0.grid == grid || (length == 4 && $0.grid == grid4)
         })
         
         var country = activeCluster?.country ?? ""
@@ -176,17 +176,17 @@ struct NewGridMapView: View {
 
     private func inspectCoordinate(_ coord: CLLocationCoordinate2D) {
         let span = currentRegion.span.latitudeDelta
-        let length = span < 3.0 ? 6 : 4
+        let length = span <= 1.2 ? 6 : 4
         let grid = Maidenhead.latLonToLocator(lat: coord.latitude, lon: coord.longitude, length: length)
         let grid4 = String(grid.prefix(4))
         
         let center = Maidenhead.locatorToLatLon(grid)
         let gridCenterCoord = center.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) } ?? coord
         
-        let matchingQSOs = viewModel.lotwManager.qsos(forGrid4: grid4)
+        let matchingQSOs = (length == 6) ? viewModel.lotwManager.qsos(forGrid: grid) : viewModel.lotwManager.qsos(forGrid: grid4)
         
         let activeCluster = displayGridClusters.first(where: {
-            $0.grid == grid || $0.grid == grid4
+            $0.grid == grid || (length == 4 && $0.grid == grid4)
         })
         
         var country = activeCluster?.country ?? ""
@@ -225,8 +225,7 @@ struct NewGridMapView: View {
 
     private func inspectCluster(_ cluster: NewGridCluster) {
         let coord = CLLocationCoordinate2D(latitude: cluster.latitude, longitude: cluster.longitude)
-        let grid4 = String(cluster.grid.prefix(4))
-        let matchingQSOs = viewModel.lotwManager.qsos(forGrid4: grid4)
+        let matchingQSOs = viewModel.lotwManager.qsos(forGrid: cluster.grid)
         inspectedGrid = GridInspectorInfo(
             grid: cluster.grid,
             coordinate: coord,
@@ -264,6 +263,7 @@ struct NewGridMapView: View {
             programmaticRegion: programmaticRegion,
             showGridOverlay: showMaidenheadOverlay,
             workedGrids: viewModel.lotwManager.workedGridsSet,
+            workedGrids6: viewModel.lotwManager.workedGrids6Set,
             showWorkedGridShading: showWorkedGridShading,
             showBadges: gridOverlayShowPill,
             gridTextColor: gridOverlayTextColor,
@@ -281,7 +281,7 @@ struct NewGridMapView: View {
                         homeCoordinate: homeCoordinate,
                         onShowWorkedQSOs: {
                             closeAction()
-                            selectedWorkedGrid = String(info.grid.prefix(4))
+                            selectedWorkedGrid = info.grid
                         },
                         onCenterMap: {
                             closeAction()

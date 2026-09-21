@@ -134,7 +134,7 @@ Der DX-Cluster-Manager ermöglicht den gleichzeitigen Empfang von DX-Spots über
 AutoFilter enthält einen eigenen Telnet-Cluster-Server, an den sich externe Log- oder Mapping-Programme (z.B. MacLoggerDX) connecten können:
 - **Port & Callsign**: Standardmäßig horcht der Server auf Port `8000`. Das Login-Rufzeichen (Standard `GUEST`) ist frei wählbar.
 - **Live-Status**: Zeigt an, ob der Server aktiv ist und wie viele externe Clients aktuell verbunden sind.
-- **WSJT-X Decodes Telnet-Ausgabe**: Ein Schalter ermöglicht es, alle lokalen WSJT-X Dekodierungen nach Durchlaufen deiner Filter als DX-Spots über Telnet auszugeben. Standardmäßig ist diese Option deaktiviert.
+- **WSJT-x Spots via Telnet**: Ein Schalter ermöglicht es, alle lokalen WSJT-X Dekodierungen nach Durchlaufen deiner Filter als DX-Spots über Telnet auszugeben. Standardmäßig ist diese Option deaktiviert.
 
 ---
 

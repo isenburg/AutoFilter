@@ -27,7 +27,7 @@ struct AutoFilterApp: App {
     }
     
     var body: some Scene {
-        WindowGroup("AutoFilter v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))") {
+        WindowGroup("AutoFilter v\(APP_VERSION)") {
             ContentView(viewModel: viewModel)
                 .preferredColorScheme(preferredScheme)
         }

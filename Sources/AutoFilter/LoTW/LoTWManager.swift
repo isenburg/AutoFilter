@@ -55,6 +55,7 @@ class LoTWManager {
     private(set) var workedGrids6Set = Set<String>()
     private(set) var latestQSOByCallBand: [String: Date] = [:]
     private(set) var qsosByGrid4: [String: [QSOEntry]] = [:]
+    private(set) var qsosByGrid6: [String: [QSOEntry]] = [:]
     
     init() {
         loadLog()
@@ -81,6 +82,7 @@ class LoTWManager {
             var newGrids6 = Set<String>()
             var newLatestQSO = [String: Date]()
             var newGrid4Dict = [String: [QSOEntry]]()
+            var newGrid6Dict = [String: [QSOEntry]]()
             newSet.reserveCapacity(qsos.count)
             newLatestQSO.reserveCapacity(qsos.count)
             for qso in qsos {
@@ -106,7 +108,9 @@ class LoTWManager {
                     newGrid4Dict[g4, default: []].append(qso)
                 }
                 if cleanGrid.count >= 6 {
-                    newGrids6.insert(String(cleanGrid.prefix(6)))
+                    let g6 = String(cleanGrid.prefix(6))
+                    newGrids6.insert(g6)
+                    newGrid6Dict[g6, default: []].append(qso)
                 }
             }
             
@@ -117,6 +121,7 @@ class LoTWManager {
                 self?.workedGrids6Set = newGrids6
                 self?.latestQSOByCallBand = newLatestQSO
                 self?.qsosByGrid4 = newGrid4Dict
+                self?.qsosByGrid6 = newGrid6Dict
                 let msg = (self?.isDe == true)
                     ? "SQLite Logbuch geladen: \(qsos.count) QSOs (\(newGrids.count) 4-Stellen Grids / \(newGrids6.count) 6-Stellen Grids)."
                     : "SQLite logbook loaded: \(qsos.count) QSOs (\(newGrids.count) 4-digit grids / \(newGrids6.count) 6-digit grids)."
@@ -214,6 +219,7 @@ class LoTWManager {
             var newGrids6 = Set<String>()
             var newLatestQSO = [String: Date]()
             var newGrid4Dict = [String: [QSOEntry]]()
+            var newGrid6Dict = [String: [QSOEntry]]()
             newSet.reserveCapacity(updatedLog.count)
             newLatestQSO.reserveCapacity(updatedLog.count)
             for qso in updatedLog {
@@ -239,7 +245,9 @@ class LoTWManager {
                     newGrid4Dict[g4, default: []].append(qso)
                 }
                 if cleanGrid.count >= 6 {
-                    newGrids6.insert(String(cleanGrid.prefix(6)))
+                    let g6 = String(cleanGrid.prefix(6))
+                    newGrids6.insert(g6)
+                    newGrid6Dict[g6, default: []].append(qso)
                 }
             }
             
@@ -250,6 +258,7 @@ class LoTWManager {
                 self?.workedGrids6Set = newGrids6
                 self?.latestQSOByCallBand = newLatestQSO
                 self?.qsosByGrid4 = newGrid4Dict
+                self?.qsosByGrid6 = newGrid6Dict
                 let msg = (self?.isDe == true)
                     ? "SQLite Logbuch aktualisiert: +\(addedCount) neue QSOs. Gesamt: \(updatedLog.count) QSOs (\(newGrids.count) 4-Stellen Grids / \(newGrids6.count) 6-Stellen Grids)."
                     : "SQLite logbook updated: +\(addedCount) new QSOs. Total: \(updatedLog.count) QSOs (\(newGrids.count) 4-digit grids / \(newGrids6.count) 6-digit grids)."
@@ -258,9 +267,20 @@ class LoTWManager {
         }
     }
     
-        func qsos(forGrid4 grid4: String) -> [QSOEntry] {
-        let clean = String(grid4.prefix(4)).trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        return qsosByGrid4[clean] ?? []
+    func qsos(forGrid grid: String) -> [QSOEntry] {
+        let clean = grid.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if clean.count >= 6 {
+            let g6 = String(clean.prefix(6))
+            return qsosByGrid6[g6] ?? []
+        } else if clean.count >= 4 {
+            let g4 = String(clean.prefix(4))
+            return qsosByGrid4[g4] ?? []
+        }
+        return []
+    }
+
+    func qsos(forGrid4 grid4: String) -> [QSOEntry] {
+        return qsos(forGrid: grid4)
     }
 
     func hasWorked(callsign: String, band: String) -> Bool {

@@ -423,6 +423,38 @@ public struct Maidenhead {
         return (minLat, maxLat, minLon, maxLon)
     }
 
+    public static func grid6BoundingBox(_ grid6: String) -> (minLat: Double, maxLat: Double, minLon: Double, maxLon: Double)? {
+        guard grid6.utf8.count >= 6 else { return nil }
+        let bytes = Array(grid6.utf8)
+        let b0 = (bytes[0] >= 97 && bytes[0] <= 122) ? bytes[0] - 32 : bytes[0]
+        let b1 = (bytes[1] >= 97 && bytes[1] <= 122) ? bytes[1] - 32 : bytes[1]
+        let b2 = bytes[2]
+        let b3 = bytes[3]
+        
+        guard b0 >= 65 && b0 <= 82,
+              b1 >= 65 && b1 <= 82,
+              b2 >= 48 && b2 <= 57,
+              b3 >= 48 && b3 <= 57 else { return nil }
+        
+        let b4 = (bytes[4] >= 97 && bytes[4] <= 122) ? bytes[4] - 97 : ((bytes[4] >= 65 && bytes[4] <= 90) ? bytes[4] - 65 : 255)
+        let b5 = (bytes[5] >= 97 && bytes[5] <= 122) ? bytes[5] - 97 : ((bytes[5] >= 65 && bytes[5] <= 90) ? bytes[5] - 65 : 255)
+        guard b4 < 24 && b5 < 24 else { return nil }
+        
+        let fieldLon = Double(b0 - 65) * 20.0 - 180.0
+        let fieldLat = Double(b1 - 65) * 10.0 - 90.0
+        let squareLon = fieldLon + Double(b2 - 48) * 2.0
+        let squareLat = fieldLat + Double(b3 - 48) * 1.0
+        
+        let lonStep = 2.0 / 24.0
+        let latStep = 1.0 / 24.0
+        
+        let minLon = squareLon + Double(b4) * lonStep
+        let minLat = squareLat + Double(b5) * latStep
+        let maxLon = minLon + lonStep
+        let maxLat = minLat + latStep
+        return (minLat, maxLat, minLon, maxLon)
+    }
+
     public static func extractGrid(from message: String) -> String? {
         let cleanMsg = message.replacingOccurrences(of: "<", with: " ").replacingOccurrences(of: ">", with: " ")
         let tokens = cleanMsg.components(separatedBy: .whitespacesAndNewlines)

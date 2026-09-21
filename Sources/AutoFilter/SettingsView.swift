@@ -569,7 +569,7 @@ struct SettingsView: View {
                             }
                     }
                     
-                    Toggle(isDe ? "WSJT-X Decodes über Telnet ausgeben" : "Broadcast WSJT-X decodes via Telnet", isOn: $isWsjtTelnetOutputEnabled)
+                    Toggle(L("settings.telnet.forwardDecodes"), isOn: $isWsjtTelnetOutputEnabled)
                         .padding(.top, 4)
                 }
                 .padding(.trailing, 16)
