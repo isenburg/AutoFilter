@@ -775,6 +775,8 @@ struct HelpView: View {
                     
                     bullet(isDe ? "**Eingehende Anrufer automatisch beantworten** (*Einstellungen → Auto Mode Optionen*): Beantwortet direkte Anrufe auf unser Rufzeichen automatisch, sofern sie die aktiven DX- und Gearbeitet-Filter erfüllen. Bei einem direkten Anruf wird eine eventuell bestehende Sperrzeit (Cooldown) für diese Station automatisch aufgehoben." : "**Auto-Answer Inbound Callers** (*Settings → Auto Mode Options*): Automatically answers stations calling you directly if they pass active DX and worked filters. Automatically lifts cooldown if a previously unanswered station returns and calls you.")
                     
+                    bullet(isDe ? "**Intelligenter Vorrang für eingehende Anrufer (Inbound Preemption)** (*Einstellungen → Auto Mode Optionen*):\n• *Automatischer Wechsel*: Ruft AutoFilter eine Gegenstation und antwortet diese nach einer gewählten Anzahl von Versuchen nicht (Standard: nach dem 2. Versuch, 1–4 wählbar), springt AutoFilter automatisch zu einer Station, die uns direkt anruft.\n• *Sofort-Wechsel bei Most Wanted*: Seltene Most-Wanted-Stationen können optional sofort (bereits nach dem 1. Versuch) vorgezogen werden.\n• *QSO-Schutz*: Sobald die gerufene Station antwortet (aktives QSO), bleibt der Wechsel gesperrt, um das laufende QSO sauber abzuschließen.\n• *Schon-Cooldown*: Die unbeantwortete Station erhält eine kurze 2-Minuten-Pause statt einer langen Quarantäne." : "**Smart Inbound Caller Preemption** (*Settings → Auto Mode Options*):\n• *Auto-Switch*: If our currently called target does not answer after a set number of transmit cycles (default: 2 attempts, range 1–4), AutoFilter smoothly switches to an incoming caller addressed to us.\n• *Instant Jump for Most Wanted*: Rarest Most Wanted entities can be prioritized immediately after just 1 attempt.\n• *QSO Protection*: Once our target replies (established QSO), preemption locks to finish the ongoing QSO.\n• *Soft Cooldown*: The abandoned target receives a brief 2-minute cooldown instead of an extended block.")
+                    
                     bullet(isDe ? "**Sperrdauer für abgebrochene QSOs (Cooldown)** (*Einstellungen → Auto Mode Optionen*): Legt die Wartezeit in Minuten (z. B. 10 Min.) fest, für die ein Rufzeichen nach einem erfolglosen oder abgebrochenen Anruf gesperrt wird, um Endlosschleifen zu verhindern." : "**Cooldown for aborted QSOs** (*Settings → Auto Mode Options*): Sets the duration in minutes (e.g. 10 min) to temporarily blacklist a callsign after an aborted or unanswered transmission to prevent calling loops.")
                     
                     bullet(isDe ? "**Most-Wanted-Priorisierung & Only-Mode** (*Einstellungen → Most Wanted & Priorität*):\n• *Priorisiere Most Wanted*: Seltene, ungearbeitete DXCCs aus den Top 100 erhalten stets Vorrang vor normalen Stationen.\n• *Nur Most Wanted anrufen*: Ruft im Auto-Modus ausschließlich Stationen bis zum gewählten Rang-Cutoff (z. B. Top 50) an." : "**Most Wanted Priority & Only-Mode** (*Settings → Most Wanted & Priority*):\n• *Prioritize Most Wanted*: Unworked rare DXCC entities from the Top 100 always take precedence.\n• *Only Call Most Wanted*: Strictly calls stations matching your configured Most Wanted rank cutoff (e.g. Top 50).")
@@ -796,6 +798,7 @@ struct HelpView: View {
                     numberedItem("3.", isDe ? "**WSJT-X Steuerung**: Sendet das `Reply`-Kommando an WSJT-X und überwacht die Aktivierung der Sende-Bereitschaft (`TX BEREIT`)." : "**WSJT-X Control**: Dispatches the `Reply` UDP command to WSJT-X and monitors transmit readiness (`TX ENABLED`).")
                     numberedItem("4.", isDe ? "**Intelligenter Sende-Schutz**: Bricht WSJT-X nach nur einem Sende-Zyklus ab, greift keine Quarantäne; nach längerer Nicht-Antwort wird die Station für die eingestellte Cooldown-Dauer gesperrt." : "**Smart Retry Protection**: If WSJT-X halts after a single cycle, no cooldown is applied; extended non-responses enter the configured cooldown.")
                     numberedItem("5.", isDe ? "**Sofort-Abbruch ohne Cooldown (HaltTx)**: Antwortet die angerufene Zielstation einer anderen Station, stoppt AutoFilter das Senden sofort per `HaltTx`, verhängt **keine** Cooldown-Sperre und steht direkt für den nächsten Trigger bereit." : "**Instant Abort without Cooldown (HaltTx)**: If the called target station answers another party, AutoFilter immediately halts transmission via `HaltTx`, applies **no** cooldown quarantine, and is instantly ready for the next trigger.")
+                    numberedItem("6.", isDe ? "**Anrufer-Vorrang bei ausbleibender Antwort**: Erkennt AutoFilter in der RX-Phase direkte Anrufer auf unser Rufzeichen und hat die aktuell gerufene Station nach der gewählten Anzahl Versuche nicht geantwortet, springt AutoFilter sofort auf den Anrufer um." : "**Inbound Preemption on Unanswered Attempts**: When direct callers are detected in the RX window while our target remains silent after the selected number of attempts, AutoFilter immediately switches to the incoming caller.")
                 }
                 
                 // 4. Sortierbare Filter-Pipeline & First-Match-Prinzip
@@ -1383,10 +1386,10 @@ struct HelpView: View {
                     .font(.title2)
                     .bold()
                 
-                // Version 5.0.0
+                // Version 5.1.0
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text("Version 5.0.0")
+                        Text("Version 5.1.0")
                             .font(.headline)
                             .bold()
                         Text("(Build \(APP_BUILD_NUMBER))")
@@ -1405,7 +1408,29 @@ struct HelpView: View {
                         Text(isDe ? "✨ Neue Funktionen & Meilensteine" : "✨ New Features & Milestones")
                             .font(.subheadline)
                             .bold()
-                        bullet(isDe ? "Rebranding zu AutoFilter: Weiterentwicklung von AutoQSO zu AutoFilter mit klarem Fokus auf moderne DX-Filterung und FT8/CW/RTTY-Automatisierung." : "Rebranding to AutoFilter: Evolution from AutoQSO to AutoFilter with enhanced focus on advanced DX spot filtering and FT8/CW/RTTY automation.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Intelligenter Vorrang für eingehende Anrufer (Inbound Preemption): Automatischer unterbrechungsfreier Wechsel zu einer uns anrufenden Station, wenn die bisher gerufene Station nach konfigurierbaren Sendezyklen (1–4 Versuche, Standard: 2) nicht antwortet." : "Smart Inbound Caller Preemption: Seamlessly switches to an incoming station calling us if our currently called target has not answered after configurable attempts (1–4 attempts, default: 2).", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Sofortiger Most-Wanted-Wechsel: Direkter Vorrang-Sprung bereits nach 1 erfolglosem Versuch, falls der Anrufer eine seltene Most-Wanted-Entität ist." : "Instant Most Wanted Jump: Immediately prioritizes an incoming caller after just 1 attempt if the caller is an unworked Most Wanted DXCC entity.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Schutz aktiver QSOs & Schon-Cooldown: Sobald die Gegenstation antwortet, wird der Wechsel gesperrt; unbeantwortete Stationen erhalten eine kurze 2-Minuten-Pause." : "Active QSO Protection & Soft Cooldown: Locks preemption once the called target answers; unanswered stations receive a brief 2-minute soft cooldown.", font: .subheadline, color: .secondary)
+                    }
+                }
+                
+                Divider()
+                
+                // Version 5.0.0
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text("Version 5.0.0")
+                            .font(.headline)
+                            .bold()
+                        Text("(Build 649)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "✨ Neue Funktionen & Meilensteine" : "✨ New Features & Milestones")
+                            .font(.subheadline)
+                            .bold()
                         bullet(isDe ? "Mac App Store & StoreKit 2 Integration: Nativer In-App-Kauf für die lebenslange Vollversion und einfache Wiederherstellung von Käufen." : "Mac App Store & StoreKit 2 Integration: Native StoreKit 2 in-app purchase architecture for lifetime license activation and purchase restoration.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "60-Minuten Session-Testversion: Kostenlose Testmöglichkeit aller Premium-Funktionen für 60 Minuten pro Sitzung; automatischer Durchzug nach Ablauf mit Neustart-Reset." : "60-Minute Session Trial: Free trial offering full feature access for 60 minutes per session; automated pass-through upon expiry with instant reset on app restart.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Toolbar Test-Statusanzeige: Echtzeit-Countdown in der Menüleiste mit 1-Klick-Zugriff auf das Freischalt-Sheet." : "Toolbar Trial Status Badge: Real-time session countdown in the toolbar with 1-click access to the unlock sheet.", font: .subheadline, color: .secondary)

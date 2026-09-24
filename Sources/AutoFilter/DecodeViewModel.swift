@@ -207,8 +207,14 @@ class DecodeViewModel {
                 let recipient = tokens[0]
                 let isCQ = recipient.hasPrefix("CQ") || recipient == "QRZ" || recipient == "DE"
                 let isForMe = !ownCall.isEmpty && (recipient == ownCall || recipient.contains(ownCall))
-                
-                if !isCQ && !isForMe {
+                if isForMe {
+                    if !self.targetHasAnswered {
+                        self.targetHasAnswered = true
+                        self.addLog(self.isDe
+                            ? "🤝 Antwort von \(targetUpper) empfangen! QSO läuft (Anrufer-Vorrang gesperrt)."
+                            : "🤝 Reply from \(targetUpper) received! QSO active (inbound preemption locked).")
+                    }
+                } else if !isCQ {
                     let otherCall = recipient
                     let msg = self.isDe
                         ? "QSO abgebrochen: \(targetUpper) antwortet \(otherCall) (Kein Cooldown, bereit für nächsten Trigger)."
@@ -217,6 +223,8 @@ class DecodeViewModel {
                     self.addLog("ℹ️ \(msg)")
                     
                     self.currentTargetCall = ""
+                    self.targetHasAnswered = false
+                    self.unansweredTargetAttempts = 0
                     self.qsoStartTime = nil
                     self.txEnabledStartTime = nil
                     self.lastTriggeredTarget = nil
@@ -262,6 +270,8 @@ class DecodeViewModel {
             }
             if !isAutoModeEnabled {
                 currentTargetCall = ""
+                targetHasAnswered = false
+                unansweredTargetAttempts = 0
                 qsoStartTime = nil
                 currentQSOStatus = isDe ? "Bereit" : "Ready"
                 addLog(isDe ? "Auto Mode deaktiviert. Aktiver Anruf zurückgesetzt." : "Auto mode disabled. Active call reset.")
@@ -298,6 +308,9 @@ class DecodeViewModel {
     var messageFilterQuery: String = ""
     var isAutoModeOnlyCQEnabled: Bool = false
     var isAutoModeAnswerCallersEnabled: Bool = true
+    var isAutoModePreemptInboundEnabled: Bool = true
+    var autoModePreemptMaxAttempts: Int = 2
+    var isAutoModePreemptInstantForMostWanted: Bool = true
     var isOnlyMostWantedFilterEnabled: Bool = false
     var maxMostWantedRank: Int = 100
     var isNew4CharGridOnlyFilterEnabled: Bool = false
@@ -423,6 +436,8 @@ class DecodeViewModel {
             }
         }
     }
+    private var targetHasAnswered: Bool = false
+    private var unansweredTargetAttempts: Int = 0
     private var qsoStartTime: Date?
     private var txTriggerAttempts: Int = 0
     private var lastTxTriggerTime: Date?
@@ -565,6 +580,7 @@ class DecodeViewModel {
             self.mapState.totalReceived += batch.count
             self.mapState.totalForwarded += acceptedCount
             self.updatePropagationClusters()
+            self.handleDecodesBatchForAutoQSO(batch.map { $0.0 })
         }
         
         server.onDecodeReceived = { [weak self] decode, rawData in
@@ -610,6 +626,8 @@ class DecodeViewModel {
                         ? "QSO mit \(entry.callsign) erfolgreich beendet!"
                         : "QSO with \(entry.callsign) successfully completed!"
                     self.currentTargetCall = ""
+                    self.targetHasAnswered = false
+                    self.unansweredTargetAttempts = 0
                     self.qsoStartTime = nil
                     self.txEnabledStartTime = nil
                     self.lastTriggeredTarget = nil
@@ -648,6 +666,8 @@ class DecodeViewModel {
                     ? "QSO mit \(call) abgebrochen. Gesperrt für \(self.retryCooldownMinutes) Min."
                     : "QSO with \(call) aborted. Blocked for \(self.retryCooldownMinutes) min."
                 self.currentTargetCall = ""
+                self.targetHasAnswered = false
+                self.unansweredTargetAttempts = 0
                 self.qsoStartTime = nil
                 self.txEnabledStartTime = nil
                 self.lastTriggeredTarget = nil
@@ -768,6 +788,8 @@ class DecodeViewModel {
                             
                             // Reset state
                             currentTargetCall = ""
+                            targetHasAnswered = false
+                            unansweredTargetAttempts = 0
                             qsoStartTime = nil
                             txEnabledStartTime = nil
                             lastTriggeredTarget = nil
@@ -810,6 +832,8 @@ class DecodeViewModel {
                     
                     // Reset target
                     currentTargetCall = ""
+                    targetHasAnswered = false
+                    unansweredTargetAttempts = 0
                     qsoStartTime = nil
                     txEnabledStartTime = nil
                     lastTriggeredTarget = nil
@@ -819,6 +843,8 @@ class DecodeViewModel {
                 } else {
                     // stuck state workaround
                     currentTargetCall = ""
+                    targetHasAnswered = false
+                    unansweredTargetAttempts = 0
                     qsoStartTime = nil
                     txEnabledStartTime = nil
                     lastTriggeredTarget = nil
@@ -832,7 +858,6 @@ class DecodeViewModel {
         
         var candidates: [WSJTXDecode] = []
         let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
-        let prioritizeMW = UserDefaults.standard.object(forKey: "prioritizeMostWanted") as? Bool ?? true
         let onlyMW = isOnlyMostWantedFilterEnabled
         let maxRank = maxMostWantedRank
         let ownCall = (UserDefaults.standard.string(forKey: "lotwUsername") ?? "").uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
@@ -930,8 +955,49 @@ class DecodeViewModel {
             return
         }
         
-        // Sort candidates: Inbound callers first, then Most Wanted Rank (1..100), then Furthest Distance (km), then SNR
-        candidates.sort { d1, d2 in
+        let sortedCandidates = rankCandidates(candidates, ownCall: ownCall)
+        let bestTarget = sortedCandidates[0]
+        let bestCall = bestTarget.callsign.uppercased()
+        
+        currentTargetCall = bestCall
+        targetHasAnswered = false
+        unansweredTargetAttempts = 1
+        qsoStartTime = Date()
+        lastTriggeredTarget = bestTarget
+        txTriggerAttempts = 1
+        lastTxTriggerTime = Date()
+        
+        let mwInfo: String
+        if let rank = MostWantedManager.shared.rankForCallsign(bestCall) {
+            mwInfo = " [🔥 MOST WANTED #\(rank)]"
+        } else {
+            mwInfo = ""
+        }
+        
+        let distInfo: String
+        if let dist = bestTarget.distanceKm(myGrid: myGrid) {
+            distInfo = String(format: " [%.0f km]", dist)
+        } else {
+            distInfo = ""
+        }
+        
+        currentQSOStatus = isDe
+            ? "AutoQSO: Rufe \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo)..."
+            : "AutoQSO: Calling \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo)..."
+        addLog(isDe
+            ? "🚀 Rufe \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo) [Msg: \(bestTarget.message)]"
+            : "🚀 Calling \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo) [Msg: \(bestTarget.message)]")
+        
+        print("AutoQSO Engine: Starte Anruf -> \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo) [Msg: \(bestTarget.message)]")
+        sendReply(for: bestTarget)
+    }
+    
+    func rankCandidates(_ decodes: [WSJTXDecode], ownCall: String) -> [WSJTXDecode] {
+        let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
+        let prioritizeMW = UserDefaults.standard.object(forKey: "prioritizeMostWanted") as? Bool ?? true
+        let maxRank = maxMostWantedRank
+        
+        return decodes.sorted { d1, d2 in
             let inb1 = self.isInboundCallToMe(d1, ownCall: ownCall)
             let inb2 = self.isInboundCallToMe(d2, ownCall: ownCall)
             if inb1 != inb2 {
@@ -966,39 +1032,124 @@ class DecodeViewModel {
             // Fallback: SNR
             return d1.snr > d2.snr
         }
+    }
+    
+    private func handleDecodesBatchForAutoQSO(_ decodes: [WSJTXDecode]) {
+        guard isAutoModeEnabled else { return }
+        let ownCall = (UserDefaults.standard.string(forKey: "lotwUsername") ?? "").uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !ownCall.isEmpty else { return }
         
-        let bestTarget = candidates[0]
-        let bestCall = bestTarget.callsign.uppercased()
-        
-        currentTargetCall = bestCall
-        qsoStartTime = Date()
-        lastTriggeredTarget = bestTarget
-        txTriggerAttempts = 1
-        lastTxTriggerTime = Date()
-        
-        let mwInfo: String
-        if let rank = MostWantedManager.shared.rankForCallsign(bestCall) {
-            mwInfo = " [🔥 MOST WANTED #\(rank)]"
-        } else {
-            mwInfo = ""
+        // 1. Wenn kein Anruf aktiv ist, sofort Auswertung für nächsten Trigger starten
+        if currentTargetCall.isEmpty {
+            evaluateAutoQSO()
+            return
         }
         
-        let distInfo: String
-        if let dist = bestTarget.distanceKm(myGrid: myGrid) {
-            distInfo = String(format: " [%.0f km]", dist)
-        } else {
-            distInfo = ""
+        // 2. Aktiven Anruf auf Antwort prüfen
+        let targetUpper = currentTargetCall.uppercased()
+        for decode in decodes {
+            let decodeCall = decode.callsign.uppercased()
+            let clean = decode.message.replacingOccurrences(of: "<", with: " ").replacingOccurrences(of: ">", with: " ").uppercased()
+            let tokens = clean.components(separatedBy: .whitespacesAndNewlines)
+                .map { $0.trimmingCharacters(in: CharacterSet.alphanumerics.inverted) }
+                .filter { !$0.isEmpty }
+            
+            let isFromTarget = (decodeCall == targetUpper) || (tokens.count >= 2 && tokens[1] == targetUpper)
+            if isFromTarget && tokens.count >= 2 {
+                let recipient = tokens[0]
+                let isForMe = recipient == ownCall || recipient.contains(ownCall)
+                if isForMe {
+                    if !targetHasAnswered {
+                        targetHasAnswered = true
+                        addLog(isDe
+                            ? "🤝 Antwort von \(targetUpper) empfangen! QSO läuft (Anrufer-Vorrang gesperrt)."
+                            : "🤝 Reply from \(targetUpper) received! QSO active (inbound preemption locked).")
+                    }
+                }
+            }
         }
         
-        currentQSOStatus = isDe
-            ? "AutoQSO: Rufe \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo)..."
-            : "AutoQSO: Calling \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo)..."
-        addLog(isDe
-            ? "🚀 Rufe \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo) [Msg: \(bestTarget.message)]"
-            : "🚀 Calling \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo) [Msg: \(bestTarget.message)]")
+        // 3. Wenn Zielstation geantwortet hat: QSO ist etabliert -> nicht abbrechen!
+        if targetHasAnswered {
+            return
+        }
         
-        print("AutoQSO Engine: Starte Anruf -> \(bestCall) (\(bestTarget.band))\(mwInfo)\(distInfo) [Msg: \(bestTarget.message)]")
-        sendReply(for: bestTarget)
+        // 4. Zielstation hat in diesem Zyklus nicht geantwortet.
+        if server.isTxEnabled || txEnabledStartTime != nil {
+            unansweredTargetAttempts += 1
+        }
+        
+        // 5. Prüfen ob Inbound Preemption aktiviert ist
+        guard isAutoModePreemptInboundEnabled && isAutoModeAnswerCallersEnabled else { return }
+        
+        // 6. Eingehende Anrufer suchen, die durch den Filter kommen
+        var inboundCandidates: [WSJTXDecode] = []
+        for decode in decodes {
+            if decode.isClusterSpot { continue }
+            let caller = decode.callsign.uppercased()
+            guard !caller.isEmpty && caller != ownCall && caller != targetUpper else { continue }
+            guard isInboundCallToMe(decode, ownCall: ownCall) else { continue }
+            guard isAutoQSOInteresting(decode: decode) else { continue }
+            inboundCandidates.append(decode)
+        }
+        
+        guard !inboundCandidates.isEmpty else { return }
+        
+        // 7. Prüfen ob Wechselkriterium erfüllt ist (Versuchsschwelle erreicht oder Most Wanted Sofort-Wechsel)
+        let maxRank = maxMostWantedRank
+        let hasMWCaller = inboundCandidates.contains {
+            MostWantedManager.shared.isMostWanted(callsign: $0.callsign, maxRank: maxRank)
+        }
+        
+        let shouldJump = (unansweredTargetAttempts >= autoModePreemptMaxAttempts) || (isAutoModePreemptInstantForMostWanted && hasMWCaller)
+        
+        if shouldJump {
+            let rankedInbound = rankCandidates(inboundCandidates, ownCall: ownCall)
+            guard let bestCaller = rankedInbound.first else { return }
+            let bestCall = bestCaller.callsign.uppercased()
+            let oldTarget = currentTargetCall
+            let attemptsDone = unansweredTargetAttempts
+            
+            // Alte Station in kurzen Soft-Cooldown (2 Minuten) setzen
+            let softCooldownSec = 120.0
+            let totalCooldownSec = Double(retryCooldownMinutes * 60)
+            let offset = totalCooldownSec - softCooldownSec
+            blacklistedCalls[oldTarget] = Date().addingTimeInterval(-max(0, offset))
+            
+            let mwTag: String
+            if let rank = MostWantedManager.shared.rankForCallsign(bestCall), rank <= maxRank {
+                mwTag = " [🔥 MOST WANTED #\(rank)]"
+            } else {
+                mwTag = ""
+            }
+            
+            let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
+            let distInfo = bestCaller.distanceKm(myGrid: myGrid).map { String(format: " [%.0f km]", $0) } ?? ""
+            
+            let jumpMsg = isDe
+                ? "🔀 Vorrang für Anrufer: \(oldTarget) antwortet nach \(attemptsDone) Versuchen nicht -> Wechsel zu Anrufer \(bestCall)\(mwTag)\(distInfo) (\(bestCaller.band))!"
+                : "🔀 Inbound preemption: \(oldTarget) did not answer after \(attemptsDone) attempts -> Switching to caller \(bestCall)\(mwTag)\(distInfo) (\(bestCaller.band))!"
+            addLog(jumpMsg)
+            currentQSOStatus = jumpMsg
+            
+            // Neuen Zielzustand setzen
+            currentTargetCall = bestCall
+            targetHasAnswered = false
+            unansweredTargetAttempts = 1
+            qsoStartTime = Date()
+            lastTriggeredTarget = bestCaller
+            txTriggerAttempts = 1
+            lastTxTriggerTime = Date()
+            txEnabledStartTime = Date()
+            
+            // Anruf sofort an WSJT-X senden
+            sendReply(for: bestCaller)
+        } else {
+            let callerNames = inboundCandidates.map { $0.callsign }.joined(separator: ", ")
+            addLog(isDe
+                ? "⏳ Anruf von \(callerNames) empfangen. Warte auf Antwort von \(targetUpper) (Versuch \(unansweredTargetAttempts)/\(autoModePreemptMaxAttempts))..."
+                : "⏳ Inbound call from \(callerNames) received. Waiting for \(targetUpper) (Attempt \(unansweredTargetAttempts)/\(autoModePreemptMaxAttempts))...")
+        }
     }
     
     func syncQRZ(apiKey: String, fullSync: Bool = true) {
@@ -1557,6 +1708,9 @@ class DecodeViewModel {
         messageFilterQuery = defaults.string(forKey: "messageFilterQuery") ?? ""
         isAutoModeOnlyCQEnabled = defaults.bool(forKey: "isAutoModeOnlyCQEnabled")
         isAutoModeAnswerCallersEnabled = defaults.object(forKey: "isAutoModeAnswerCallersEnabled") as? Bool ?? true
+        isAutoModePreemptInboundEnabled = defaults.object(forKey: "isAutoModePreemptInboundEnabled") as? Bool ?? true
+        autoModePreemptMaxAttempts = defaults.integer(forKey: "autoModePreemptMaxAttempts") > 0 ? defaults.integer(forKey: "autoModePreemptMaxAttempts") : 2
+        isAutoModePreemptInstantForMostWanted = defaults.object(forKey: "isAutoModePreemptInstantForMostWanted") as? Bool ?? true
         isOnlyMostWantedFilterEnabled = defaults.bool(forKey: "onlyMostWanted")
         maxMostWantedRank = defaults.integer(forKey: "maxMostWantedRank") > 0 ? defaults.integer(forKey: "maxMostWantedRank") : 100
         isNew4CharGridOnlyFilterEnabled = defaults.bool(forKey: "isNew4CharGridOnlyFilterEnabled")
@@ -1618,6 +1772,9 @@ class DecodeViewModel {
         defaults.set(messageFilterQuery, forKey: "messageFilterQuery")
         defaults.set(isAutoModeOnlyCQEnabled, forKey: "isAutoModeOnlyCQEnabled")
         defaults.set(isAutoModeAnswerCallersEnabled, forKey: "isAutoModeAnswerCallersEnabled")
+        defaults.set(isAutoModePreemptInboundEnabled, forKey: "isAutoModePreemptInboundEnabled")
+        defaults.set(autoModePreemptMaxAttempts, forKey: "autoModePreemptMaxAttempts")
+        defaults.set(isAutoModePreemptInstantForMostWanted, forKey: "isAutoModePreemptInstantForMostWanted")
         defaults.set(isOnlyMostWantedFilterEnabled, forKey: "onlyMostWanted")
         defaults.set(maxMostWantedRank, forKey: "maxMostWantedRank")
         defaults.set(isNew4CharGridOnlyFilterEnabled, forKey: "isNew4CharGridOnlyFilterEnabled")

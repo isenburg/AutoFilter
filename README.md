@@ -98,8 +98,13 @@ For full-featured operation with automated calling (Auto QSO), live decode filte
 
 ## 📝 Changelog
 
+### Version 5.1.0
+- **Smart Inbound Caller Preemption**: Automatically switches to an incoming caller addressed to us if the currently called target has not answered after configurable transmit attempts (1–4 attempts, default: 2).
+- **Most Wanted Fast-Track Jump**: Instant preemption (after 1 attempt) when an incoming caller is an unworked Most Wanted DXCC entity.
+- **Active QSO Protection**: Locks preemption once the called target answers to ensure ongoing two-way QSOs are never broken.
+- **Soft Cooldown Handling**: Places unanswered targets into a brief 2-minute soft cooldown to prevent calling loops while keeping them reachable later.
+
 ### Version 5.0.0
-- **Rebranding to AutoFilter**: Evolution from AutoQSO to AutoFilter with enhanced focus on advanced DX spot filtering and FT8/CW/RTTY automation.
 - **Mac App Store & StoreKit 2 Integration**: Native StoreKit 2 in-app purchase architecture for lifetime license activation and purchase restoration.
 - **60-Minute Session Trial Mode**: Free trial mode offering full feature access for 60 minutes per session; automated pass-through and purchase prompt upon trial expiry with instant reset on app restart.
 - **Trial Status Indicator**: Real-time session countdown badge in the main toolbar providing one-click access to the upgrade sheet.

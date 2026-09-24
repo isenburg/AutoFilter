@@ -82,8 +82,8 @@ Der Hauptschalter in der oberen Menüleiste steuert die automatische Sende-Engin
 - **Kontinuierlicher Rollpuffer (FIFO 250)**: Die Dekodiertabelle wird bei neuen WSJT-X Sendezyklen nicht mehr zyklisch gelöscht. Frische Dekodierungen schieben ältere Einträge nach unten; ab 250 Einträgen fallen ältere Stationen automatisch unten heraus.
 - **Freeze / Pause (Snapshot-Modus)**: Der Pause-Button friert die Dekodiertabelle und Protokolle mit einem statischen Snapshot ein. Auto-Scroll wird deaktiviert und Hintergrunddaten werden weiter empfangen. Du kannst völlig frei durch historische Daten scrollen, ohne dass neu ankommende Dekodierungen die Ansicht zurückspringen lassen. Ein erneuter Klick hebt die Pause auf.
 - **Echtzeit-Suchfeld**: Über das integrierte Suchfeld in der Toolbar (sowie in den Logs) filterst du die Tabelle oder Protokolle in Echtzeit nach Rufzeichen, Land, Spotter, Grid-Locator oder Nachrichten-Text – sowohl im Live- als auch im Freeze-Modus.
-- **Min. Sperre / Cooldown**: In den **Einstellungen (⚙️) -> WSJT-X** kann die Cooldown-Dauer (Standard: 10 Minuten) konfiguriert werden, um Rufzeichen nach einem automatischen Anruf temporär vor weiteren Sendeversuchen zu blockieren.
 - **Eingehende Anrufer automatisch beantworten**: In den **Einstellungen (⚙️) -> Auto QSO Optionen** kann festgelegt werden, dass direkte Anrufe auf das eigene Rufzeichen automatisch beantwortet werden, sofern sie die aktiven DX- und Gearbeitet-Filter erfüllen. Bei einem direkten Anruf wird eine eventuell bestehende Sperrzeit (Cooldown) für diese Station sofort aufgehoben.
+- **Intelligenter Vorrang für Anrufer (Inbound Preemption)**: Ruft AutoFilter eine Gegenstation an und antwortet diese nach einer konfigurierbaren Anzahl von Versuchen nicht (Standard: nach dem 2. Versuch, einstellbar von 1 bis 4), springt AutoFilter automatisch zu einer Station, die uns direkt anruft und alle Filter passiert. Bei Most-Wanted-Anrufern kann der Wechsel auf Wunsch sofort (bereits nach 1 Versuch) erfolgen. Sobald die gerufene Station antwortet und ein QSO etabliert ist, wird der Wechsel gesperrt, um das laufende QSO sauber abzuschließen. Die unbeantwortete Station erhält einen kurzen 2-Minuten Schon-Cooldown.
 
 ---
 
@@ -134,7 +134,7 @@ Der DX-Cluster-Manager ermöglicht den gleichzeitigen Empfang von DX-Spots über
 AutoFilter enthält einen eigenen Telnet-Cluster-Server, an den sich externe Log- oder Mapping-Programme (z.B. MacLoggerDX) connecten können:
 - **Port & Callsign**: Standardmäßig horcht der Server auf Port `8000`. Das Login-Rufzeichen (Standard `GUEST`) ist frei wählbar.
 - **Live-Status**: Zeigt an, ob der Server aktiv ist und wie viele externe Clients aktuell verbunden sind.
-- **WSJT-x Spots via Telnet**: Ein Schalter ermöglicht es, alle lokalen WSJT-X Dekodierungen nach Durchlaufen deiner Filter als DX-Spots über Telnet auszugeben. Standardmäßig ist diese Option deaktiviert.
+- **WSJT-X Decodes Telnet-Ausgabe**: Ein Schalter ermöglicht es, alle lokalen WSJT-X Dekodierungen nach Durchlaufen deiner Filter als DX-Spots über Telnet auszugeben. Standardmäßig ist diese Option deaktiviert.
 
 ---
 

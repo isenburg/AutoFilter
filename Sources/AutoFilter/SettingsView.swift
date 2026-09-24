@@ -1102,6 +1102,50 @@ struct SettingsView: View {
                     Text(L("settings.options.answerCallers.desc"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    
+                    if viewModel.isAutoModeAnswerCallersEnabled {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Toggle(isDe ? "Eingehende Anrufe bei unbeantwortetem Anruf vorziehen" : "Preempt unanswered calls for incoming callers", isOn: Binding(
+                                get: { viewModel.isAutoModePreemptInboundEnabled },
+                                set: { viewModel.isAutoModePreemptInboundEnabled = $0; viewModel.saveFilters() }
+                            ))
+                            .font(.subheadline)
+                            .bold()
+                            
+                            Text(isDe ? "Wechselt zu einer uns anrufenden Station, wenn die bisher gerufene Station nach der festgelegten Anzahl an Versuchen nicht geantwortet hat." : "Switches to an incoming station calling us if the currently called station hasn't answered after the specified attempts.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            
+                            if viewModel.isAutoModePreemptInboundEnabled {
+                                HStack {
+                                    Text(isDe ? "Wechseln nach:" : "Switch after:")
+                                        .font(.subheadline)
+                                    
+                                    Picker("", selection: Binding(
+                                        get: { viewModel.autoModePreemptMaxAttempts },
+                                        set: { viewModel.autoModePreemptMaxAttempts = $0; viewModel.saveFilters() }
+                                    )) {
+                                        Text(isDe ? "1 Versuch (Sofort)" : "1 attempt (Immediate)").tag(1)
+                                        Text(isDe ? "2 Versuche (Standard)" : "2 attempts (Default)").tag(2)
+                                        Text(isDe ? "3 Versuche" : "3 attempts").tag(3)
+                                        Text(isDe ? "4 Versuche" : "4 attempts").tag(4)
+                                    }
+                                    .pickerStyle(.menu)
+                                    .frame(width: 190)
+                                }
+                                .padding(.leading, 12)
+                                
+                                Toggle(isDe ? "Sofortiger Wechsel bei Most-Wanted-Anrufern (bereits nach 1 Versuch)" : "Immediate jump for Most Wanted callers (after 1 attempt)", isOn: Binding(
+                                    get: { viewModel.isAutoModePreemptInstantForMostWanted },
+                                    set: { viewModel.isAutoModePreemptInstantForMostWanted = $0; viewModel.saveFilters() }
+                                ))
+                                .font(.subheadline)
+                                .padding(.leading, 12)
+                            }
+                        }
+                        .padding(.top, 4)
+                        .padding(.leading, 16)
+                    }
                 }
                 
                 Divider()
