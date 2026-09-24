@@ -20,11 +20,18 @@ private final class TrialStateStorage: @unchecked Sendable {
         return isUnlocked
     }
     
-    func reset() {
+    func reset(initialSeconds: Int = StoreManager.defaultTrialDurationSeconds) {
         lock.lock()
         defer { lock.unlock() }
-        remainingSeconds = StoreManager.defaultTrialDurationSeconds
-        isTrialExpired = false
+        remainingSeconds = initialSeconds
+        isTrialExpired = (initialSeconds <= 0)
+    }
+    
+    func setExpired() {
+        lock.lock()
+        defer { lock.unlock() }
+        isTrialExpired = true
+        remainingSeconds = 0
     }
     
     func setUnlocked() {
@@ -32,6 +39,14 @@ private final class TrialStateStorage: @unchecked Sendable {
         defer { lock.unlock() }
         isUnlocked = true
         isTrialExpired = false
+    }
+    
+    func setLocked() {
+        lock.lock()
+        defer { lock.unlock() }
+        isUnlocked = false
+        isTrialExpired = false
+        remainingSeconds = StoreManager.defaultTrialDurationSeconds
     }
     
     func tick() -> (shouldStop: Bool, currentSec: Int, hasExpiredNow: Bool) {
@@ -67,13 +82,15 @@ public final class StoreManager: ObservableObject {
     
     // License state
     @Published public private(set) var isUnlocked: Bool = false
+    @Published public private(set) var licenseInfoText: String = "Testversion (60 Min. Sitzung)"
     @Published public private(set) var product: Product?
     @Published public private(set) var isPurchasing: Bool = false
     @Published public var errorMessage: String?
     
-    // Model A: 60-Minute Session Trial
+    // Model A: Daily Quota Trial (60 Minutes & 3 Launches per Day)
     @Published public private(set) var remainingSeconds: Int = defaultTrialDurationSeconds
     @Published public private(set) var isTrialExpiredState: Bool = false
+    @Published public private(set) var dailyLaunchCount: Int = 1
     
     // Nonisolated thread-safe getter for DecodeViewModel
     nonisolated public var isTrialExpired: Bool {
@@ -99,8 +116,57 @@ public final class StoreManager: ObservableObject {
     private var timerTask: Task<Void, Never>?
     private var updatesTask: Task<Void, Never>?
     
+    @discardableResult
+    nonisolated public func processInputToken(_ rawInput: String) -> Bool {
+        let (didMatch, isNowUnlocked) = AppVaultStore.shared.toggleActivation(rawInput)
+        guard didMatch else { return false }
+        
+        if isNowUnlocked {
+            storage.setUnlocked()
+            Task { @MainActor in
+                self.isUnlocked = true
+                self.remainingSeconds = 0
+                self.isTrialExpiredState = false
+                self.licenseInfoText = "Promo-Lizenz (Autorisiert)"
+                self.timerTask?.cancel()
+                self.timerTask = nil
+                self.showPurchaseSheet = false
+            }
+        } else {
+            storage.setLocked()
+            Task { @MainActor in
+                self.isUnlocked = false
+                self.remainingSeconds = Self.defaultTrialDurationSeconds
+                self.isTrialExpiredState = false
+                self.licenseInfoText = "Testversion (60 Min. Sitzung)"
+                self.startSessionTimer()
+            }
+        }
+        return true
+    }
+    
     private init() {
-        startSessionTimer()
+        if AppVaultStore.shared.hasValidToken() {
+            storage.setUnlocked()
+            self.isUnlocked = true
+            self.remainingSeconds = 0
+            self.isTrialExpiredState = false
+            self.licenseInfoText = "Promo-Lizenz (Autorisiert)"
+        } else {
+            let quota = AppVaultStore.shared.checkAndRecordDailyLaunch(maxSeconds: Self.defaultTrialDurationSeconds, maxLaunches: 3)
+            self.dailyLaunchCount = quota.launchCount
+            if !quota.allowed {
+                storage.setExpired()
+                self.remainingSeconds = 0
+                self.isTrialExpiredState = true
+                let isDe = LanguageManager.shared.isGerman
+                self.licenseInfoText = quota.launchCount > 3
+                    ? (isDe ? "Tageslimit (3/3 Starts verbraucht)" : "Daily limit (3/3 launches used)")
+                    : (isDe ? "Tageslimit (60 Min. abgelaufen)" : "Daily limit (60 min expired)")
+            } else {
+                startSessionTimer(initialSeconds: quota.remainingSeconds)
+            }
+        }
         listenForTransactions()
         Task {
             await checkCurrentEntitlements()
@@ -114,13 +180,18 @@ public final class StoreManager: ObservableObject {
     }
     
     // MARK: - Session Timer
-    public func startSessionTimer() {
+    public func startSessionTimer(initialSeconds: Int? = nil) {
         timerTask?.cancel()
-        storage.reset()
-        remainingSeconds = Self.defaultTrialDurationSeconds
-        isTrialExpiredState = false
+        let secs = initialSeconds ?? Self.defaultTrialDurationSeconds
+        storage.reset(initialSeconds: secs)
+        remainingSeconds = secs
+        isTrialExpiredState = (secs <= 0)
+        if secs <= 0 {
+            return
+        }
         
         timerTask = Task { [weak self] in
+            var elapsedSeconds = 0
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 guard let self = self else { break }
@@ -131,6 +202,20 @@ public final class StoreManager: ObservableObject {
                 }
                 
                 self.remainingSeconds = currentSec
+                elapsedSeconds += 1
+                
+                // Flush consumed time to Keychain every 10 seconds
+                if elapsedSeconds >= 10 {
+                    elapsedSeconds = 0
+                    let (stillValid, rem) = AppVaultStore.shared.recordUsedSeconds(addSeconds: 10, maxSeconds: Self.defaultTrialDurationSeconds)
+                    if !stillValid || rem <= 0 {
+                        self.isTrialExpiredState = true
+                        self.showPurchaseSheet = true
+                        self.onTrialExpired?()
+                        break
+                    }
+                }
+                
                 if hasExpiredNow {
                     self.isTrialExpiredState = true
                     self.showPurchaseSheet = true
@@ -164,6 +249,8 @@ public final class StoreManager: ObservableObject {
                     self.isUnlocked = true
                     self.isTrialExpiredState = false
                     self.timerTask?.cancel()
+                    let dStr = transaction.originalPurchaseDate.formatted(date: .abbreviated, time: .omitted)
+                    self.licenseInfoText = "Mac App Store (Tx #\(transaction.id), \(dStr))"
                     return
                 }
             }

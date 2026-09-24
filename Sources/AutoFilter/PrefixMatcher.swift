@@ -208,6 +208,12 @@ class PrefixMatcher {
         return countryCoordinates[country]
     }
     
+    var prefixCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return database.count
+    }
+    
     func allCountries() -> [String] {
         lock.lock()
         defer { lock.unlock() }

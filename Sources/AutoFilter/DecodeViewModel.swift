@@ -192,10 +192,39 @@ class DecodeViewModel {
     }
 
 
+    public var ownCallsign: String {
+        // 1. WSJT-X gemeldetes Operator-Rufzeichen (deCall)
+        let wsjtCall = server.wsjtDeCall.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if !wsjtCall.isEmpty {
+            return wsjtCall
+        }
+        // 2. Rufzeichen für Login (z. B. eigenes Rufzeichen) in Seitenleiste/Einstellungen
+        let clusterCall = (UserDefaults.standard.string(forKey: "clusterCallsign") ?? "").trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if !clusterCall.isEmpty && clusterCall != "GUEST" {
+            return clusterCall
+        }
+        // 3. LoTW Benutzername (falls gepflegt)
+        let lotwUser = (UserDefaults.standard.string(forKey: "lotwUsername") ?? "").trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if !lotwUser.isEmpty {
+            return lotwUser
+        }
+        return ""
+    }
+
+    func isMatchingOwnCall(_ call: String) -> Bool {
+        let own = ownCallsign
+        guard !own.isEmpty else { return false }
+        let c = call.uppercased().trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        guard !c.isEmpty else { return false }
+        if c == own { return true }
+        let parts = c.components(separatedBy: "/")
+        return parts.contains(own)
+    }
+
     private func checkActiveTargetCall(decode: WSJTXDecode) {
         if !self.currentTargetCall.isEmpty {
             let targetUpper = self.currentTargetCall.uppercased()
-            let ownCall = (UserDefaults.standard.string(forKey: "lotwUsername") ?? "").uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+            let ownCall = self.ownCallsign
             let msgUpper = decode.message.uppercased()
             let tokens = msgUpper.components(separatedBy: .whitespacesAndNewlines)
                 .map { $0.trimmingCharacters(in: CharacterSet.alphanumerics.inverted) }
@@ -206,7 +235,7 @@ class DecodeViewModel {
             if isFromTarget && tokens.count >= 2 {
                 let recipient = tokens[0]
                 let isCQ = recipient.hasPrefix("CQ") || recipient == "QRZ" || recipient == "DE"
-                let isForMe = !ownCall.isEmpty && (recipient == ownCall || recipient.contains(ownCall))
+                let isForMe = isMatchingOwnCall(recipient)
                 if isForMe {
                     if !self.targetHasAnswered {
                         self.targetHasAnswered = true
@@ -214,7 +243,7 @@ class DecodeViewModel {
                             ? "🤝 Antwort von \(targetUpper) empfangen! QSO läuft (Anrufer-Vorrang gesperrt)."
                             : "🤝 Reply from \(targetUpper) received! QSO active (inbound preemption locked).")
                     }
-                } else if !isCQ {
+                } else if !isCQ && !ownCall.isEmpty {
                     let otherCall = recipient
                     let msg = self.isDe
                         ? "QSO abgebrochen: \(targetUpper) antwortet \(otherCall) (Kein Cooldown, bereit für nächsten Trigger)."
@@ -250,6 +279,11 @@ class DecodeViewModel {
         set { logsViewModel.isLogConsoleDetached = newValue }
     }
     public let mapState = PropagationMapState()
+    
+    // CTY.DAT Status
+    var isUpdatingCty: Bool = false
+    var ctyUpdateMessage: String = ""
+    var ctyLastUpdateDate: Date? = UserDefaults.standard.object(forKey: "cty_cache_date") as? Date
 
     var server = WSJTXServer()
     var lotwManager = LoTWManager()
@@ -742,6 +776,58 @@ class DecodeViewModel {
             band: band
         )
     }
+
+    func distanceAndGrid(for rawCall: String) -> (distanceKm: Double?, grid: String?) {
+        let call = rawCall.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard !call.isEmpty else { return (nil, nil) }
+        
+        let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
+        
+        // 1. Wenn aktives QSO mit dieser Station läuft
+        if let path = activeQSOPath, path.targetCall.uppercased() == call {
+            return (path.distanceKm, path.targetGrid)
+        }
+        
+        // 2. Zuletzt getriggerter Target-Decode
+        if let last = lastTriggeredTarget, last.callsign.uppercased() == call, let g = last.grid, !g.isEmpty {
+            return (last.distanceKm(myGrid: myGrid), g)
+        }
+        
+        // 3. Suche in server.decodes nach einem Eintrag MIT Grid
+        if let dec = server.decodes.first(where: { $0.callsign.uppercased() == call && $0.grid != nil && !($0.grid!.isEmpty) }) {
+            return (dec.distanceKm(myGrid: myGrid), dec.grid)
+        }
+        
+        // 4. Suche in displaySpots nach einem Eintrag MIT Grid
+        if let spot = displaySpots.first(where: { $0.callsign.uppercased() == call && $0.grid != nil && !($0.grid!.isEmpty) }) {
+            return (spot.distanceKm, spot.grid)
+        }
+        
+        // 5. Suche in clusterSpots nach einem Eintrag MIT Grid
+        if let cSpot = clusterSpots.first(where: { $0.callsign.uppercased() == call && $0.grid != nil && !($0.grid!.isEmpty) }) {
+            return (cSpot.distanceKm(myGrid: myGrid), cSpot.grid)
+        }
+        
+        // 6. Fallback: Entfernung über Land/DXCC-Koordinaten berechnen
+        guard let myLatLon = Maidenhead.locatorToLatLon(myGrid) else { return (nil, nil) }
+        let myCoord = CLLocationCoordinate2D(latitude: myLatLon.lat, longitude: myLatLon.lon)
+        
+        let resolvedCountry = matcher.country(for: call)
+        var targetCoord: CLLocationCoordinate2D? = nil
+        if resolvedCountry != "OTHER" && !resolvedCountry.isEmpty,
+           let coords = matcher.coordinates(forCountry: resolvedCountry) {
+            targetCoord = CLLocationCoordinate2D(latitude: coords.latitude, longitude: coords.longitude)
+        } else if let coords = matcher.coordinates(for: call) {
+            targetCoord = CLLocationCoordinate2D(latitude: coords.latitude, longitude: coords.longitude)
+        }
+        
+        if let tc = targetCoord {
+            let dist = Maidenhead.distanceKm(from: myCoord, to: tc)
+            return (dist, nil)
+        }
+        
+        return (nil, nil)
+    }
     
 
     func isInboundCallToMe(_ decode: WSJTXDecode, ownCall: String) -> Bool {
@@ -750,8 +836,8 @@ class DecodeViewModel {
         let tokens = clean.components(separatedBy: .whitespacesAndNewlines).map { $0.trimmingCharacters(in: CharacterSet.alphanumerics.inverted) }.filter { !$0.isEmpty }
         guard tokens.count >= 2 else { return false }
         let targetCall = decode.callsign.uppercased()
-        guard !targetCall.isEmpty && targetCall != ownCall else { return false }
-        return tokens[0] == ownCall
+        guard !targetCall.isEmpty && !isMatchingOwnCall(targetCall) else { return false }
+        return isMatchingOwnCall(tokens[0])
     }
 
     func evaluateAutoQSO() {
@@ -860,7 +946,7 @@ class DecodeViewModel {
         let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
         let onlyMW = isOnlyMostWantedFilterEnabled
         let maxRank = maxMostWantedRank
-        let ownCall = (UserDefaults.standard.string(forKey: "lotwUsername") ?? "").uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let ownCall = self.ownCallsign
         
         var skippedCounts = [String: Int]()
         var totalCQsOr73s = 0
@@ -869,7 +955,7 @@ class DecodeViewModel {
             if decode.isClusterSpot { continue }
             let call = decode.callsign.uppercased()
             guard !call.isEmpty else { continue }
-            if !ownCall.isEmpty && call == ownCall {
+            if isMatchingOwnCall(call) {
                 skippedCounts["Eigenes Rufzeichen"] = (skippedCounts["Eigenes Rufzeichen"] ?? 0) + 1
                 continue
             }
@@ -1036,7 +1122,7 @@ class DecodeViewModel {
     
     private func handleDecodesBatchForAutoQSO(_ decodes: [WSJTXDecode]) {
         guard isAutoModeEnabled else { return }
-        let ownCall = (UserDefaults.standard.string(forKey: "lotwUsername") ?? "").uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let ownCall = self.ownCallsign
         guard !ownCall.isEmpty else { return }
         
         // 1. Wenn kein Anruf aktiv ist, sofort Auswertung für nächsten Trigger starten
@@ -1057,7 +1143,7 @@ class DecodeViewModel {
             let isFromTarget = (decodeCall == targetUpper) || (tokens.count >= 2 && tokens[1] == targetUpper)
             if isFromTarget && tokens.count >= 2 {
                 let recipient = tokens[0]
-                let isForMe = recipient == ownCall || recipient.contains(ownCall)
+                let isForMe = isMatchingOwnCall(recipient)
                 if isForMe {
                     if !targetHasAnswered {
                         targetHasAnswered = true
@@ -1087,7 +1173,7 @@ class DecodeViewModel {
         for decode in decodes {
             if decode.isClusterSpot { continue }
             let caller = decode.callsign.uppercased()
-            guard !caller.isEmpty && caller != ownCall && caller != targetUpper else { continue }
+            guard !caller.isEmpty && !isMatchingOwnCall(caller) && caller != targetUpper else { continue }
             guard isInboundCallToMe(decode, ownCall: ownCall) else { continue }
             guard isAutoQSOInteresting(decode: decode) else { continue }
             inboundCandidates.append(decode)
@@ -1219,6 +1305,9 @@ class DecodeViewModel {
                let content = try? String(contentsOf: cacheURL, encoding: .utf8) {
                 self.matcher.parseCtyDat(content)
                 self.matcher.lastUpdate = savedDate
+                DispatchQueue.main.async {
+                    self.ctyLastUpdateDate = savedDate
+                }
                 self.addLog(self.isDe ? "CTY.DAT erfolgreich im Hintergrund geladen." : "CTY.DAT successfully loaded in background.")
                 if abs(savedDate.timeIntervalSinceNow) > 1209600 {
                     self.updateCtyData()
@@ -1655,17 +1744,44 @@ class DecodeViewModel {
         telnetServer.broadcast(spot: spot)
     }
 
-    func updateCtyData() {
+    func updateCtyData(completion: ((Bool, String) -> Void)? = nil) {
+        DispatchQueue.main.async {
+            self.isUpdatingCty = true
+            self.ctyUpdateMessage = self.isDe ? "Lade CTY.DAT von country-files.com..." : "Downloading CTY.DAT from country-files.com..."
+        }
         let url = URL(string: "https://www.country-files.com/cty/cty.dat")!
-        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+        URLSession.shared.dataTask(with: url) { [weak self] data, _, error in
             guard let self = self else { return }
-            if let data = data, let content = String(data: data, encoding: .utf8) {
+            DispatchQueue.main.async {
+                self.isUpdatingCty = false
+                if let error = error {
+                    let msg = self.isDe ? "Fehler beim Download: \(error.localizedDescription)" : "Download error: \(error.localizedDescription)"
+                    self.ctyUpdateMessage = msg
+                    self.addLog(msg)
+                    completion?(false, msg)
+                    return
+                }
+                guard let data = data, let content = String(data: data, encoding: .utf8), !content.isEmpty else {
+                    let msg = self.isDe ? "Fehler: Ungültige CTY.DAT empfangen." : "Error: Invalid CTY.DAT received."
+                    self.ctyUpdateMessage = msg
+                    self.addLog(msg)
+                    completion?(false, msg)
+                    return
+                }
                 let now = Date()
                 try? content.write(to: self.ctyCacheURL, atomically: true, encoding: .utf8)
                 UserDefaults.standard.set(now, forKey: "cty_cache_date")
                 self.matcher.parseCtyDat(content)
                 self.matcher.lastUpdate = now
-                self.addLog(self.isDe ? "CTY.DAT erfolgreich im Hintergrund aktualisiert." : "CTY.DAT successfully updated in background.")
+                self.ctyLastUpdateDate = now
+                let count = self.matcher.prefixCount
+                let countries = self.matcher.allCountries().count
+                let msg = self.isDe
+                    ? "CTY.DAT erfolgreich aktualisiert (\(count) Präfixe, \(countries) Länder geladen)."
+                    : "CTY.DAT successfully updated (\(count) prefixes, \(countries) countries loaded)."
+                self.ctyUpdateMessage = msg
+                self.addLog(msg)
+                completion?(true, msg)
             }
         }.resume()
     }
@@ -2296,8 +2412,8 @@ class DecodeViewModel {
         let call = decode.callsign.uppercased()
         guard !call.isEmpty else { return false }
         
-        let ownCall = (UserDefaults.standard.string(forKey: "lotwUsername") ?? "").uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        if !ownCall.isEmpty && call == ownCall {
+        let ownCall = self.ownCallsign
+        if isMatchingOwnCall(call) {
             return false
         }
         

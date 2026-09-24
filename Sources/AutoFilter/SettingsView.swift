@@ -66,7 +66,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .mostWanted:
             return ["most wanted", "priorität", "priority", "clublog", "dxcc", "top 100", "rank", "rang", "highlight", "hervorheben", "nur most wanted", "only most wanted", "flame", "feuer", "filter", "wpx", "rarität", "rare"]
         case .storage:
-            return ["storage", "speicherort", "icloud", "icloud drive", "database", "datenbank", "sqlite", "autofilter.sqlite", "autoqso.sqlite", "pfad", "custom path", "default", "documents", "dokumente", "backup", "ordner", "folder", "location"]
+            return ["storage", "speicherort", "icloud", "icloud drive", "database", "datenbank", "sqlite", "autofilter.sqlite", "autoqso.sqlite", "pfad", "custom path", "default", "documents", "dokumente", "backup", "ordner", "folder", "location", "cty", "cty.dat", "dxcc", "präfix", "country-files"]
         case .options:
             return ["options", "auto mode", "optionen", "auto transmit", "cq", "nur cq", "cq only", "cooldown", "retry", "pause", "timer", "antwort", "reply", "trigger", "auto qso", "sende-engine", "ft8", "ft4", "wiederholen"]
         case .appearance:
@@ -90,6 +90,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     @Bindable var viewModel: DecodeViewModel
     @Bindable private var langManager = LanguageManager.shared
+    @Environment(\.openWindow) private var openWindow
     
     // Lokaler Zustand der UI & gespeicherte Ziel-Sektion
     @AppStorage("settingsSelectedSection") private var selectedSectionRaw: String = SettingsSection.udp.rawValue
@@ -98,6 +99,7 @@ struct SettingsView: View {
     @State private var showResetAlert = false
     @State private var showDeleteLogbookAlert = false
     @State private var showQTHPickerSheet = false
+    @State private var showCtyDatDialog = false
     
     private var filteredSections: [SettingsSection] {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -303,6 +305,9 @@ struct SettingsView: View {
         .frame(minWidth: 740, minHeight: 400)
         .sheet(isPresented: $showQTHPickerSheet) {
             InteractiveQTHPickerView(myGridLocator: $myGridLocator)
+        }
+        .sheet(isPresented: $showCtyDatDialog) {
+            CtyDatDialogView(viewModel: viewModel)
         }
         .onAppear {
             if let savedSection = SettingsSection(rawValue: selectedSectionRaw) {
@@ -1056,6 +1061,58 @@ struct SettingsView: View {
                 .padding()
                 .background(Color.gray.opacity(0.1))
                 .cornerRadius(6)
+                
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(isDe ? "CTY.DAT (DXCC & Länder-Präfixe)" : "CTY.DAT (DXCC & Country Prefixes)")
+                        .font(.headline)
+                    
+                    Text(isDe 
+                         ? "Enthält weltweite Zuordnungen von Rufzeichen zu Ländern, CQ/ITU-Zonen und Koordinaten (country-files.com)."
+                         : "Contains worldwide mappings of callsigns to countries, CQ/ITU zones, and coordinates (country-files.com).")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Text(isDe ? "Letzte Aktualisierung:" : "Last Updated:")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                if let date = viewModel.ctyLastUpdateDate {
+                                    Text(date.formatted(date: .abbreviated, time: .shortened))
+                                        .font(.subheadline)
+                                        .bold()
+                                } else {
+                                    Text(isDe ? "Offline-Basisdaten (Noch nicht geladen)" : "Offline Base Data (Not updated yet)")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.orange)
+                                }
+                            }
+                            
+                            Text(isDe
+                                 ? "\(viewModel.matcher.prefixCount) Präfixe (\(viewModel.matcher.allCountries().count) DXCC-Länder)"
+                                 : "\(viewModel.matcher.prefixCount) prefixes (\(viewModel.matcher.allCountries().count) DXCC countries)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Button(isDe ? "CTY.DAT aktualisieren..." : "Update CTY.DAT...") {
+                            showCtyDatDialog = true
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding(10)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                    )
+                }
             }
             
         // --- 7. Auto QSO Betriebsoptionen ---
@@ -1161,6 +1218,34 @@ struct SettingsView: View {
                     set: { viewModel.isNew6CharGridOnlyFilterEnabled = $0; viewModel.saveFilters(); viewModel.clearBlockedDecodes() }
                 ))
                 .font(.headline)
+                
+                Divider()
+                
+                // Rechtlicher Hinweis & Haftungsausschluss (FCC Part 97 & EU/AFuV § 16)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        Text(isDe ? "Rechtlicher Hinweis (FCC Part 97 & EU/AFuV § 16)" : "Regulatory Compliance (FCC Part 97 & EU/AFuV § 16)")
+                            .font(.headline)
+                    }
+                    
+                    Text(isDe
+                         ? "Der automatisierte Sendebetrieb darf ausschließlich unter ständiger Aufsicht des lizenzierten Funkamateurs erfolgen. Unbeaufsichtigter Sendebetrieb ist unzulässig. Die Nutzung erfolgt auf eigene Gefahr des Stationsbetreibers."
+                         : "Automated transmission must be operated strictly under continuous supervision of the licensed control operator. Unattended operation is prohibited under FCC & EU amateur radio rules. Use at operator's own risk.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    Button(isDe ? "Vollständigen rechtlichen Hinweis & Disclaimer öffnen..." : "Open Full Legal Disclaimer & Compliance...") {
+                        NotificationCenter.default.post(name: NSNotification.Name("OpenHelpSection"), object: "disclaimer")
+                        openWindow(id: "help")
+                    }
+                    .buttonStyle(.link)
+                    .font(.caption)
+                }
+                .padding(10)
+                .background(Color.orange.opacity(0.08))
+                .cornerRadius(6)
             }
             
         // --- 8. Ansicht, Schriftgrößen & Farbanpassungen ---

@@ -7,6 +7,8 @@ class WSJTXServer: ObservableObject {
     @Published var activeDxCall: String = ""
     @Published var isTransmitting: Bool = false
     @Published var isTxEnabled: Bool = false
+    @Published var wsjtDeCall: String = ""
+    @Published var wsjtDeGrid: String = ""
     
     var onQSOLogged: (([QSOEntry]) -> Void)?
     var onHaltTx: (() -> Void)?
@@ -294,15 +296,26 @@ class WSJTXServer: ObservableObject {
             let _ = reader.readString() // txMode
             let txEnabled = reader.readBool() ?? false
             let transmitting = reader.readBool() ?? false
+            let _ = reader.readBool() // decoding
+            let _ = reader.readUInt32() // rxDF
+            let _ = reader.readUInt32() // txDF
+            let deCall = reader.readString() ?? ""
+            let deGrid = reader.readString() ?? ""
             
             let freqMhz = Double(self.currentDialFrequency) / 1_000_000.0
-            self.logRaw(.incoming, "Status: client=\(clientId) freq=\(String(format: "%.6f", freqMhz))MHz mode=\(mode) txEnabled=\(txEnabled) transmitting=\(transmitting) dxCall=\(dxCall)")
+            self.logRaw(.incoming, "Status: client=\(clientId) freq=\(String(format: "%.6f", freqMhz))MHz mode=\(mode) txEnabled=\(txEnabled) transmitting=\(transmitting) dxCall=\(dxCall) deCall=\(deCall)")
             
             DispatchQueue.main.async {
                 if self.isTxEnabled != txEnabled { self.isTxEnabled = txEnabled }
                 if self.isTransmitting != transmitting { self.isTransmitting = transmitting }
                 if !dxCall.isEmpty && self.activeDxCall != dxCall {
                     self.activeDxCall = dxCall
+                }
+                if !deCall.isEmpty && self.wsjtDeCall != deCall {
+                    self.wsjtDeCall = deCall
+                }
+                if !deGrid.isEmpty && self.wsjtDeGrid != deGrid {
+                    self.wsjtDeGrid = deGrid
                 }
             }
         case .haltTx:

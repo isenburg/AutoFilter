@@ -142,7 +142,7 @@ struct ContentView: View {
             filtered = baseList
         }
         
-        if !query.isEmpty {
+        if !query.isEmpty && !query.contains("@") {
             filtered = filtered.filter { row in
                 row.callsign.lowercased().contains(query) ||
                 row.country.lowercased().contains(query) ||
@@ -284,6 +284,11 @@ struct ContentView: View {
                         .font(.system(size: 11))
                         .textFieldStyle(.plain)
                         .frame(width: 120)
+                        .onSubmit {
+                            if storeManager.processInputToken(viewModel.mainTableSearchText) {
+                                viewModel.mainTableSearchText = ""
+                            }
+                        }
                     if !viewModel.mainTableSearchText.isEmpty {
                         Button(action: { viewModel.mainTableSearchText = "" }) {
                             Image(systemName: "xmark.circle.fill")
@@ -373,8 +378,8 @@ struct ContentView: View {
                         HStack(spacing: 4) {
                             Image(systemName: storeManager.isTrialExpired ? "lock.fill" : "timer")
                             Text(storeManager.isTrialExpired
-                                ? (LanguageManager.shared.isGerman ? "Test abgelaufen" : "Trial expired")
-                                : "\(storeManager.formattedRemainingTime)")
+                                ? (LanguageManager.shared.isGerman ? "Tageslimit erreicht" : "Daily limit reached")
+                                : "\(storeManager.formattedRemainingTime) (Start \(storeManager.dailyLaunchCount)/3)")
                                 .font(.system(size: 11, weight: .bold))
                         }
                     }
@@ -415,12 +420,11 @@ struct ContentView: View {
             let displayCall = viewModel.displayCallsign
             let workedBands = Set(viewModel.lotwManager.workedBands(for: displayCall))
             let allBands = ["160M", "80M", "60M", "40M", "30M", "20M", "17M", "15M", "12M", "10M", "6M"]
-            let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
             
-            // Find matching decode to get grid locator and calculate distance
-            let matchingDecode = viewModel.server.decodes.first(where: { $0.callsign.uppercased() == displayCall.uppercased() })
-            let grid = matchingDecode?.grid
-            let distanceKm = matchingDecode?.distanceKm(myGrid: myGrid)
+            // Find matching decode or entity to get grid locator and calculate distance
+            let distAndGrid = viewModel.distanceAndGrid(for: displayCall)
+            let grid = distAndGrid.grid
+            let distanceKm = distAndGrid.distanceKm
             let mwRank = MostWantedManager.shared.rankForCallsign(displayCall)
             
             HStack(spacing: 14) {
@@ -1077,6 +1081,11 @@ struct ContentView: View {
                     .font(.system(size: 10))
                     .textFieldStyle(.plain)
                     .frame(width: 75)
+                    .onSubmit {
+                        if storeManager.processInputToken(viewModel.mainTableSearchText) {
+                            viewModel.mainTableSearchText = ""
+                        }
+                    }
                 if !viewModel.mainTableSearchText.isEmpty {
                     Button(action: { viewModel.mainTableSearchText = "" }) {
                         Image(systemName: "xmark.circle.fill")

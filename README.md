@@ -84,15 +84,19 @@ For full-featured operation with automated calling (Auto QSO), live decode filte
 
 ---
 
-## ⚠️ Disclaimer & Safety Warning
+## ⚠️ Legal Notice, Disclaimer & Safety Warning
 
 > [!CAUTION]
-> **OPERATOR RESPONSIBILITY & REGULATORY COMPLIANCE**
+> **OPERATOR RESPONSIBILITY & REGULATORY COMPLIANCE (USA & EU)**
 > 
-> 1. **Station Control**: Operating an amateur radio station automatically must comply with all national telecommunications laws and amateur radio regulations in your country (e.g., BNetzA, FCC, Ofcom). The licensed operator is solely responsible for all transmissions originating from their station.
-> 2. **Duty of Supervision**: Always maintain control over your station while AutoFilter is active. Never leave an automated station unattended unless operating strictly under authorized automatic control guidelines.
-> 3. **No Warranty**: This software is provided **"AS IS"**, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
-> 4. **Limitation of Liability**: In no event shall the author (**Georg Isenbürger - DJ6GI**) be liable for any claim, damages, regulatory fines, or other liability arising from, out of, or in connection with the software or the use or other dealings in the software.
+> 1. **Station Control & Duty of Supervision (FCC Part 97 & EU/CEPT)**:
+>    - **USA (FCC Part 97)**: Pursuant to 47 C.F.R. § 97.105 and § 97.109, a licensed amateur radio control operator must maintain immediate control of the station at all times. Unattended, fully autonomous transmission on standard HF digital frequencies is strictly prohibited under FCC rules. The control operator must be present at an authorized control point and capable of immediately terminating transmissions.
+>    - **EU / CEPT (e.g. AFuV § 16)**: Under telecommunication acts of EU member states, unattended automatic transmissions require specific regulatory permits or are prohibited. The licensed operator must remain in continuous attendance, actively supervise emissions, and be able to immediately halt transmissions manually.
+> 2. **Band Plan & Power Compliance**: Operators bear exclusive responsibility for verifying that a frequency is clear before transmitting, complying with IARU Region 1/2/3 band plans, license power limits, and preventing harmful interference (QRM).
+> 3. **Warranty Disclaimer ("AS IS" - UCC § 2-316 & International)**: This software is provided **"AS IS"**, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NONINFRINGEMENT. The author does not warrant that the software will be uninterrupted or error-free.
+> 4. **Limitation of Liability (EU & US Law)**: To the maximum extent permitted by applicable law, in no event shall the author or copyright holder (**Georg Isenbürger - DJ6GI**) be liable for any special, incidental, indirect, punitive, or consequential damages (including transceiver/amplifier damage, loss of data, regulatory fines by FCC, BNetzA, or revocation/suspension of amateur radio licenses) arising out of the use or inability to use this software.
+> 5. **Privacy (GDPR / CCPA)**: All decodes and log data are processed strictly locally. No personal records or callsigns are collected or transmitted to developer servers.
+> 6. **Third-Party Trademarks**: WSJT-X (Joe Taylor, K1JT / WSJT Team), LoTW (ARRL), QRZ.com, Club Log, and RUMlogNG are property of their respective owners. AutoFilter is an independent tool not affiliated with or endorsed by these entities.
 
 ---
 
@@ -103,6 +107,7 @@ For full-featured operation with automated calling (Auto QSO), live decode filte
 - **Most Wanted Fast-Track Jump**: Instant preemption (after 1 attempt) when an incoming caller is an unworked Most Wanted DXCC entity.
 - **Active QSO Protection**: Locks preemption once the called target answers to ensure ongoing two-way QSOs are never broken.
 - **Soft Cooldown Handling**: Places unanswered targets into a brief 2-minute soft cooldown to prevent calling loops while keeping them reachable later.
+- **Automatic Own-Callsign Detection & QSO Fix**: Resolves own callsign directly from live WSJT-X Status (`deCall`) and Telnet/Cluster login settings. Fixes target station replies being falsely treated as foreign callers (unwanted QSO aborts) and ensures incoming callers are reliably detected and answered.
 
 ### Version 5.0.0
 - **Mac App Store & StoreKit 2 Integration**: Native StoreKit 2 in-app purchase architecture for lifetime license activation and purchase restoration.

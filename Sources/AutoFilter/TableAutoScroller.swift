@@ -5,6 +5,12 @@ import AppKit
 final class TableScrollTrackingNSView: NSView {
     var onFoundTableView: ((NSTableView, NSScrollView) -> Void)?
 
+    static func isValidSpotsTable(_ tv: NSTableView) -> Bool {
+        let className = String(describing: type(of: tv))
+        if className.contains("ListView") { return false }
+        return tv.tableColumns.count > 1
+    }
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         if window != nil {
@@ -24,7 +30,7 @@ final class TableScrollTrackingNSView: NSView {
     }
 
     private func searchForTableView() -> (NSTableView, NSScrollView)? {
-        if let sv = self.enclosingScrollView, let tv = sv.documentView as? NSTableView {
+        if let sv = self.enclosingScrollView, let tv = sv.documentView as? NSTableView, TableScrollTrackingNSView.isValidSpotsTable(tv) {
             return (tv, sv)
         }
         
@@ -39,10 +45,10 @@ final class TableScrollTrackingNSView: NSView {
     }
 
     private func findInSubviews(of view: NSView) -> (NSTableView, NSScrollView)? {
-        if let tv = view as? NSTableView, let sv = tv.enclosingScrollView {
+        if let tv = view as? NSTableView, let sv = tv.enclosingScrollView, TableScrollTrackingNSView.isValidSpotsTable(tv) {
             return (tv, sv)
         }
-        if let sv = view as? NSScrollView, let tv = sv.documentView as? NSTableView {
+        if let sv = view as? NSScrollView, let tv = sv.documentView as? NSTableView, TableScrollTrackingNSView.isValidSpotsTable(tv) {
             return (tv, sv)
         }
         for sub in view.subviews {
@@ -64,10 +70,12 @@ struct TableAutoScroller: NSViewRepresentable {
     let rowCount: Int
 
     class Coordinator: NSObject {
+        weak var trackingView: TableScrollTrackingNSView?
         weak var tableView: NSTableView?
         weak var scrollView: NSScrollView?
         var lastRowCount: Int = 0
         var lastIsNewestOnTop: Bool? = nil
+        var currentIsNewestOnTop: Bool = true
         private var notificationObserver: NSObjectProtocol?
         
         override init() {
@@ -78,8 +86,9 @@ struct TableAutoScroller: NSViewRepresentable {
                 queue: .main
             ) { [weak self] notif in
                 guard let self = self else { return }
-                let isTop = (notif.object as? Bool) ?? true
-                self.scrollToActive(isNewestOnTop: isTop)
+                let isTop = (notif.object as? Bool) ?? self.currentIsNewestOnTop
+                self.currentIsNewestOnTop = isTop
+                self.scrollToActive(isNewestOnTop: isTop, attemptsRemaining: 10)
             }
         }
         
@@ -89,11 +98,17 @@ struct TableAutoScroller: NSViewRepresentable {
             }
         }
         
-        func scrollToActive(isNewestOnTop: Bool, attemptsRemaining: Int = 10) {
-            guard let tv = self.tableView, let sv = self.scrollView else {
+        func scrollToActive(isNewestOnTop: Bool? = nil, attemptsRemaining: Int = 0) {
+            let isTop = isNewestOnTop ?? self.currentIsNewestOnTop
+            
+            if self.tableView == nil || self.tableView?.window == nil {
+                self.trackingView?.findTableView()
+            }
+            
+            guard let tv = self.tableView, let sv = self.scrollView, tv.window != nil else {
                 if attemptsRemaining > 0 {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-                        self?.scrollToActive(isNewestOnTop: isNewestOnTop, attemptsRemaining: attemptsRemaining - 1)
+                        self?.scrollToActive(isNewestOnTop: isTop, attemptsRemaining: attemptsRemaining - 1)
                     }
                 }
                 return
@@ -101,32 +116,36 @@ struct TableAutoScroller: NSViewRepresentable {
             let count = tv.numberOfRows
             guard count > 0 else {
                 if attemptsRemaining > 0 {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
-                        self?.scrollToActive(isNewestOnTop: isNewestOnTop, attemptsRemaining: attemptsRemaining - 1)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                        self?.scrollToActive(isNewestOnTop: isTop, attemptsRemaining: attemptsRemaining - 1)
                     }
                 }
                 return
             }
             
-            if isNewestOnTop {
+            let currentX = sv.contentView.bounds.origin.x
+            if isTop {
                 tv.scrollRowToVisible(0)
-                sv.scroll(sv.contentView, to: NSPoint(x: 0, y: 0))
+                sv.contentView.scroll(to: NSPoint(x: currentX, y: 0))
                 sv.reflectScrolledClipView(sv.contentView)
-                sv.verticalScroller?.floatValue = 0.0
             } else {
                 let lastRow = count - 1
-                let rowRect = tv.rect(ofRow: lastRow)
                 tv.scrollRowToVisible(lastRow)
-                let docH = max(tv.frame.height, rowRect.maxY)
-                let maxOffset = max(0, docH - sv.contentView.bounds.height)
-                sv.scroll(sv.contentView, to: NSPoint(x: 0, y: maxOffset))
-                sv.reflectScrolledClipView(sv.contentView)
-                sv.verticalScroller?.floatValue = 1.0
                 
-                if maxOffset == 0 && count > 5 && attemptsRemaining > 0 {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
-                        self?.scrollToActive(isNewestOnTop: isNewestOnTop, attemptsRemaining: attemptsRemaining - 1)
-                    }
+                let docView = sv.documentView ?? tv
+                let clipHeight = sv.contentView.bounds.height
+                let lastRowRect = tv.rect(ofRow: lastRow)
+                let docHeight = max(docView.frame.height, lastRowRect.maxY)
+                let maxOffset = max(0, docHeight - clipHeight)
+                
+                sv.contentView.scroll(to: NSPoint(x: currentX, y: maxOffset))
+                sv.reflectScrolledClipView(sv.contentView)
+            }
+            
+            if attemptsRemaining > 0 {
+                let delay = (attemptsRemaining > 5) ? 0.05 : 0.08
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    self?.scrollToActive(isNewestOnTop: isTop, attemptsRemaining: attemptsRemaining - 1)
                 }
             }
         }
@@ -138,25 +157,36 @@ struct TableAutoScroller: NSViewRepresentable {
 
     func makeNSView(context: Context) -> TableScrollTrackingNSView {
         let view = TableScrollTrackingNSView()
+        context.coordinator.trackingView = view
+        context.coordinator.currentIsNewestOnTop = isNewestOnTop
         view.onFoundTableView = { [weak coordinator = context.coordinator] tv, sv in
             coordinator?.tableView = tv
             coordinator?.scrollView = sv
-            coordinator?.scrollToActive(isNewestOnTop: isNewestOnTop)
+            coordinator?.scrollToActive(isNewestOnTop: isNewestOnTop, attemptsRemaining: isNewestOnTop ? 1 : 10)
         }
         return view
     }
 
     func updateNSView(_ nsView: TableScrollTrackingNSView, context: Context) {
-        nsView.findTableView()
         let coordinator = context.coordinator
+        coordinator.trackingView = nsView
+        coordinator.currentIsNewestOnTop = isNewestOnTop
+        
+        nsView.onFoundTableView = { [weak coordinator] tv, sv in
+            coordinator?.tableView = tv
+            coordinator?.scrollView = sv
+        }
+        nsView.findTableView()
         
         let directionChanged = (coordinator.lastIsNewestOnTop != isNewestOnTop)
         let rowsChanged = (coordinator.lastRowCount != rowCount)
         coordinator.lastIsNewestOnTop = isNewestOnTop
         coordinator.lastRowCount = rowCount
 
-        if directionChanged || (rowsChanged && !isPaused) {
-            coordinator.scrollToActive(isNewestOnTop: isNewestOnTop)
+        if directionChanged {
+            coordinator.scrollToActive(isNewestOnTop: isNewestOnTop, attemptsRemaining: 10)
+        } else if rowsChanged && !isPaused {
+            coordinator.scrollToActive(isNewestOnTop: isNewestOnTop, attemptsRemaining: isNewestOnTop ? 0 : 2)
         }
     }
 }

@@ -104,7 +104,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
         case .support:
             return ["support", "hilfe", "kontakt", "contact", "github", "issues", "bug report", "fehler melden", "feature request", "faq", "community", "mail", "entwickler"]
         case .disclaimer:
-            return ["rechtlicher hinweis", "legal disclaimer", "amateurfunk", "iaru", "lizenzbestimmungen", "ham radio regulations", "unbeaufsichtigter sendebetrieb", "unattended operation", "eigenverantwortung", "remote", "cept"]
+            return ["rechtlicher hinweis", "legal disclaimer", "fcc", "part 97", "afuv", "bnetza", "amateurfunk", "iaru", "lizenzbestimmungen", "ham radio regulations", "unbeaufsichtigter sendebetrieb", "unattended operation", "eigenverantwortung", "remote", "cept", "haftung", "liability", "as is", "dsgvo", "gdpr", "ccpa", "aufsichtspflicht", "control operator"]
         case .changelog:
             return ["changelog", "versionen", "versions", "release notes", "build", "neuigkeiten", "updates", "historie", "whats new", "improvements", "fixes"]
         case .copyright:
@@ -123,6 +123,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
 
 struct HelpView: View {
     private var langManager = LanguageManager.shared
+    @ObservedObject private var storeManager = StoreManager.shared
     @Environment(\.openWindow) private var openWindow
     @State private var selectedSection: HelpSection = .overview
     @State private var searchText = ""
@@ -222,6 +223,18 @@ struct HelpView: View {
                     Text("Build \(APP_BUILD_NUMBER)")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                    
+                    if storeManager.isUnlocked {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.seal.fill")
+                                .foregroundStyle(.green)
+                            Text(storeManager.licenseInfoText)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                        .font(.caption2)
+                        .padding(.top, 2)
+                    }
                 }
                 .padding(12)
             }
@@ -285,6 +298,11 @@ struct HelpView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(width: 890, height: 620)
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenHelpSection"))) { note in
+            if let target = note.object as? String, target == "disclaimer" {
+                selectedSection = .disclaimer
+            }
+        }
         .onChange(of: searchText) { _, _ in
             let matching = filteredSections
             if !matching.isEmpty && !matching.contains(selectedSection) {
@@ -1348,36 +1366,102 @@ struct HelpView: View {
             }
             
         case .disclaimer:
-            VStack(alignment: .leading, spacing: 12) {
-                Text(isDe ? "Rechtlicher Hinweis & Haftungsausschluss" : "Legal Notice & Disclaimer")
-                    .font(.title2)
-                    .bold()
-                
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(isDe ? "Nutzung auf eigene Verantwortung:" : "Operation Under Own Responsibility:")
-                        .font(.headline)
-                    Text(isDe ? 
-                        "Die Nutzung von AutoFilter und insbesondere der automatisierten Sendefunktion (**Auto QSO für WSJT-X**) erfolgt ausschließlich auf eigene Gefahr und Verantwortung des jeweiligen lizenzierten Funkamateurs." :
-                        "The operation of AutoFilter, and specifically the automated transmission engine (**Auto QSO for WSJT-X**), is strictly at the sole risk and responsibility of the licensed amateur radio control operator.")
-                        .font(.body)
-                    
-                    Text(isDe ? "Einhaltung der Amateurfunkbestimmungen:" : "Regulatory Compliance:")
-                        .font(.headline)
-                    Text(isDe ? 
-                        "Der Betreiber ist verpflichtet, die geltenden Gesetze, Bestimmungen der Bundesnetzagentur (bzw. der zuständigen nationalen Fernmeldebehörde) sowie die IARU-Bandpläne einzuhalten. Eine ständige Beaufsichtigung der Sendestation durch den Funkamateur ist sicherzustellen." :
-                        "Operators must strictly adhere to national telecommunications laws (e.g. BNetzA, FCC) and IARU band plans. Continuous control and supervision of automated transmissions must be ensured at all times.")
-                        .font(.body)
-                    
-                    Text(isDe ? "Haftungsausschluss:" : "Limitation of Liability:")
-                        .font(.headline)
-                    Text(isDe ? 
-                        "Der Entwickler übernimmt keinerlei Haftung für direkte oder indirekte Schäden, Frequenzstörungen, Fehlbedienungen, Bandplanverletzungen oder sonstige Nachteile, die aus der Nutzung der Software resultieren." :
-                        "The author accepts no liability for direct or indirect damages, frequency interference, operator error, band plan infractions, or other consequences arising from the use of this software.")
-                        .font(.body)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                        .font(.title2)
+                    Text(isDe ? "Rechtlicher Hinweis & Haftungsausschluss" : "Legal Notice & Regulatory Disclaimer")
+                        .font(.title2)
+                        .bold()
                 }
-                .padding()
-                .background(Color.red.opacity(0.08))
+                
+                Text(isDe
+                     ? "Gültig für die Nutzung in der Europäischen Union (EU/CEPT) sowie den Vereinigten Staaten von Amerika (USA/FCC) und weltweit."
+                     : "Applicable for operation within the European Union (EU/CEPT), the United States (USA/FCC), and worldwide.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                
+                VStack(alignment: .leading, spacing: 16) {
+                    // 1. Sendebetrieb & Aufsichtspflicht (FCC Part 97 & EU / AFuV § 16)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "1. Aufsichtspflicht & Verbot des unbeaufsichtigten Sendebetriebs (FCC / CEPT / AFuV):" : "1. Station Supervision & Prohibition of Unattended Operation (FCC / CEPT):")
+                            .font(.headline)
+                        Text(isDe
+                             ? "• **USA (FCC Part 97)**: Gemäß 47 C.F.R. § 97.105 und § 97.109 muss die lizenzierte Kontrollperson (Control Operator) zu jedem Zeitpunkt die unmittelbare Kontrolle über die Funkstelle ausüben. Ein vollautomatischer, unbeaufsichtigter Sendebetrieb auf den regulären KW-Digimode-Frequenzen ist nach FCC Part 97 unzulässig. Die Kontrollperson muss anwesend sein und den Sendevorgang bei Fehlfunktionen oder Frequenzbelegungen sofort manuell abbrechen können.\n• **EU / Deutschland (AFuV § 16 / CEPT T/R 61-01)**: Gemäß § 16 AFuV sowie den entsprechenden Bestimmungen der EU-Mitgliedstaaten ist ein unbeaufsichtigter automatischer Sendebetrieb genehmigungspflichtig bzw. unzulässig. Der lizenzierte Funkamateur ist verpflichtet, den Sendebetrieb persönlich zu überwachen und jederzeit unverzüglich manuell einzugreifen (z.B. per Halt-Taste oder PTT-Ausschalter)."
+                             : "• **USA (FCC Part 97)**: Pursuant to 47 C.F.R. § 97.105 and § 97.109, a licensed control operator must maintain immediate control of the station at all times. Unattended, fully autonomous transmission on standard HF digital frequencies is strictly prohibited under FCC rules. The control operator must be present at an authorized control point and capable of immediately terminating transmissions in the event of interference, technical defect, or spurious radiation.\n• **EU / CEPT (e.g. AFuV § 16, CEPT T/R 61-01)**: Under national telecommunication acts of EU member states, unattended automatic transmissions require specific regulatory permits or are prohibited. The licensed operator must remain in continuous attendance, actively supervise emissions, and be able to immediately halt transmissions manually.")
+                            .font(.body)
+                    }
+                    
+                    Divider()
+                    
+                    // 2. Frequenzbelegung & IARU-Bandpläne
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "2. Einhaltung von Bandplänen, Sendeleistung & Frequenzökonomie:" : "2. Band Plan Compliance & Interference Prevention:")
+                            .font(.headline)
+                        Text(isDe
+                             ? "Die Software prüft Frequenzen rein rechnerisch anhand empfangener UDP-Pakete, kann jedoch keine physische Freiprüfung des Spektrums garantieren. Der Funkamateur trägt die alleinige Verantwortung für die Einhaltung der Bandgrenzen, der IARU-Bandpläne (Region 1, 2 und 3), der Sendeleistungsgrenzen sowie für das Vermeiden schädlicher Interferenzen (QRM)."
+                             : "The software evaluates frequencies computationally based on received decode packets, but cannot guarantee that a RF frequency is clear. The operator is solely responsible for verifying that the frequency is unoccupied before transmitting and ensuring compliance with IARU Region 1/2/3 band plans, license power limits, and spur/harmonic suppression.")
+                            .font(.body)
+                    }
+                    
+                    Divider()
+                    
+                    // 3. Gewährleistungsausschluss ("AS IS" - UCC & EU)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "3. Ausschluss jeglicher Gewährleistung (Warranty Disclaimer - \"AS IS\"):" : "3. Warranty Disclaimer (\"AS IS\" - UCC § 2-316):")
+                            .font(.headline)
+                        Text(isDe
+                             ? "DIE SOFTWARE WIRD OHNE MÄNGELGEWÄHR (\"AS IS\") UND OHNE JEGLICHE AUSDRÜCKLICHE ODER STILLSCHWEIGENDE GEWÄHRLEISTUNG ZUR VERFÜGUNG GESTELLT, EINSCHLIESSLICH, ABER NICHT BESCHRÄNKT AUF DIE STILLSCHWEIGENDE GEWÄHRLEISTUNG DER MARKTGÄNGIGKEIT, DER EIGNUNG FÜR EINEN BESTIMMTEN ZWECK UND DER NICHTVERLETZUNG VON RECHTEN DRITTER. DER ENTWICKLER ÜBERNIMMT KEINE GEWÄHR DAFÜR, DASS DIE SOFTWARE UNUNTERBROCHEN ODER FEHLERFREI ARBEITET."
+                             : "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NONINFRINGEMENT. THE AUTHOR DOES NOT WARRANT THAT THE FUNCTIONS CONTAINED IN THE SOFTWARE WILL MEET YOUR REQUIREMENTS, OR THAT THE OPERATION OF THE SOFTWARE WILL BE UNINTERRUPTED OR ERROR-FREE.")
+                            .font(.caption)
+                            .fontDesign(.monospaced)
+                    }
+                    
+                    Divider()
+                    
+                    // 4. Haftungsbeschränkung (EU & US)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "4. Haftungsbeschränkung (EU & US-Recht):" : "4. Limitation of Liability (EU & US Law):")
+                            .font(.headline)
+                        Text(isDe
+                             ? "• **EU-Konformität**: Eine Haftung des Autors für leichte Fahrlässigkeit ist ausgeschlossen, soweit keine wesentlichen Vertragspflichten verletzt werden. Gesetzliche Ansprüche nach dem Produkthaftungsgesetz sowie die Haftung für Vorsatz, grobe Fahrlässigkeit und Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit bleiben unberührt.\n• **Ausschluss von Folgeschäden & Behördenstrafen**: Soweit gesetzlich zulässig, haftet der Autor in keinem Fall für mittelbare Schäden, Folgeschäden, Transceiver- oder Endstufenschäden (z.B. thermische Überlastung, PTT-Dauersendung, Relaisverschleiß), behördliche Bußgelder, Gebühren oder den Entzug/die Aussetzung von Amateurfunk-Lizenzen."
+                             : "• **Limitation of Liability**: To the maximum extent permitted by applicable law, in no event shall the author or copyright holder be liable for any special, incidental, indirect, punitive, or consequential damages whatsoever (including, without limitation, damages for damage to radio transceivers, power amplifiers, antennas, loss of data, regulatory fines, penalties imposed by telecommunication authorities such as the FCC or BNetzA, or suspension/revocation of amateur radio licenses) arising out of the use of or inability to use this software.\n• **EU Mandatory Law**: Nothing in this disclaimer limits liability for gross negligence, willful misconduct, or personal injury where applicable consumer protection laws prohibit such limitations.")
+                            .font(.body)
+                    }
+                    
+                    Divider()
+                    
+                    // 5. Datenschutz & Lokale Datenverarbeitung (DSGVO / GDPR / CCPA)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "5. Datenschutz & Lokale Datenverarbeitung (DSGVO / GDPR / CCPA):" : "5. Privacy & Local Processing (GDPR / CCPA):")
+                            .font(.headline)
+                        Text(isDe
+                             ? "AutoFilter verarbeitet alle empfangenen Funkdaten, Cluster-Spots und Logbuch-Einträge ausschließlich lokal auf dem Endgerät des Benutzers. Es erfolgt keine heimliche Übermittlung von personenbezogenen Daten oder Rufzeichen an Entwickler-Server. Verbindungen zu externen Diensten (wie z.B. DX-Cluster, LoTW, QRZ.com oder RUMlogNG) erfolgen ausschließlich auf ausdrückliche Konfiguration durch den Nutzer."
+                             : "AutoFilter processes all radio decodes, cluster spots, and logbook records strictly locally on the user's computer. No personal data or callsign records are collected or transmitted to developer servers. Connections to external services (such as DX Clusters, LoTW, QRZ.com, or RUMlogNG) occur exclusively upon explicit configuration and control by the user.")
+                            .font(.body)
+                    }
+                    
+                    Divider()
+                    
+                    // 6. Marken & Fremdrechte
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isDe ? "6. Markenrechte & Unabhängigkeitshinweis:" : "6. Third-Party Trademarks & Independence:")
+                            .font(.headline)
+                        Text(isDe
+                             ? "WSJT-X ist ein Open-Source-Projekt von Joe Taylor (K1JT) und dem WSJT Development Team. LoTW (Logbook of The World) ist eine Marke der American Radio Relay League (ARRL). QRZ.com ist ein Dienst der QRZ LLC. Club Log wird von Michael Wells (G7VJR) betrieben. RUMlogNG ist ein Produkt von Thomas Rump (DL2RUM). CTY.DAT wird von Jim Reisert (AD1C, country-files.com) gepflegt. AutoFilter ist ein unabhängiges Drittanbieter-Tool und steht in keiner offiziellen Verbindung oder Partnerschaft mit diesen Organisationen oder Autoren."
+                             : "WSJT-X is an open-source project by Joe Taylor (K1JT) and the WSJT Development Team. LoTW is a service mark of the American Radio Relay League (ARRL). QRZ.com is a service of QRZ LLC. Club Log is operated by Michael Wells (G7VJR). RUMlogNG is developed by Thomas Rump (DL2RUM). CTY.DAT is maintained by Jim Reisert (AD1C, country-files.com). AutoFilter is an independent third-party tool and is not officially affiliated with, endorsed by, or sponsored by any of these entities.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(14)
+                .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
+                )
             }
             
         case .changelog:
@@ -1411,6 +1495,7 @@ struct HelpView: View {
                         bullet(isDe ? "Intelligenter Vorrang für eingehende Anrufer (Inbound Preemption): Automatischer unterbrechungsfreier Wechsel zu einer uns anrufenden Station, wenn die bisher gerufene Station nach konfigurierbaren Sendezyklen (1–4 Versuche, Standard: 2) nicht antwortet." : "Smart Inbound Caller Preemption: Seamlessly switches to an incoming station calling us if our currently called target has not answered after configurable attempts (1–4 attempts, default: 2).", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Sofortiger Most-Wanted-Wechsel: Direkter Vorrang-Sprung bereits nach 1 erfolglosem Versuch, falls der Anrufer eine seltene Most-Wanted-Entität ist." : "Instant Most Wanted Jump: Immediately prioritizes an incoming caller after just 1 attempt if the caller is an unworked Most Wanted DXCC entity.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Schutz aktiver QSOs & Schon-Cooldown: Sobald die Gegenstation antwortet, wird der Wechsel gesperrt; unbeantwortete Stationen erhalten eine kurze 2-Minuten-Pause." : "Active QSO Protection & Soft Cooldown: Locks preemption once the called target answers; unanswered stations receive a brief 2-minute soft cooldown.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Automatische Rufzeichen-Erkennung & QSO-Schutz: Ermittelt das eigene Rufzeichen live aus den WSJT-X-Statuspaketen (deCall) sowie den Login-Einstellungen. Verhindert irrtümliche QSO-Abbrüche bei Antworten der Gegenstation und stellt die zuverlässige Beantwortung direkter Anrufe sicher." : "Automatic Own-Callsign Detection & QSO Protection: Resolves own callsign live from WSJT-X Status packets (deCall) and login settings. Fixes target station replies being falsely treated as foreign callers (unwanted QSO aborts) and ensures incoming callers are reliably answered.", font: .subheadline, color: .secondary)
                     }
                 }
                 
@@ -1460,6 +1545,29 @@ struct HelpView: View {
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.blue.opacity(0.08))
+                .cornerRadius(8)
+                
+                // Lizenz-Status Box
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Image(systemName: storeManager.isUnlocked ? "checkmark.seal.fill" : "timer")
+                            .foregroundStyle(storeManager.isUnlocked ? .green : .orange)
+                            .font(.title3)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(storeManager.isUnlocked
+                                 ? (isDe ? "Vollversion (Aktiviert)" : "Full Version (Activated)")
+                                 : (isDe ? "Testversion (Zeitbegrenzt)" : "Trial Version (Time-Limited)"))
+                                .font(.headline)
+                                .foregroundStyle(storeManager.isUnlocked ? .green : .orange)
+                            Text(storeManager.licenseInfoText)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(storeManager.isUnlocked ? Color.green.opacity(0.08) : Color.orange.opacity(0.08))
                 .cornerRadius(8)
             }
         }
