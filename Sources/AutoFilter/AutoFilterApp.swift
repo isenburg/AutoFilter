@@ -29,7 +29,14 @@ struct AutoFilterApp: App {
     var body: some Scene {
         WindowGroup("AutoFilter v\(APP_VERSION)") {
             ContentView(viewModel: viewModel)
+                .id(appColorScheme)
                 .preferredColorScheme(preferredScheme)
+                .onAppear {
+                    AppDelegate.applyAppearance(appColorScheme)
+                }
+                .onChange(of: appColorScheme) { _, newValue in
+                    AppDelegate.applyAppearance(newValue)
+                }
         }
         .commands {
             // App-Menü: Über AutoFilter mit Copyright-Info
@@ -120,39 +127,46 @@ struct AutoFilterApp: App {
         
         Window(isDe ? "LoTW Logbuch" : "LoTW Logbook", id: "logbook") {
             LogbookView(viewModel: viewModel)
+                .id(appColorScheme)
                 .preferredColorScheme(preferredScheme)
         }
         
         Window(isDe ? "Hilfe & Info" : "Help & Info", id: "help") {
             HelpView()
+                .id(appColorScheme)
                 .preferredColorScheme(preferredScheme)
         }
         .windowResizability(.contentSize)
         
         Window(isDe ? "Einstellungen" : "Settings", id: "settings") {
             SettingsView(viewModel: viewModel)
+                .id(appColorScheme)
                 .preferredColorScheme(preferredScheme)
         }
         .windowResizability(.contentSize)
         
         Window(isDe ? "Logs & Rohdaten" : "Logs & Raw Data", id: "logs_raw") {
             LogsConsoleView(viewModel: viewModel)
+                .id(appColorScheme)
                 .preferredColorScheme(preferredScheme)
         }
         
         Window(isDe ? "Ausbreitungskarte" : "Propagation Map", id: "propagation_map") {
             PropagationMapView(viewModel: viewModel)
+                .id(appColorScheme)
                 .preferredColorScheme(preferredScheme)
         }
         .windowResizability(.contentSize)
 
         Window(isDe ? "Neue Maidenhead-Grids" : "New Maidenhead Grids", id: "new_grid_map") {
             NewGridMapView(viewModel: viewModel)
+                .id(appColorScheme)
                 .preferredColorScheme(preferredScheme)
         }
         
         Settings {
             SettingsView(viewModel: viewModel)
+                .id(appColorScheme)
                 .preferredColorScheme(preferredScheme)
         }
     }
@@ -163,6 +177,37 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.set(150, forKey: "NSInitialToolTipDelay")
+        let scheme = UserDefaults.standard.string(forKey: "appColorScheme") ?? "system"
+        AppDelegate.applyAppearance(scheme)
+    }
+
+    @MainActor
+    static func applyAppearance(_ scheme: String) {
+        let appearance: NSAppearance?
+        switch scheme {
+        case "light":
+            appearance = NSAppearance(named: .aqua)
+        case "dark":
+            appearance = NSAppearance(named: .darkAqua)
+        default:
+            appearance = nil
+        }
+        NSApp.appearance = appearance
+        for window in NSApp.windows {
+            window.appearance = appearance
+            window.viewsNeedDisplay = true
+            window.contentView?.needsDisplay = true
+            window.displayIfNeeded()
+        }
+        DispatchQueue.main.async {
+            NSApp.appearance = appearance
+            for window in NSApp.windows {
+                window.appearance = appearance
+                window.viewsNeedDisplay = true
+                window.contentView?.needsDisplay = true
+                window.displayIfNeeded()
+            }
+        }
     }
     
     static func showAboutPanel() {

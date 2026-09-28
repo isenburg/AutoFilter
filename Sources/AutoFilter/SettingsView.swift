@@ -1265,6 +1265,9 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     .frame(width: 280)
+                    .onChange(of: appColorScheme) { _, newValue in
+                        AppDelegate.applyAppearance(newValue)
+                    }
                     
                     Toggle(isDe ? "Neueste Einträge oben anzeigen (Tabelle & Logfenster)" : "Show newest entries on top (Table & Log console)", isOn: $isNewestOnTop)
                         .font(.subheadline)

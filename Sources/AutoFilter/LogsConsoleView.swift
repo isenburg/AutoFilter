@@ -242,6 +242,7 @@ struct LogsConsoleView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(hex: UserDefaults.standard.string(forKey: "colorLogBackground") ?? "", defaultColor: Color(NSColor.textBackgroundColor)))
         }
+        .id(appColorScheme)
         .preferredColorScheme(preferredScheme)
         .sheet(isPresented: $isClusterSendSheetPresented) {
             ClusterSendDialog(viewModel: viewModel)

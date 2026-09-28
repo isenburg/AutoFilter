@@ -523,6 +523,7 @@ struct ContentView: View {
 
     var body: some View {
         rootContent
+            .id(appColorScheme)
             .preferredColorScheme(preferredScheme)
             .frame(
                 minWidth: isCompactMode ? 480 : (800 + (isLeftSidebarVisible ? 220 : 0) + (isSidebarVisible ? 250 : 0)),
