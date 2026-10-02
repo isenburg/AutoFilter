@@ -164,7 +164,8 @@ class DecodeViewModel {
         let isWorked = self.lotwManager.hasWorkedRecently(callsign: decode.callsign, band: decode.band, duration: self.workedBeforeDuration, unit: self.workedBeforeUnit)
         
         let commentUpper = decode.message.uppercased()
-        let isInteresting = commentUpper.contains("CQ") || commentUpper.contains("QRZ") || commentUpper.contains("TEST")
+        let isCQMessage = commentUpper.contains("CQ") || commentUpper.contains("QRZ") || commentUpper.contains("TEST")
+        let isInteresting = self.isFiltersEnabled && accepted && isCQMessage
         
         let highlightMW = UserDefaults.standard.bool(forKey: "highlightMostWanted")
         let myGrid = UserDefaults.standard.string(forKey: "myGridLocator") ?? "JO31"
@@ -181,12 +182,17 @@ class DecodeViewModel {
     
     func refreshDisplaySpotsBackground() {
         let current = self.displaySpots
-        guard !current.isEmpty else { return }
+        let currentFrozen = self.frozenDisplaySpots
+        guard !current.isEmpty || currentFrozen != nil else { return }
         recalcQueue.async { [weak self] in
             guard let self = self else { return }
             let updated = current.map { self.makeSpotRowData(for: $0.rawDecode, recordDuplicates: false) }
+            let updatedFrozen = currentFrozen?.map { self.makeSpotRowData(for: $0.rawDecode, recordDuplicates: false) }
             DispatchQueue.main.async {
                 self.displaySpots = updated
+                if updatedFrozen != nil {
+                    self.frozenDisplaySpots = updatedFrozen
+                }
             }
         }
     }
@@ -335,6 +341,7 @@ class DecodeViewModel {
                 isFiltersEnabled = false
                 StoreManager.shared.triggerPurchasePrompt()
             }
+            refreshDisplaySpotsBackground()
         }
     }
     var isWsjtSpecialFilterEnabled: Bool = false
@@ -1908,6 +1915,7 @@ class DecodeViewModel {
         
         clearEvaluationCache()
         scheduleRecalculations()
+        refreshDisplaySpotsBackground()
         self.isFilterProfileModified = checkIsFilterProfileModified()
     }
 
