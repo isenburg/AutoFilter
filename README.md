@@ -108,6 +108,7 @@ For full-featured operation with automated calling (Auto QSO), live decode filte
 - **Active QSO Protection**: Locks preemption once the called target answers to ensure ongoing two-way QSOs are never broken.
 - **Soft Cooldown Handling**: Places unanswered targets into a brief 2-minute soft cooldown to prevent calling loops while keeping them reachable later.
 - **Automatic Own-Callsign Detection & QSO Fix**: Resolves own callsign directly from live WSJT-X Status (`deCall`) and Telnet/Cluster login settings. Fixes target station replies being falsely treated as foreign callers (unwanted QSO aborts) and ensures incoming callers are reliably detected and answered.
+- **Spot Coloring Bugfix**: Fixed an issue where rejected/filtered-out spots containing CQ/QRZ/TEST messages were mistakenly highlighted in green instead of being displayed as filtered out (grayed out).
 
 ### Version 5.0.0
 - **Mac App Store & StoreKit 2 Integration**: Native StoreKit 2 in-app purchase architecture for lifetime license activation and purchase restoration.

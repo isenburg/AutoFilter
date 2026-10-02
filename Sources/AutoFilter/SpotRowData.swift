@@ -52,14 +52,14 @@ struct SpotRowData: Identifiable, Equatable {
         let isMW = mwRank != nil
         
         let status: SpotRowStatus
-        if isMW && highlightMostWanted {
+        if !isAccepted {
+            status = .filteredOut
+        } else if isMW && highlightMostWanted {
             status = .mostWanted
         } else if isInteresting {
             status = .interestingCQ
         } else if isWorked {
             status = .worked
-        } else if !isAccepted {
-            status = .filteredOut
         } else {
             status = .normal
         }

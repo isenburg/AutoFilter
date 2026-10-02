@@ -130,6 +130,15 @@ struct HelpView: View {
     
     private var isDe: Bool { langManager.isGerman }
     
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? APP_VERSION
+    }
+    
+    private var appBuild: String {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "\(APP_BUILD_NUMBER)"
+    }
+
+    
     private var filteredSections: [HelpSection] {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
@@ -217,10 +226,10 @@ struct HelpView: View {
                 
                 // Footer in Sidebar
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("AutoFilter v\(APP_VERSION)")
+                    Text("AutoFilter v\(appVersion)")
                         .font(.caption)
                         .fontWeight(.semibold)
-                    Text("Build \(APP_BUILD_NUMBER)")
+                    Text("Build \(appBuild)")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     
@@ -1342,7 +1351,7 @@ struct HelpView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(isDe ? "Automatisch übermittelte Systeminformationen:" : "Automatically Attached Diagnostics:")
                         .font(.headline)
-                    bullet("App Version & Build (`AutoFilter v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))`)")
+                    bullet("App Version & Build (`AutoFilter v\(appVersion) (Build \(appBuild))`)")
                     bullet(isDe ? "macOS-Version & Build-Nummer" : "macOS Version & Build Number")
                     bullet(isDe ? "Hardware-Informationen (Mac-Modell/Hostname, Prozessortyp, CPU-Kerne, Arbeitsspeicher)" : "Hardware Details (Mac Model, Architecture, CPU Cores, RAM)")
                 }
@@ -1476,9 +1485,6 @@ struct HelpView: View {
                         Text("Version 5.1.0")
                             .font(.headline)
                             .bold()
-                        Text("(Build \(APP_BUILD_NUMBER))")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
                         Text(isDe ? "AKTUELL" : "CURRENT")
                             .font(.system(size: 10, weight: .bold))
                             .padding(.horizontal, 6)
@@ -1496,6 +1502,7 @@ struct HelpView: View {
                         bullet(isDe ? "Sofortiger Most-Wanted-Wechsel: Direkter Vorrang-Sprung bereits nach 1 erfolglosem Versuch, falls der Anrufer eine seltene Most-Wanted-Entität ist." : "Instant Most Wanted Jump: Immediately prioritizes an incoming caller after just 1 attempt if the caller is an unworked Most Wanted DXCC entity.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Schutz aktiver QSOs & Schon-Cooldown: Sobald die Gegenstation antwortet, wird der Wechsel gesperrt; unbeantwortete Stationen erhalten eine kurze 2-Minuten-Pause." : "Active QSO Protection & Soft Cooldown: Locks preemption once the called target answers; unanswered stations receive a brief 2-minute soft cooldown.", font: .subheadline, color: .secondary)
                         bullet(isDe ? "Automatische Rufzeichen-Erkennung & QSO-Schutz: Ermittelt das eigene Rufzeichen live aus den WSJT-X-Statuspaketen (deCall) sowie den Login-Einstellungen. Verhindert irrtümliche QSO-Abbrüche bei Antworten der Gegenstation und stellt die zuverlässige Beantwortung direkter Anrufe sicher." : "Automatic Own-Callsign Detection & QSO Protection: Resolves own callsign live from WSJT-X Status packets (deCall) and login settings. Fixes target station replies being falsely treated as foreign callers (unwanted QSO aborts) and ensures incoming callers are reliably answered.", font: .subheadline, color: .secondary)
+                        bullet(isDe ? "Spot-Farbgebung korrigiert: Ausgefilterte Spots werden nun immer zuverlässig als ausgefiltert (grau) dargestellt und nicht mehr fälschlicherweise durch CQ-Nachrichtenbestandteile grün eingefärbt." : "Spot Coloring Bugfix: Filtered-out spots are now strictly displayed as filtered out (gray) and are no longer mistakenly highlighted in green due to CQ/QRZ/TEST message contents.", font: .subheadline, color: .secondary)
                     }
                 }
                 
@@ -1507,9 +1514,6 @@ struct HelpView: View {
                         Text("Version 5.0.0")
                             .font(.headline)
                             .bold()
-                        Text("(Build 649)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
                     }
                     
                     VStack(alignment: .leading, spacing: 6) {
@@ -1576,7 +1580,7 @@ struct HelpView: View {
     private func sendSupportEmail() {
         let isDe = langManager.isGerman
         let recipient = "support@autofilter.app"
-        let subject = isDe ? "AutoFilter Support Anfrage - v\(APP_VERSION)" : "AutoFilter Support Request - v\(APP_VERSION)"
+        let subject = isDe ? "AutoFilter Support Anfrage - v\(appVersion)" : "AutoFilter Support Request - v\(appVersion)"
         
         // System & Hardware Details ermitteln
         let osVersion = ProcessInfo.processInfo.operatingSystemVersionString
@@ -1599,7 +1603,7 @@ struct HelpView: View {
         --------------------------------------------------
         SYSTEM INFORMATIONEN (Automatisch generiert)
         --------------------------------------------------
-        App Version:      AutoFilter v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))
+        App Version:      AutoFilter v\(appVersion) (Build \(appBuild))
         macOS Version:    \(osVersion)
         Gerätename:       \(hostName)
         Architektur:      \(architecture)
@@ -1615,7 +1619,7 @@ struct HelpView: View {
         --------------------------------------------------
         SYSTEM DIAGNOSTICS (Automatically Generated)
         --------------------------------------------------
-        App Version:      AutoFilter v\(APP_VERSION) (Build \(APP_BUILD_NUMBER))
+        App Version:      AutoFilter v\(appVersion) (Build \(appBuild))
         macOS Version:    \(osVersion)
         Device Name:      \(hostName)
         Architecture:     \(architecture)
